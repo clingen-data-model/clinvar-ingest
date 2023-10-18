@@ -1,0 +1,29 @@
+[project]
+name = "clinvar_ingest"
+authors = [
+    {name = "Kyle Ferriter", email = "kferrite@broadinstitute.org"},
+]
+description = "Parsing and working with ClinVar Variation XML in relational form"
+readme = "README.md"
+requires-python = ">=3.7"
+keywords = ["bioinformatics", "clinvar"]
+license = {text = "Apache-2.0"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "xmltodict==0.13.0",
+    "coloredlogs",
+    "click~=8.1.7"
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+dev = [
+    "ipykernel",
+    "black~=23.9.1"
+]
+
+
+[tool.setuptools.packages.find]
+include = ["clinvar_ingest"]
