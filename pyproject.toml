@@ -24,6 +24,9 @@ dev = [
     "black~=23.9.1"
 ]
 
+[project.scripts]
+clinvar-ingest = "clinvar_ingest.main:_main"
+
 
 [tool.setuptools.packages.find]
 include = ["clinvar_ingest"]
