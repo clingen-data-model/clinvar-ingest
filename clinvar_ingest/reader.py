@@ -40,7 +40,7 @@ def _parse(file, item_cb, output_queue):
     output_queue.put(None)
 
 
-def read_clinvar_xml(file):
+def read_clinvar_xml(file, disassemble=True):
     """
     Generator function that reads a ClinVar Variation XML file and outputs objects
     """
@@ -58,10 +58,10 @@ def read_clinvar_xml(file):
         logger.info(f"Got object from output queue: {str(obj)}")
         if obj is None:
             break
-
-        for subobj in obj.disassemble():
-            yield subobj
-
-        # yield obj
+        if disassemble:
+            for subobj in obj.disassemble():
+                yield subobj
+        else:
+            yield obj
 
     parser_thread.join()
