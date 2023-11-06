@@ -24,7 +24,7 @@ def main(argv=sys.argv[1:]):
     assert_mkdir(args.output_directory)
     try:
         with open(args.input_filename, "rb") as f_in:
-            for obj in read_clinvar_xml(f_in, disassemble=True):
+            for obj in read_clinvar_xml(f_in, disassemble=not args.no_disassemble):
                 print(f"output: {str(obj)}")
 
                 entity_type = obj.entity_type
@@ -46,6 +46,11 @@ def parse_args(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument("--input-filename", "-i", required=True, type=str)
     parser.add_argument("--output-directory", "-o", required=True, type=str)
+    parser.add_argument(
+        "--no-disassemble",
+        action="store_true",
+        help="Disable splitting nested Model objects into separate outputs",
+    )
     return parser.parse_args(argv)
 
 
