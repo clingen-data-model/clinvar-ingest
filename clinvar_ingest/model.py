@@ -11,11 +11,19 @@ class Model(object, metaclass=ABCMeta):
         """
         Constructs an instance of this class using the XML structure parsed into a dict.
 
+        The strategy of passing the input may differ based on the case. e.g. variation, the
+        type is based on the tag (SimpleAllele|Haplotype|Genotype), so the tag is included
+        above the value passed as {type: value}. For others, the tag may be unnecessary and
+        only the content+attributes are based.
         """
         raise NotImplementedError()
 
     @abstractmethod
     def disassemble(self):
+        """
+        Decomposes this instance into instances of contained Model classes, and itself.
+        An object referred to by another will be returned before the other.
+        """
         raise NotImplementedError()
 
 
@@ -83,7 +91,7 @@ def dictify(obj):
     """
     Recursively dictify Python objects into dicts. Objects may be Model instances.
     """
-    _logger.info(f"dictify(obj={obj})")
+    _logger.debug(f"dictify(obj={obj})")
     if getattr(obj, "__slots__", None):
         return {k: getattr(obj, k, None) for k in obj.__slots__}
     else:

@@ -23,14 +23,13 @@ def make_item_cb(output_queue, keep_going):
     def item_cb(tag, item):
         if not keep_going["value"]:
             return False
-        _logger.info(type(tag))
-        _logger.info(f"{tag=}")
+        _logger.debug(type(tag))
+        _logger.debug(f"{tag=}")
         current_tag = tag[-1]
         tagname = current_tag[0]
         attributes = current_tag[1]
-        _logger.info(f"tagname: {tagname}")
-        _logger.info(f"attributes: {attributes}")
-        # print(f"item: {item}")
+        _logger.debug(f"tagname: {tagname}")
+        _logger.debug(f"attributes: {attributes}")
         for attr_k, attr_v in attributes.items():
             item[attr_k] = attr_v
         obj = construct_model(tagname, item)
