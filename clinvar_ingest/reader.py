@@ -80,7 +80,4 @@ def read_clinvar_xml(file, keep_going: dict, disassemble=True):
         else:
             yield obj
 
-    # if not keep_going["value"]:
-    #     parser_thread.inter
-
     parser_thread.join()
