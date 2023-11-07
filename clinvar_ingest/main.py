@@ -61,7 +61,7 @@ def parse_and_write_files(
     return {k: v.name for k, v in open_output_files.items()}
 
 
-def main(argv=sys.argv[1:]):
+def run(argv=sys.argv[1:]):
     """
     Primary entrypoint function. Takes CLI arg vector excluding program name.
     """
@@ -85,14 +85,14 @@ def parse_args(argv):
     return parser.parse_args(argv)
 
 
-def _main(argv=sys.argv[1:]):
+def main(argv=sys.argv[1:]):
     """
     Used when executing main as a script.
     Initializes default configs.
     """
     coloredlogs.install(level="INFO")
-    return main(argv)
+    return run(argv)
 
 
 if __name__ == "__main__":
-    sys.exit(_main())
+    sys.exit(main())
