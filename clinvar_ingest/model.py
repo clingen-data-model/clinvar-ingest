@@ -80,6 +80,9 @@ class VariationArchive(Model):
 
 
 def dictify(obj):
+    """
+    Recursively dictify Python objects into dicts. Objects may be Model instances.
+    """
     _logger.info(f"dictify(obj={obj})")
     if getattr(obj, "__slots__", None):
         return {k: getattr(obj, k, None) for k in obj.__slots__}

@@ -10,7 +10,10 @@ from clinvar_ingest.fs import assert_mkdir
 
 
 def get_open_file(d: dict, root_dir: str, label: str, suffix=".ndjson", mode="w"):
-    """ """
+    """
+    Takes a dictionary of labels to file handles. Opens a new file handle using
+    label and suffix in root_dir if not already in the dictionary.
+    """
     if label not in d:
         d[label] = open(f"{root_dir}/{label}{suffix}", mode, encoding="utf-8")
     return d[label]
@@ -44,7 +47,6 @@ def parse_and_write_files(
                 f_out = get_open_file(
                     open_output_files, root_dir=output_directory, label=entity_type
                 )
-
                 f_out.write(json.dumps(dictify(obj)))
                 f_out.write("\n")
     except Exception as e:
