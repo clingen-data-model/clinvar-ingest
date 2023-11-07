@@ -44,7 +44,7 @@ class Variation(Model):
         return Variation(
             id=inp["@VariationID"],
             name=inp["Name"],
-            variation_type=inp["VariantType"],
+            variation_type=inp.get("VariantType", inp.get("VariationType")),
             subclass_type=subclass_type,
         )
 
@@ -67,7 +67,9 @@ class VariationArchive(Model):
             id=inp["Accession"],
             name=inp["VariationName"],
             version=inp["Version"],
-            variation=Variation.from_xml(inp["InterpretedRecord"]),
+            variation=Variation.from_xml(
+                inp.get("InterpretedRecord", inp.get("IncludedRecord"))
+            ),
         )
 
     def disassemble(self):

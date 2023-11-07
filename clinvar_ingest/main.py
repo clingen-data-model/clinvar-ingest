@@ -2,6 +2,7 @@ import argparse
 import sys
 import coloredlogs
 import json
+import gzip
 
 from clinvar_ingest.reader import read_clinvar_xml
 from clinvar_ingest.model import dictify
@@ -15,21 +16,33 @@ def get_open_file(d: dict, root_dir: str, label: str, suffix=".ndjson", mode="w"
     return d[label]
 
 
-def main(argv=sys.argv[1:]):
-    """
-    Primary entrypoint function. Takes CLI arg vector excluding program name.
-    """
-    args = parse_args(argv)
-    open_output_files = {}
-    assert_mkdir(args.output_directory)
-    try:
-        with open(args.input_filename, "rb") as f_in:
-            for obj in read_clinvar_xml(f_in, disassemble=not args.no_disassemble):
-                print(f"output: {str(obj)}")
+def _open(filename: str):
+    if filename.endswith(".gz"):
+        return gzip.open(filename)
+    else:
+        return open(filename, "rb")
 
+
+def parse_and_write_files(
+    input_filename: str, output_directory: str, disassemble=True
+) -> list:
+    """
+    Parses input file, writes outputs to output directory.
+
+    Returns the dict of types to their output files.
+    """
+    open_output_files = {}
+    assert_mkdir(output_directory)
+    keep_going = {"value": True}
+    try:
+        with _open(input_filename) as f_in:
+            for obj in read_clinvar_xml(
+                f_in, keep_going=keep_going, disassemble=disassemble
+            ):
+                print(f"output: {str(obj)}")
                 entity_type = obj.entity_type
                 f_out = get_open_file(
-                    open_output_files, root_dir=args.output_directory, label=entity_type
+                    open_output_files, root_dir=output_directory, label=entity_type
                 )
 
                 f_out.write(json.dumps(dictify(obj)))
@@ -38,8 +51,24 @@ def main(argv=sys.argv[1:]):
         print("Exception caught in main function")
         raise e
     finally:
+        print("Shutting down reader gracefully")
+        keep_going["value"] = False
         for f in open_output_files.values():
             f.close()
+
+    return {k: v.name for k, v in open_output_files.items()}
+
+
+def main(argv=sys.argv[1:]):
+    """
+    Primary entrypoint function. Takes CLI arg vector excluding program name.
+    """
+    args = parse_args(argv)
+    assert_mkdir(args.output_directory)
+    output_files = parse_and_write_files(
+        args.input_filename, args.output_directory, disassemble=not args.no_disassemble
+    )
+    print(output_files)
 
 
 def parse_args(argv):
