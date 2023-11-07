@@ -15,7 +15,8 @@ dependencies = [
     "xmltodict==0.13.0",
     "coloredlogs",
     "click~=8.1.7",
-    "google-cloud-bigquery~=3.13.0"
+    "google-cloud-bigquery~=3.13.0",
+    "google-cloud-storage~=2.13.0"
 ]
 dynamic = ["version"]
 
@@ -27,7 +28,7 @@ dev = [
 
 [project.scripts]
 clinvar-ingest = "clinvar_ingest.main:main"
-clinvar-ingest-create-tables = "clinvar_ingest.bigquery.create_tables:do_create"
+clinvar-ingest-create-tables = "clinvar_ingest.cloud.bigquery.create_tables:do_create"
 
 [tool.setuptools.packages.find]
 include = ["clinvar_ingest"]
