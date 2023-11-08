@@ -7,6 +7,7 @@ import gzip
 from clinvar_ingest.reader import read_clinvar_xml
 from clinvar_ingest.model import dictify
 from clinvar_ingest.fs import assert_mkdir
+from clinvar_ingest.cloud.gcs import copy_file_to_bucket
 
 
 def get_open_file(d: dict, root_dir: str, label: str, suffix=".ndjson", mode="w"):
@@ -72,6 +73,13 @@ def run(argv=sys.argv[1:]):
     )
     print(output_files)
 
+    # if args.upload_to_bucket:
+    #     print(f"Uploading files to bucket: {args.upload_to_bucket}")
+    #     for output_file in output_files:
+    #         copy_file_to_bucket(
+    #             output_file, f"gs://{args.upload_to_bucket}/{output_file}"
+    #         )
+
 
 def parse_args(argv):
     parser = argparse.ArgumentParser()
@@ -81,6 +89,14 @@ def parse_args(argv):
         "--no-disassemble",
         action="store_true",
         help="Disable splitting nested Model objects into separate outputs",
+    )
+    parser.add_argument(
+        "--upload-to-bucket",
+        type=str,
+        help=(
+            "If set, after files are written to output-directory, they "
+            "will also be uploaded to this bucket"
+        ),
     )
     return parser.parse_args(argv)
 
