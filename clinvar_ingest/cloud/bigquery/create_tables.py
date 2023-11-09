@@ -40,6 +40,9 @@ def parse_args(argv):
 
 
 def do_create(argv=sys.argv[1:]):
+    """
+    Creates tables using args parsed by `create_tables.parse_args`
+    """
     args = parse_args(argv)
     client = bigquery.Client()
     if args.project is None:
