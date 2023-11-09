@@ -43,6 +43,10 @@ def do_create(argv=sys.argv[1:]):
     args = parse_args(argv)
     client = bigquery.Client()
     if args.project is None:
+        if client.project is None:
+            raise ValueError(
+                "gcloud client project is None and --project arg not provided"
+            )
         args.project = client.project
         _logger.info("Using default project from gcloud environment: %s", args.project)
 
