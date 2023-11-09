@@ -7,7 +7,7 @@ import gzip
 
 from clinvar_ingest.reader import read_clinvar_xml, get_clinvar_xml_releaseinfo
 from clinvar_ingest.model import dictify
-from clinvar_ingest.fs import assert_mkdir
+from clinvar_ingest.fs import assert_mkdir, find_files
 from clinvar_ingest.cloud.gcs import copy_file_to_bucket
 
 _logger = logging.getLogger(__name__)
@@ -29,6 +29,9 @@ def get_open_file(d: dict, root_dir: str, label: str, suffix=".ndjson", mode="w"
 
 
 def _open(filename: str):
+    """
+    Opens a file with path `filename`. If `filename` ends in .gz, opens as gzip.
+    """
     if filename.endswith(".gz"):
         return gzip.open(filename)
     else:
@@ -74,43 +77,82 @@ def parse_and_write_files(
     return {k: v.name for k, v in open_output_files.items()}
 
 
-def run(argv=sys.argv[1:]):
+def run_parse(args):
     """
     Primary entrypoint function. Takes CLI arg vector excluding program name.
     """
-    args = parse_args(argv)
     assert_mkdir(args.output_directory)
     output_files = parse_and_write_files(
         args.input_filename, args.output_directory, disassemble=not args.no_disassemble
     )
     print(output_files)
 
-    if args.upload_to_bucket:
-        print(f"Uploading files to bucket: {args.upload_to_bucket}")
-        for obj_type, output_file in output_files.items():
-            copy_file_to_bucket(
-                output_file, f"gs://{args.upload_to_bucket}/{output_file}"
-            )
+
+def run_upload(args):
+    print(f"Uploading files to bucket: {args.destination_bucket}")
+
+    file_paths = find_files(args.source_directory)
+
+    dest_uri_prefix = f"gs://{args.destination_bucket}"
+    if args.destination_prefix:
+        dest_uri_prefix += "/" + args.destination_prefix
+
+    for file_path in file_paths:
+        s = args.source_directory + "/" + file_path
+        d = dest_uri_prefix + "/" + file_path
+        copy_file_to_bucket(s, d)
 
 
 def parse_args(argv):
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input-filename", "-i", required=True, type=str)
-    parser.add_argument("--output-directory", "-o", required=True, type=str)
-    parser.add_argument(
+    subparsers = parser.add_subparsers(dest="subcommand", help="Subcommands")
+
+    # PARSE
+    parse_sp = subparsers.add_parser("parse")
+    parse_sp.add_argument("--input-filename", "-i", required=True, type=str)
+    parse_sp.add_argument("--output-directory", "-o", required=True, type=str)
+    parse_sp.add_argument(
         "--no-disassemble",
         action="store_true",
         help="Disable splitting nested Model objects into separate outputs",
     )
-    parser.add_argument(
-        "--upload-to-bucket",
+
+    # UPLOAD
+    upload_sp = subparsers.add_parser("upload")
+    upload_sp.add_argument(
+        "--destination-bucket",
+        "-d",
+        required=True,
         type=str,
-        help=(
-            "If set, after files are written to output-directory, they "
-            "will also be uploaded to this bucket"
-        ),
+        help="Bucket to upload directory to",
     )
+    upload_sp.add_argument(
+        "--destination-prefix",
+        "-p",
+        type=str,
+        default=None,
+        help="Prefix in bucket to place uploaded directory under",
+    )
+    upload_sp.add_argument(
+        "--source-directory",
+        "-s",
+        type=str,
+        required=True,
+        help="Local directory to upload",
+    )
+
     return parser.parse_args(argv)
+
+
+def run_cli(argv):
+    """
+    Primary entrypoint function for CLI args. Takes argv vector excluding program name.
+    """
+    args = parse_args(argv)
+    if args.subcommand == "parse":
+        return run_parse(args)
+    elif args.subcommand == "upload":
+        return run_upload(args)
 
 
 def main(argv=sys.argv[1:]):
@@ -119,7 +161,7 @@ def main(argv=sys.argv[1:]):
     Initializes default configs.
     """
     coloredlogs.install(level="INFO")
-    return run(argv)
+    return run_cli(argv)
 
 
 if __name__ == "__main__":
