@@ -7,7 +7,11 @@ Usable as a script or programmatic module.
 """
 import argparse
 import sys
+import logging
+
 from google.cloud import bigquery
+
+_logger = logging.getLogger(__name__)
 
 
 def create_sql(
@@ -27,9 +31,7 @@ def create_sql(
 
 def parse_args(argv):
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--project", type=str, required=True
-    )  # TODO load default from gcloud environment
+    parser.add_argument("--project", type=str, required=False)
     parser.add_argument("--dataset", type=str, required=True)
     parser.add_argument("--bucket", type=str, required=True)
     parser.add_argument("--path", type=str, default="")
@@ -39,8 +41,13 @@ def parse_args(argv):
 
 def do_create(argv=sys.argv[1:]):
     args = parse_args(argv)
-    sql = create_sql(args.project, args.dataset, args.bucket, args.path)
     client = bigquery.Client()
+    if args.project is None:
+        args.project = client.project
+        _logger.info("Using default project from gcloud environment: %s", args.project)
+
+    sql = create_sql(args.project, args.dataset, args.bucket, args.path)
+
     create_job = client.query(sql)
     results = create_job.result()
     for row in results:
