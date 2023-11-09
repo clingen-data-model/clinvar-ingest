@@ -1,13 +1,16 @@
+import logging
 import argparse
 import sys
 import coloredlogs
 import json
 import gzip
 
-from clinvar_ingest.reader import read_clinvar_xml
+from clinvar_ingest.reader import read_clinvar_xml, get_clinvar_xml_releaseinfo
 from clinvar_ingest.model import dictify
 from clinvar_ingest.fs import assert_mkdir
 from clinvar_ingest.cloud.gcs import copy_file_to_bucket
+
+_logger = logging.getLogger(__name__)
 
 
 def get_open_file(d: dict, root_dir: str, label: str, suffix=".ndjson", mode="w"):
@@ -16,7 +19,9 @@ def get_open_file(d: dict, root_dir: str, label: str, suffix=".ndjson", mode="w"
     label and suffix in root_dir if not already in the dictionary.
     """
     if label not in d:
-        d[label] = open(f"{root_dir}/{label}{suffix}", mode, encoding="utf-8")
+        filepath = f"{root_dir}/{label}{suffix}"
+        _logger.info("Opening file for writing: %s", filepath)
+        d[label] = open(filepath, mode, encoding="utf-8")
     return d[label]
 
 
@@ -36,17 +41,24 @@ def parse_and_write_files(
     Returns the dict of types to their output files.
     """
     open_output_files = {}
-    assert_mkdir(output_directory)
-    keep_going = {"value": True}
+    with _open(input_filename) as f_in:
+        releaseinfo = get_clinvar_xml_releaseinfo(f_in)
+        release_date = releaseinfo["release_date"]
+        print(f"Parsing release date: {release_date}")
+
+    # Release directory is within the output directory
+    output_release_directory = f"{output_directory}/{release_date}"
+    assert_mkdir(output_release_directory)
+
     try:
         with _open(input_filename) as f_in:
-            for obj in read_clinvar_xml(
-                f_in, keep_going=keep_going, disassemble=disassemble
-            ):
-                print(f"output: {str(obj)}")
+            for obj in read_clinvar_xml(f_in, disassemble=disassemble):
+                # print(f"output: {str(obj)}")
                 entity_type = obj.entity_type
                 f_out = get_open_file(
-                    open_output_files, root_dir=output_directory, label=entity_type
+                    open_output_files,
+                    root_dir=output_release_directory,
+                    label=entity_type,
                 )
                 f_out.write(json.dumps(dictify(obj)))
                 f_out.write("\n")
@@ -54,8 +66,7 @@ def parse_and_write_files(
         print("Exception caught in main function")
         raise e
     finally:
-        print("Shutting down reader gracefully")
-        keep_going["value"] = False
+        print("Closing output files")
         for f in open_output_files.values():
             f.close()
 
@@ -73,12 +84,12 @@ def run(argv=sys.argv[1:]):
     )
     print(output_files)
 
-    # if args.upload_to_bucket:
-    #     print(f"Uploading files to bucket: {args.upload_to_bucket}")
-    #     for output_file in output_files:
-    #         copy_file_to_bucket(
-    #             output_file, f"gs://{args.upload_to_bucket}/{output_file}"
-    #         )
+    if args.upload_to_bucket:
+        print(f"Uploading files to bucket: {args.upload_to_bucket}")
+        for output_file in output_files:
+            copy_file_to_bucket(
+                output_file, f"gs://{args.upload_to_bucket}/{output_file}"
+            )
 
 
 def parse_args(argv):
