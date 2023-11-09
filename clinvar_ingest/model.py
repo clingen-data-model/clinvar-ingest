@@ -72,9 +72,9 @@ class VariationArchive(Model):
     def from_xml(inp: dict):
         _logger.info(f"VariationArchive.from_xml(inp={json.dumps(inp)})")
         return VariationArchive(
-            id=inp["Accession"],
-            name=inp["VariationName"],
-            version=inp["Version"],
+            id=inp["@Accession"],
+            name=inp["@VariationName"],
+            version=inp["@Version"],
             variation=Variation.from_xml(
                 inp.get("InterpretedRecord", inp.get("IncludedRecord"))
             ),

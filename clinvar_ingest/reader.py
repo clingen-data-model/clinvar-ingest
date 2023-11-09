@@ -1,7 +1,12 @@
-import xmltodict
-import threading
-import queue
+"""
+Module for iterating over XML files and calling Model constructors
+on appropriate elements.
+"""
+import xml.etree.ElementTree as ET
 import logging
+from typing import Iterator
+
+import xmltodict
 
 import clinvar_ingest.model as model
 
@@ -48,36 +53,65 @@ def _parse(file, item_cb, output_queue, depth=2):
     output_queue.put(QUEUE_STOP_VALUE)
 
 
-def read_clinvar_xml(file, keep_going: dict, disassemble=True):
+def get_clinvar_xml_releaseinfo(file) -> dict:
+    """
+    Parses top level release info from file.
+    Returns dict with {"release_date"} key.
+    """
+    release_date = None
+    _logger.info(f"{file=}")
+    for event, elem in ET.iterparse(file, events=["start", "end"]):
+        if event == "start" and elem.tag == "ClinVarVariationRelease":
+            release_date = elem.attrib["ReleaseDate"]
+        else:
+            break
+    if release_date is None:
+        raise ValueError("Root element ClinVarVariationRelease not found!")
+    return {"release_date": release_date}
+
+
+def read_clinvar_xml(file, disassemble=True) -> Iterator[model.Model]:
     """
     Generator function that reads a ClinVar Variation XML file and outputs objects
-
-    keep_going is a dict with a `value` key that when true keeps this loop and thread going.
     """
     _logger.info(f"{file=}")
-    output_queue = queue.Queue()
-    parser_thread = threading.Thread(
-        target=_parse,
-        name="ParserThread",
-        args=(file, make_item_cb(output_queue, keep_going), output_queue),
-    )
-    parser_thread.start()
+    unclosed = 0
+    for event, elem in ET.iterparse(file, events=["start", "end"]):
+        # https://docs.python.org/3/library/xml.etree.elementtree.html#element-objects
+        # tag text attrib
 
-    while keep_going["value"]:
-        try:
-            obj = output_queue.get(timeout=1)
-        except queue.Empty as e:
-            if not parser_thread.is_alive():
-                raise RuntimeError("Parser thread died!") from e
-            continue
-        _logger.info(f"Got object from output queue: {str(obj)}")
-        if obj == QUEUE_STOP_VALUE:
-            break
-
-        if disassemble:
-            for subobj in obj.disassemble():
-                yield subobj
+        # Sanity checks to make sure we only parse at the correct depth.
+        # For depth=1 (first level inside the root, unclosed should == 1)
+        # ET sends an end event for self-closed tags like e.g. <br/>, so this should work.
+        if event == "start":
+            unclosed += 1
+            # print(f"xml open tag {elem.tag}, unclosed={unclosed}")
+        elif event == "end":
+            unclosed -= 1
+            # print(f"xml close tag {elem.tag}, unclosed={unclosed}")
         else:
-            yield obj
+            raise ValueError(f"Unexpected event: {event}. Element: {ET.tostring(elem)}")
 
-    parser_thread.join()
+        if event == "end" and elem.tag == "VariationArchive":
+            if unclosed != 1:
+                _logger.warning(
+                    f"Found a VariationArchive at a depth other than 1:"
+                    f" {unclosed}, element: {ET.tostring(elem)}"
+                )
+            else:
+                elem_d = xmltodict.parse(ET.tostring(elem))
+                if not isinstance(elem_d, dict):
+                    raise RuntimeError(
+                        f"xmltodict returned non-dict type: ({type(elem_d)}) {elem_d}"
+                    )
+                if len(elem_d.keys()) > 1:
+                    raise RuntimeError(
+                        f"parsed dict had more than 1 key: ({elem_d.keys()}) {elem_d}"
+                    )
+                tag, contents = list(elem_d.items())[0]
+                model_obj = construct_model(tag, contents)
+                if disassemble:
+                    for subobj in model_obj.disassemble():
+                        yield subobj
+                else:
+                    yield model_obj
