@@ -19,7 +19,10 @@ def get_open_file(d: dict, root_dir: str, label: str, suffix=".ndjson", mode="w"
     label and suffix in root_dir if not already in the dictionary.
     """
     if label not in d:
-        filepath = f"{root_dir}/{label}{suffix}"
+        label_dir = f"{root_dir}/{label}"
+        assert_mkdir(root_dir)
+        assert_mkdir(label_dir)
+        filepath = f"{label_dir}/{label}{suffix}"
         _logger.info("Opening file for writing: %s", filepath)
         d[label] = open(filepath, mode, encoding="utf-8")
     return d[label]
@@ -48,12 +51,10 @@ def parse_and_write_files(
 
     # Release directory is within the output directory
     output_release_directory = f"{output_directory}/{release_date}"
-    assert_mkdir(output_release_directory)
 
     try:
         with _open(input_filename) as f_in:
             for obj in read_clinvar_xml(f_in, disassemble=disassemble):
-                # print(f"output: {str(obj)}")
                 entity_type = obj.entity_type
                 f_out = get_open_file(
                     open_output_files,
@@ -63,7 +64,7 @@ def parse_and_write_files(
                 f_out.write(json.dumps(dictify(obj)))
                 f_out.write("\n")
     except Exception as e:
-        print("Exception caught in main function")
+        print("Exception caught in parse_and_write_files")
         raise e
     finally:
         print("Closing output files")
