@@ -86,7 +86,7 @@ def run(argv=sys.argv[1:]):
 
     if args.upload_to_bucket:
         print(f"Uploading files to bucket: {args.upload_to_bucket}")
-        for output_file in output_files:
+        for obj_type, output_file in output_files.items():
             copy_file_to_bucket(
                 output_file, f"gs://{args.upload_to_bucket}/{output_file}"
             )
