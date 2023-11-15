@@ -1,5 +1,4 @@
 import logging
-import argparse
 import sys
 import coloredlogs
 import json
@@ -8,7 +7,9 @@ import gzip
 from clinvar_ingest.reader import read_clinvar_xml, get_clinvar_xml_releaseinfo
 from clinvar_ingest.model import dictify
 from clinvar_ingest.fs import assert_mkdir, find_files
+from clinvar_ingest.cli import parse_args
 from clinvar_ingest.cloud.gcs import copy_file_to_bucket
+from clinvar_ingest.cloud.bigquery.create_tables import run_create
 
 _logger = logging.getLogger(__name__)
 
@@ -103,47 +104,6 @@ def run_upload(args):
         copy_file_to_bucket(s, d)
 
 
-def parse_args(argv):
-    parser = argparse.ArgumentParser()
-    subparsers = parser.add_subparsers(dest="subcommand", help="Subcommands")
-
-    # PARSE
-    parse_sp = subparsers.add_parser("parse")
-    parse_sp.add_argument("--input-filename", "-i", required=True, type=str)
-    parse_sp.add_argument("--output-directory", "-o", required=True, type=str)
-    parse_sp.add_argument(
-        "--no-disassemble",
-        action="store_true",
-        help="Disable splitting nested Model objects into separate outputs",
-    )
-
-    # UPLOAD
-    upload_sp = subparsers.add_parser("upload")
-    upload_sp.add_argument(
-        "--destination-bucket",
-        "-d",
-        required=True,
-        type=str,
-        help="Bucket to upload directory to",
-    )
-    upload_sp.add_argument(
-        "--destination-prefix",
-        "-p",
-        type=str,
-        default=None,
-        help="Prefix in bucket to place uploaded directory under",
-    )
-    upload_sp.add_argument(
-        "--source-directory",
-        "-s",
-        type=str,
-        required=True,
-        help="Local directory to upload",
-    )
-
-    return parser.parse_args(argv)
-
-
 def run_cli(argv):
     """
     Primary entrypoint function for CLI args. Takes argv vector excluding program name.
@@ -153,6 +113,10 @@ def run_cli(argv):
         return run_parse(args)
     elif args.subcommand == "upload":
         return run_upload(args)
+    elif args.subcommand == "create-tables":
+        return run_create(args)
+    else:
+        raise ValueError(f"Unknown subcommand: {args.subcommand}")
 
 
 def main(argv=sys.argv[1:]):

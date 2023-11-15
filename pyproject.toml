@@ -28,7 +28,6 @@ dev = [
 
 [project.scripts]
 clinvar-ingest = "clinvar_ingest.main:main"
-clinvar-ingest-create-tables = "clinvar_ingest.cloud.bigquery.create_tables:do_create"
 
 [tool.setuptools.packages.find]
 include = ["clinvar_ingest"]
