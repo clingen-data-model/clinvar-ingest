@@ -10,3 +10,12 @@ def test_read_original_clinvar_variation_2():
     assert 2 == len(objects)
     assert isinstance(objects[0], Variation)
     assert isinstance(objects[1], VariationArchive)
+
+    variation = objects[0]
+
+    # Test that extracted fields were there
+    assert variation.id == "2"
+
+    # Test that included fields were not included in content
+    assert "@VariationID" not in variation.content
+    assert "GeneList" in variation.content
