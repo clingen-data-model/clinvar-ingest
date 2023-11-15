@@ -5,14 +5,11 @@ files from Google Cloud Storage.
 
 Usable as a script or programmatic module.
 """
-
 import logging
 
-from google.cloud import bigquery
-from google.cloud import storage
 from google.api_core.exceptions import NotFound
+from google.cloud import bigquery, storage
 from google.cloud.bigquery.dataset import Dataset, DatasetReference
-
 
 _logger = logging.getLogger(__name__)
 

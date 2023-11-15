@@ -1,6 +1,6 @@
 import logging
-from google.cloud import storage
 
+from google.cloud import storage
 
 _logger = logging.getLogger(__name__)
 

@@ -6,9 +6,9 @@ Data model for ClinVar Variation XML files.
 # between PascalCase and snake_case for entity_type. If Model names are
 # reliable we could generate entity_type strings.
 
-from abc import ABCMeta, abstractmethod
-import logging
 import json
+import logging
+from abc import ABCMeta, abstractmethod
 
 _logger = logging.getLogger(__name__)
 

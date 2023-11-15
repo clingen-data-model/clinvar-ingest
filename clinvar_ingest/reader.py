@@ -2,8 +2,8 @@
 Module for iterating over XML files and calling Model constructors
 on appropriate elements.
 """
-import xml.etree.ElementTree as ET
 import logging
+import xml.etree.ElementTree as ET
 from typing import Iterator
 
 import xmltodict
