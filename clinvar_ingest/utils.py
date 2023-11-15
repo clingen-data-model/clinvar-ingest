@@ -1,7 +1,7 @@
 from typing import List, Any
 
 
-def extract_one(d: dict, *keys: List[Any]) -> Any:
+def extract_oneof(d: dict, *keys: List[Any]) -> Any:
     """
     For each key in `keys`, if key exists, remove it and return a
     tuple of the key and the value. If not, try the next key.

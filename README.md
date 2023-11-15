@@ -5,12 +5,12 @@ Successor to https://github.com/DataBiosphere/clinvar-ingest
 This project is for loading, processing, outputting, uploading relational-normalized ClinVar Variation Release XML files.
 
 
-# Process
+# Parse input files
 
 The primary use case is processing ClinVar Variation Release XML files into relationally normalized, newline delimited JSON. By default a file per model type is written to a directory specified with `-o`, within a directory with the `ReleaseDate` attribute from the top level of the XML file.
 
 ```
-$ clinvar-ingest \
+$ clinvar-ingest parse \
     -i test/data/OriginalTestDataSet.xml.gz \
     -o outputs
 ```
