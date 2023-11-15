@@ -25,3 +25,5 @@ jobs:
         run: black --check clinvar_ingest
       - name: Sort imports
         run: isort --check-only clinvar_ingest
+      - name: Ruff lint
+        run: ruff check clinvar_ingest
