@@ -31,7 +31,7 @@ def create_sql(
 
 def ensure_dataset_exists(
     client: bigquery.Client, project: str, dataset_id: str, location: str
-):
+) -> bigquery.Dataset:
     """
     Check if dataset exists. If not, create it. Returns the Dataset object.
     """
@@ -72,6 +72,8 @@ def run_create(args):
     dataset_obj = ensure_dataset_exists(
         client, args.project, dataset_id=args.dataset, location=bucket_location
     )
+    if not dataset_obj:
+        raise RuntimeError(f"Didn't get a dataset object back. run_create args: {args}")
 
     sql = create_sql(args.project, args.dataset, args.bucket, args.path)
 
