@@ -9,6 +9,7 @@ Data model for ClinVar Variation XML files.
 import json
 import logging
 from abc import ABCMeta, abstractmethod
+from typing import List
 
 from clinvar_ingest.utils import extract, extract_oneof
 
@@ -79,6 +80,15 @@ class Variation(Model):
         yield self
 
 
+class ClinicalAssertion(Model):
+    @staticmethod
+    def from_xml(inp: dict):
+        raise NotImplementedError()
+
+    def disassemble(self):
+        yield self
+
+
 class VariationArchive(Model):
     def __init__(
         self,
@@ -86,6 +96,7 @@ class VariationArchive(Model):
         name: str,
         version: str,
         variation: Variation,
+        clinical_assertions: List[ClinicalAssertion],
         content: dict = None,
     ):
         self.id = id
@@ -93,6 +104,7 @@ class VariationArchive(Model):
         self.version = version
         self.variation = variation
         self.entity_type = "variation_archive"
+        self.clinical_assertions = clinical_assertions
         self.content = content
 
     @staticmethod
@@ -105,12 +117,20 @@ class VariationArchive(Model):
             variation=Variation.from_xml(
                 inp.get("InterpretedRecord", inp.get("IncludedRecord"))
             ),
+            clinical_assertions=list(
+                map(
+                    ClinicalAssertion.from_xml,
+                    extract(extract(inp, "ClinicalAssertionList"), "ClinicalAssertion"),
+                )
+            ),
             content=inp,
         )
 
     def disassemble(self):
         for val in self.variation.disassemble():
             yield val
+        for clinical_assertion in self.clinical_assertions.dissassemble():
+            yield clinical_assertion
         del self.variation
         yield self
 
