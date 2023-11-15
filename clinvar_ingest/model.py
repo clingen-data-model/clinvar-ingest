@@ -10,6 +10,8 @@ import json
 import logging
 from abc import ABCMeta, abstractmethod
 
+from clinvar_ingest.utils import extract
+
 _logger = logging.getLogger(__name__)
 
 
@@ -36,12 +38,20 @@ class Model(object, metaclass=ABCMeta):
 
 
 class Variation(Model):
-    def __init__(self, id: str, name: str, variation_type: str, subclass_type: str):
+    def __init__(
+        self,
+        id: str,
+        name: str,
+        variation_type: str,
+        subclass_type: str,
+        content: dict = None,
+    ):
         self.id = id
         self.name = name
         self.variation_type = variation_type
         self.subclass_type = subclass_type
         self.entity_type = "variation"
+        self.content = content
 
     @staticmethod
     def from_xml(inp: dict):
@@ -58,10 +68,11 @@ class Variation(Model):
         else:
             raise RuntimeError("Unknown variation type: " + json.dumps(inp))
         return Variation(
-            id=inp["@VariationID"],
-            name=inp["Name"],
-            variation_type=inp.get("VariantType", inp.get("VariationType")),
+            id=extract(inp, "@VariationID"),
+            name=extract(inp, "Name"),
+            variation_type=extract(inp, "VariantType", "VariationType"),
             subclass_type=subclass_type,
+            content=inp,
         )
 
     def disassemble(self):
@@ -69,23 +80,33 @@ class Variation(Model):
 
 
 class VariationArchive(Model):
-    def __init__(self, id: str, name: str, version: str, variation: Variation):
+    def __init__(
+        self,
+        id: str,
+        name: str,
+        version: str,
+        variation: Variation,
+        content: dict = None,
+    ):
         self.id = id
         self.name = name
         self.version = version
         self.variation = variation
         self.entity_type = "variation_archive"
+        self.content = content
 
     @staticmethod
     def from_xml(inp: dict):
         _logger.info(f"VariationArchive.from_xml(inp={json.dumps(inp)})")
         return VariationArchive(
-            id=inp["@Accession"],
-            name=inp["@VariationName"],
-            version=inp["@Version"],
+            id=extract(inp, "@Accession"),
+            name=extract(inp, "@VariationName"),
+            version=extract(inp, "@Version"),
             variation=Variation.from_xml(
-                inp.get("InterpretedRecord", inp.get("IncludedRecord"))
+                extract(inp, "InterpretedRecord", "IncludedRecord")
+                # inp.get("InterpretedRecord", inp.get("IncludedRecord"))
             ),
+            content=inp,
         )
 
     def disassemble(self):
