@@ -1,3 +1,11 @@
+"""
+Data model for ClinVar Variation XML files.
+"""
+
+# TODO https://github.com/jpvanhal/inflection does good conversion
+# between PascalCase and snake_case for entity_type. If Model names are
+# reliable we could generate entity_type strings.
+
 from abc import ABCMeta, abstractmethod
 import logging
 import json
@@ -33,7 +41,7 @@ class Variation(Model):
         self.name = name
         self.variation_type = variation_type
         self.subclass_type = subclass_type
-        self.entity_type = "Variation"
+        self.entity_type = "variation"
 
     @staticmethod
     def from_xml(inp: dict):
@@ -66,7 +74,7 @@ class VariationArchive(Model):
         self.name = name
         self.version = version
         self.variation = variation
-        self.entity_type = "VariationArchive"
+        self.entity_type = "variation_archive"
 
     @staticmethod
     def from_xml(inp: dict):
