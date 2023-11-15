@@ -1,15 +1,16 @@
+import gzip
+import json
 import logging
 import sys
-import coloredlogs
-import json
-import gzip
 
-from clinvar_ingest.reader import read_clinvar_xml, get_clinvar_xml_releaseinfo
-from clinvar_ingest.model import dictify
-from clinvar_ingest.fs import assert_mkdir, find_files
+import coloredlogs
+
 from clinvar_ingest.cli import parse_args
-from clinvar_ingest.cloud.gcs import copy_file_to_bucket
 from clinvar_ingest.cloud.bigquery.create_tables import run_create
+from clinvar_ingest.cloud.gcs import copy_file_to_bucket
+from clinvar_ingest.fs import assert_mkdir, find_files
+from clinvar_ingest.model import dictify
+from clinvar_ingest.reader import get_clinvar_xml_releaseinfo, read_clinvar_xml
 
 _logger = logging.getLogger(__name__)
 

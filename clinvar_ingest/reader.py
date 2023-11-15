@@ -2,9 +2,9 @@
 Module for iterating over XML files and calling Model constructors
 on appropriate elements.
 """
-import xml.etree.ElementTree as ET
 import logging
-from typing import Iterator
+import xml.etree.ElementTree as ET
+from typing import Iterator, TextIO
 
 import xmltodict
 
@@ -70,13 +70,13 @@ def get_clinvar_xml_releaseinfo(file) -> dict:
     return {"release_date": release_date}
 
 
-def read_clinvar_xml(file, disassemble=True) -> Iterator[model.Model]:
+def read_clinvar_xml(reader: TextIO, disassemble=True) -> Iterator[model.Model]:
     """
-    Generator function that reads a ClinVar Variation XML file and outputs objects
+    Generator function that reads a ClinVar Variation XML file and outputs objects.
+    Accepts `reader` as a readable TextIO/BytesIO object, or a filename.
     """
-    _logger.info(f"{file=}")
     unclosed = 0
-    for event, elem in ET.iterparse(file, events=["start", "end"]):
+    for event, elem in ET.iterparse(reader, events=["start", "end"]):
         # https://docs.python.org/3/library/xml.etree.elementtree.html#element-objects
         # tag text attrib
 
