@@ -10,7 +10,7 @@ import json
 import logging
 from abc import ABCMeta, abstractmethod
 
-from clinvar_ingest.utils import extract
+from clinvar_ingest.utils import extract, extract_oneof
 
 _logger = logging.getLogger(__name__)
 
@@ -58,19 +58,19 @@ class Variation(Model):
         _logger.info(f"Variation.from_xml(inp={json.dumps(inp)})")
         if "SimpleAllele" in inp:
             subclass_type = "SimpleAllele"
-            inp = inp["SimpleAllele"]
+            inp = extract(inp, "SimpleAllele")
         elif "Haplotype" in inp:
             subclass_type = "Haplotype"
-            inp = inp["Haplotype"]
+            inp = extract(inp, "Haplotype")
         elif "Genotype" in inp:
             subclass_type = "Genotype"
-            inp = inp["Genotype"]
+            inp = extract(inp, "Genotype")
         else:
             raise RuntimeError("Unknown variation type: " + json.dumps(inp))
         return Variation(
             id=extract(inp, "@VariationID"),
             name=extract(inp, "Name"),
-            variation_type=extract(inp, "VariantType", "VariationType"),
+            variation_type=extract_oneof(inp, "VariantType", "VariationType")[1],
             subclass_type=subclass_type,
             content=inp,
         )
@@ -103,8 +103,7 @@ class VariationArchive(Model):
             name=extract(inp, "@VariationName"),
             version=extract(inp, "@Version"),
             variation=Variation.from_xml(
-                extract(inp, "InterpretedRecord", "IncludedRecord")
-                # inp.get("InterpretedRecord", inp.get("IncludedRecord"))
+                inp.get("InterpretedRecord", inp.get("IncludedRecord"))
             ),
             content=inp,
         )
@@ -123,12 +122,10 @@ def dictify(obj):
     _logger.debug(f"dictify(obj={obj})")
     if getattr(obj, "__slots__", None):
         return {k: getattr(obj, k, None) for k in obj.__slots__}
-    else:
-        if isinstance(obj, dict):
-            return {k: dictify(v) for k, v in obj.items()}
-        elif isinstance(obj, list):
-            return [dictify(v) for v in obj]
-        elif isinstance(obj, Model):
-            return dictify(vars(obj))
-        else:
-            return obj
+    if isinstance(obj, dict):
+        return {k: dictify(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [dictify(v) for v in obj]
+    if isinstance(obj, Model):
+        return dictify(vars(obj))
+    return obj

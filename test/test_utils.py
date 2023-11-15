@@ -1,4 +1,4 @@
-from clinvar_ingest.utils import extract
+from clinvar_ingest.utils import extract, extract_oneof
 
 
 def test_extract():
@@ -9,5 +9,5 @@ def test_extract():
 
     assert extract(d, "B") == "B-1"
 
-    assert extract(d, "A", "B") is None
-    assert extract(d, "A", "B", "C") == "C-1"
+    assert extract_oneof(d, "A", "B") is None
+    assert extract_oneof(d, "A", "B", "C") == ("C", "C-1")
