@@ -10,7 +10,7 @@ import json
 import logging
 from abc import ABCMeta, abstractmethod
 
-from clinvar_ingest.utils import extract, extract_oneof
+from clinvar_ingest.utils import extract, extract_oneof, extract_in
 
 _logger = logging.getLogger(__name__)
 
@@ -88,6 +88,9 @@ class VariationArchive(Model):
         variation: Variation,
         date_created: str,
         record_status: str,
+        species: str,
+        review_status: str,
+        interp_description: str,
         content: dict = None,
     ):
         self.id = id
@@ -99,16 +102,16 @@ class VariationArchive(Model):
         self.interp_content = None
         self.date_created = date_created
         self.record_status = record_status
-        self.interp_description = None
+        self.interp_description = interp_description
         self.release_date = None
-        self.species = None
+        self.species = species
         self.interp_type = None
         self.interp_explanation = None
         self.interp_date_last_evaluated = None
         self.num_submitters = None
         self.date_last_updated = None
         self.num_submissions = None
-        self.review_status = None
+        self.review_status = review_status
         self.content = content
 
     @staticmethod
@@ -123,6 +126,16 @@ class VariationArchive(Model):
             ),
             date_created=extract(inp, "@DateCreated"),
             record_status=extract(inp, "RecordStatus"),
+            species=extract(inp, "Species"),
+            review_status=extract(
+                inp.get("InterpretedRecord", inp.get("IncludedRecord")), "ReviewStatus"
+            ),
+            interp_description=extract_in(
+                inp.get("InterpretedRecord", inp.get("IncludedRecord")),
+                "Interpretations",
+                "Interpretation",
+                "Description",
+            ),
             content=inp,
         )
 
