@@ -139,7 +139,7 @@ class VariationArchive(Model):
             review_status=extract(interp_record, "ReviewStatus"),
             interp_type=extract_in(interp, "@Type"),
             interp_description=extract_in(interp, "Description"),
-            interp_explanation=extract_in(interp, "Explanation", "#text"),
+            interp_explanation=extract_in(extract_in(interp, "Explanation"), "#text"),
             # num_submitters and num_submissions are at top and interp level
             num_submitters=extract_in(interp, "@NumberOfSubmitters"),
             num_submissions=extract_in(interp, "@NumberOfSubmissions"),
