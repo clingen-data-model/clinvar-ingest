@@ -1,4 +1,4 @@
-from clinvar_ingest.utils import extract, extract_oneof, extract_in
+from clinvar_ingest.utils import extract, extract_in, extract_oneof
 
 
 def test_extract():

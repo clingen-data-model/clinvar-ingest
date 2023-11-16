@@ -10,7 +10,7 @@ import json
 import logging
 from abc import ABCMeta, abstractmethod
 
-from clinvar_ingest.utils import extract, extract_oneof, extract_in
+from clinvar_ingest.utils import extract, extract_in, extract_oneof
 
 _logger = logging.getLogger(__name__)
 
