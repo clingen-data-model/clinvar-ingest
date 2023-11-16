@@ -91,6 +91,8 @@ class VariationArchive(Model):
         species: str,
         review_status: str,
         interp_description: str,
+        interp_type: str,
+        interp_explanation: str,
         content: dict = None,
     ):
         self.id = id
@@ -105,8 +107,8 @@ class VariationArchive(Model):
         self.interp_description = interp_description
         self.release_date = None
         self.species = species
-        self.interp_type = None
-        self.interp_explanation = None
+        self.interp_type = interp_type
+        self.interp_explanation = interp_explanation
         self.interp_date_last_evaluated = None
         self.num_submitters = None
         self.date_last_updated = None
@@ -130,11 +132,24 @@ class VariationArchive(Model):
             review_status=extract(
                 inp.get("InterpretedRecord", inp.get("IncludedRecord")), "ReviewStatus"
             ),
+            interp_type=extract_in(
+                inp.get("InterpretedRecord", inp.get("IncludedRecord")),
+                "Interpretations",
+                "Interpretation",
+                "@Type",
+            ),
             interp_description=extract_in(
                 inp.get("InterpretedRecord", inp.get("IncludedRecord")),
                 "Interpretations",
                 "Interpretation",
                 "Description",
+            ),
+            interp_explanation=extract_in(
+                inp.get("InterpretedRecord", inp.get("IncludedRecord")),
+                "Interpretations",
+                "Interpretation",
+                "Explanation",
+                "#text",
             ),
             content=inp,
         )
