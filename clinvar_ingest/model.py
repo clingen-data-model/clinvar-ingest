@@ -93,6 +93,10 @@ class VariationArchive(Model):
         interp_description: str,
         interp_type: str,
         interp_explanation: str,
+        interp_date_last_evaluated: str,
+        num_submitters: str,
+        num_submissions: str,
+        date_last_updated: str,
         content: dict = None,
     ):
         self.id = id
@@ -109,16 +113,18 @@ class VariationArchive(Model):
         self.species = species
         self.interp_type = interp_type
         self.interp_explanation = interp_explanation
-        self.interp_date_last_evaluated = None
-        self.num_submitters = None
-        self.date_last_updated = None
-        self.num_submissions = None
+        self.interp_date_last_evaluated = interp_date_last_evaluated
+        self.num_submitters = num_submitters
+        self.num_submissions = num_submissions
+        self.date_last_updated = date_last_updated
         self.review_status = review_status
         self.content = content
 
     @staticmethod
     def from_xml(inp: dict):
         _logger.info(f"VariationArchive.from_xml(inp={json.dumps(inp)})")
+        interp_record = inp.get("InterpretedRecord", inp.get("IncludedRecord"))
+        interp = interp_record.get("Interpretations", {}).get("Interpretation", {})
         return VariationArchive(
             id=extract(inp, "@Accession"),
             name=extract(inp, "@VariationName"),
@@ -127,30 +133,17 @@ class VariationArchive(Model):
                 inp.get("InterpretedRecord", inp.get("IncludedRecord"))
             ),
             date_created=extract(inp, "@DateCreated"),
+            date_last_updated=extract(inp, "@DateLastUpdated"),
             record_status=extract(inp, "RecordStatus"),
             species=extract(inp, "Species"),
-            review_status=extract(
-                inp.get("InterpretedRecord", inp.get("IncludedRecord")), "ReviewStatus"
-            ),
-            interp_type=extract_in(
-                inp.get("InterpretedRecord", inp.get("IncludedRecord")),
-                "Interpretations",
-                "Interpretation",
-                "@Type",
-            ),
-            interp_description=extract_in(
-                inp.get("InterpretedRecord", inp.get("IncludedRecord")),
-                "Interpretations",
-                "Interpretation",
-                "Description",
-            ),
-            interp_explanation=extract_in(
-                inp.get("InterpretedRecord", inp.get("IncludedRecord")),
-                "Interpretations",
-                "Interpretation",
-                "Explanation",
-                "#text",
-            ),
+            review_status=extract(interp_record, "ReviewStatus"),
+            interp_type=extract_in(interp, "@Type"),
+            interp_description=extract_in(interp, "Description"),
+            interp_explanation=extract_in(interp, "Explanation", "#text"),
+            # num_submitters and num_submissions are at top and interp level
+            num_submitters=extract_in(interp, "@NumberOfSubmitters"),
+            num_submissions=extract_in(interp, "@NumberOfSubmissions"),
+            interp_date_last_evaluated=extract_in(interp, "@DateLastEvaluated"),
             content=inp,
         )
 
