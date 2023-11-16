@@ -1,4 +1,4 @@
-from typing import List, Any
+from typing import Any, List
 
 
 def extract_oneof(d: dict, *keys: List[Any]) -> Any:
@@ -19,3 +19,9 @@ def extract(d: dict, key: Any) -> Any:
     If `key` is in `d`, remove it and return the value.
     """
     return d.pop(key, None)
+
+
+def ensure_list(obj: Any):
+    if not isinstance(obj, list):
+        return [obj]
+    return obj
