@@ -92,7 +92,21 @@ class VariationArchive(Model):
         self.name = name
         self.version = version
         self.variation = variation
+        self.variation_id = variation.id
         self.entity_type = "variation_archive"
+        self.interp_content = None
+        self.date_created = None
+        self.record_status = None
+        self.interp_description = None
+        self.release_date = None
+        self.species = None
+        self.interp_type = None
+        self.interp_explanation = None
+        self.interp_date_last_evaluated = None
+        self.num_submitters = None
+        self.date_last_updated = None
+        self.num_submissions = None
+        self.review_status = None
         self.content = content
 
     @staticmethod
