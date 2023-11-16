@@ -129,8 +129,9 @@ class VariationArchive(Model):
     def disassemble(self):
         for val in self.variation.disassemble():
             yield val
-        for clinical_assertion in self.clinical_assertions.dissassemble():
-            yield clinical_assertion
+        for clinical_assertion in self.clinical_assertions:
+            for clinical_assertion_obj in clinical_assertion.disassemble():
+                yield clinical_assertion_obj
         del self.variation
         yield self
 
