@@ -86,6 +86,8 @@ class VariationArchive(Model):
         name: str,
         version: str,
         variation: Variation,
+        date_created: str,
+        record_status: str,
         content: dict = None,
     ):
         self.id = id
@@ -95,8 +97,8 @@ class VariationArchive(Model):
         self.variation_id = variation.id
         self.entity_type = "variation_archive"
         self.interp_content = None
-        self.date_created = None
-        self.record_status = None
+        self.date_created = date_created
+        self.record_status = record_status
         self.interp_description = None
         self.release_date = None
         self.species = None
@@ -119,6 +121,8 @@ class VariationArchive(Model):
             variation=Variation.from_xml(
                 inp.get("InterpretedRecord", inp.get("IncludedRecord"))
             ),
+            date_created=extract(inp, "@DateCreated"),
+            record_status=extract(inp, "RecordStatus"),
             content=inp,
         )
 
