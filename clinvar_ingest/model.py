@@ -6,9 +6,9 @@ Data model for ClinVar Variation XML files.
 # between PascalCase and snake_case for entity_type. If Model names are
 # reliable we could generate entity_type strings.
 
+import dataclasses
 import json
 import logging
-import dataclasses
 from abc import ABCMeta, abstractmethod
 
 from clinvar_ingest.utils import extract, extract_in, extract_oneof
@@ -38,21 +38,16 @@ class Model(object, metaclass=ABCMeta):
         raise NotImplementedError()
 
 
+@dataclasses.dataclass
 class Variation(Model):
-    def __init__(
-        self,
-        id: str,
-        name: str,
-        variation_type: str,
-        subclass_type: str,
-        content: dict = None,
-    ):
-        self.id = id
-        self.name = name
-        self.variation_type = variation_type
-        self.subclass_type = subclass_type
+    id: str
+    name: str
+    variation_type: str
+    subclass_type: str
+    content: dict
+
+    def __post_init__(self):
         self.entity_type = "variation"
-        self.content = content
 
     @staticmethod
     def from_xml(inp: dict):
