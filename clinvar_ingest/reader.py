@@ -59,7 +59,7 @@ def get_clinvar_xml_releaseinfo(file) -> dict:
     Returns dict with {"release_date"} key.
     """
     release_date = None
-    _logger.info(f"{file=}")
+    _logger.debug(f"{file=}")
     for event, elem in ET.iterparse(file, events=["start", "end"]):
         if event == "start" and elem.tag == "ClinVarVariationRelease":
             release_date = elem.attrib["ReleaseDate"]
@@ -92,7 +92,10 @@ def read_clinvar_xml(reader: TextIO, disassemble=True) -> Iterator[model.Model]:
         else:
             raise ValueError(f"Unexpected event: {event}. Element: {ET.tostring(elem)}")
 
-        if event == "end" and elem.tag == "VariationArchive":
+        if event == "start" and elem.tag == "ClinVarVariationRelease":
+            release_date = elem.attrib["ReleaseDate"]
+            _logger.info(f"Parsing release date: {release_date}")
+        elif event == "end" and elem.tag == "VariationArchive":
             if unclosed != 1:
                 _logger.warning(
                     f"Found a VariationArchive at a depth other than 1:"

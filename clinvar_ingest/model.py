@@ -99,7 +99,6 @@ class VariationArchive(Model):
         self.entity_type = "variation_archive"
         self.variation_id = self.variation.id
         self.interp_content = None
-        self.release_date = None
 
     @staticmethod
     def from_xml(inp: dict):
