@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -xeo pipefail
+set -xo pipefail
 
 if [[ "$1" == "apply" ]]; then
     # Uses each linter's option to apply the changes if it is supported
