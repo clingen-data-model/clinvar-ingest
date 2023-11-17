@@ -93,18 +93,18 @@ class VariationArchive(Model):
     interp_type: str
     interp_explanation: str
     interp_date_last_evaluated: str
+    interp_content: dict
     content: dict
 
     def __post_init__(self):
         self.entity_type = "variation_archive"
         self.variation_id = self.variation.id
-        self.interp_content = None
 
     @staticmethod
     def from_xml(inp: dict):
         _logger.info(f"VariationArchive.from_xml(inp={json.dumps(inp)})")
         interp_record = inp.get("InterpretedRecord", inp.get("IncludedRecord"))
-        interp = interp_record.get("Interpretations", {}).get("Interpretation", {})
+        interp = extract(interp_record, "Interpretations")["Interpretation"]
         return VariationArchive(
             id=extract(inp, "@Accession"),
             name=extract(inp, "@VariationName"),
@@ -122,6 +122,7 @@ class VariationArchive(Model):
             num_submitters=extract_in(interp, "@NumberOfSubmitters"),
             num_submissions=extract_in(interp, "@NumberOfSubmissions"),
             interp_date_last_evaluated=extract_in(interp, "@DateLastEvaluated"),
+            interp_content=interp,
             content=inp,
         )
 
