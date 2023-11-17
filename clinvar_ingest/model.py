@@ -8,6 +8,7 @@ Data model for ClinVar Variation XML files.
 
 import json
 import logging
+import dataclasses
 from abc import ABCMeta, abstractmethod
 
 from clinvar_ingest.utils import extract, extract_in, extract_oneof
@@ -68,6 +69,7 @@ class Variation(Model):
         else:
             raise RuntimeError("Unknown variation type: " + json.dumps(inp))
         return Variation(
+            # VariationID is at the VariationArchive and the SimpleAllele/Haplotype/Genotype level
             id=extract(inp, "@VariationID"),
             name=extract(inp, "Name"),
             variation_type=extract_oneof(inp, "VariantType", "VariationType")[1],
@@ -79,46 +81,30 @@ class Variation(Model):
         yield self
 
 
+@dataclasses.dataclass
 class VariationArchive(Model):
-    def __init__(
-        self,
-        id: str,
-        name: str,
-        version: str,
-        variation: Variation,
-        date_created: str,
-        record_status: str,
-        species: str,
-        review_status: str,
-        interp_description: str,
-        interp_type: str,
-        interp_explanation: str,
-        interp_date_last_evaluated: str,
-        num_submitters: str,
-        num_submissions: str,
-        date_last_updated: str,
-        content: dict = None,
-    ):
-        self.id = id
-        self.name = name
-        self.version = version
-        self.variation = variation
-        self.variation_id = variation.id
+    id: str
+    name: str
+    version: str
+    variation: Variation
+    date_created: str
+    record_status: str
+    species: str
+    review_status: str
+    interp_description: str
+    num_submitters: str
+    num_submissions: str
+    date_last_updated: str
+    interp_type: str
+    interp_explanation: str
+    interp_date_last_evaluated: str
+    content: dict
+
+    def __post_init__(self):
         self.entity_type = "variation_archive"
+        self.variation_id = self.variation.id
         self.interp_content = None
-        self.date_created = date_created
-        self.record_status = record_status
-        self.interp_description = interp_description
         self.release_date = None
-        self.species = species
-        self.interp_type = interp_type
-        self.interp_explanation = interp_explanation
-        self.interp_date_last_evaluated = interp_date_last_evaluated
-        self.num_submitters = num_submitters
-        self.num_submissions = num_submissions
-        self.date_last_updated = date_last_updated
-        self.review_status = review_status
-        self.content = content
 
     @staticmethod
     def from_xml(inp: dict):
@@ -129,9 +115,7 @@ class VariationArchive(Model):
             id=extract(inp, "@Accession"),
             name=extract(inp, "@VariationName"),
             version=extract(inp, "@Version"),
-            variation=Variation.from_xml(
-                inp.get("InterpretedRecord", inp.get("IncludedRecord"))
-            ),
+            variation=Variation.from_xml(interp_record),
             date_created=extract(inp, "@DateCreated"),
             date_last_updated=extract(inp, "@DateLastUpdated"),
             record_status=extract(inp, "RecordStatus"),
@@ -148,23 +132,57 @@ class VariationArchive(Model):
         )
 
     def disassemble(self):
-        for val in self.variation.disassemble():
+        self_copy = model_copy(self)
+        for val in self_copy.variation.disassemble():
             yield val
-        del self.variation
-        yield self
+        del self_copy.variation
+        yield self_copy
+
+
+def model_copy(obj):
+    """
+    Create a copy of the given object. Significantly faster than copy.deepcopy().
+
+    Args:
+        obj: The object to be copied.
+
+    Returns:
+        A new instance of the same class as the input object, with the same attribute values.
+
+    Example:
+        >>> class Foo:
+        ...     def __init__(self, a, b):
+        ...         self.a = a
+        ...         self.b = b
+        >>> foo = Foo(1, 2)
+        >>> foo_copy = model_copy(foo)
+        >>> foo_copy.a
+        1
+        >>> foo_copy.b
+        2
+        >>> foo_copy.a = 3
+        >>> foo_copy.a
+        3
+        >>> foo.a
+        1
+    """
+    cls = type(obj)
+    fields = dataclasses.fields(cls)
+    kwargs = {f.name: getattr(obj, f.name) for f in fields}
+    return cls(**kwargs)
 
 
 def dictify(obj):
     """
     Recursively dictify Python objects into dicts. Objects may be Model instances.
     """
-    _logger.debug(f"dictify(obj={obj})")
     if getattr(obj, "__slots__", None):
         return {k: getattr(obj, k, None) for k in obj.__slots__}
     if isinstance(obj, dict):
         return {k: dictify(v) for k, v in obj.items()}
     if isinstance(obj, list):
         return [dictify(v) for v in obj]
-    if isinstance(obj, Model):
+    # Replaced isinstance(obj, Model) with this because of interactive class reloading
+    if getattr(obj, "__dict__", None):
         return dictify(vars(obj))
     return obj
