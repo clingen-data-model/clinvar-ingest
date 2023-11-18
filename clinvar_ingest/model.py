@@ -9,9 +9,10 @@ Data model for ClinVar Variation XML files.
 import dataclasses
 import json
 import logging
+from typing import List
 from abc import ABCMeta, abstractmethod
 
-from clinvar_ingest.utils import extract, extract_in, extract_oneof
+from clinvar_ingest.utils import extract, extract_in, extract_oneof, ensure_list
 
 _logger = logging.getLogger(__name__)
 
@@ -44,7 +45,15 @@ class Variation(Model):
     name: str
     variation_type: str
     subclass_type: str
+    allele_id: str
+    protein_change: List[str]
+    num_chromosomes: str
+    num_copies: str
+
     content: dict
+
+    child_ids: List[str] = None
+    descendant_ids: List[str] = None
 
     def __post_init__(self):
         self.entity_type = "variation"
@@ -52,6 +61,12 @@ class Variation(Model):
     @staticmethod
     def from_xml(inp: dict):
         _logger.info(f"Variation.from_xml(inp={json.dumps(inp)})")
+        descendant_tree = Variation.descendant_tree(inp)
+        # _logger.info(f"descendant_tree: {descendant_tree}")
+        child_ids = Variation.collapse_children(descendant_tree)
+        # _logger.info(f"child_ids: {child_ids}")
+        descendant_ids = Variation.collapse_descendants(descendant_tree)
+        # _logger.info(f"descendant_ids: {descendant_ids}")
         if "SimpleAllele" in inp:
             subclass_type = "SimpleAllele"
             inp = extract(inp, "SimpleAllele")
@@ -69,8 +84,93 @@ class Variation(Model):
             name=extract(inp, "Name"),
             variation_type=extract_oneof(inp, "VariantType", "VariationType")[1],
             subclass_type=subclass_type,
+            allele_id=extract_in(inp, "@AlleleID"),
+            protein_change=extract_in(inp, "ProteinChange"),
+            num_copies=extract_in(inp, "@NumberOfCopies"),
+            num_chromosomes=extract_in(inp, "@NumberOfChromosomes"),
+            child_ids=child_ids,
+            descendant_ids=descendant_ids,
             content=inp,
         )
+
+    @staticmethod
+    def descendant_tree(inp: dict):
+        """
+        Accepts xmltodict parsed XML for a SimpleAllele, Haplotype, or Genotype.
+        Returns a tuple tree of child ids.
+
+        (genotype_id,
+            (haplotype_id1,
+                (simpleallele_id11, None)
+                (simpleallele_id12, None)))
+            (haplotype_id2,
+                (simpleallele_id21, None))
+        """
+        if "SimpleAllele" in inp:
+            inp = inp["SimpleAllele"]
+            return (inp["@VariationID"], None)
+        elif "Haplotype" in inp:
+            inp = inp["Haplotype"]
+            return (
+                inp["@VariationID"],
+                tuple(
+                    Variation.descendant_tree({"SimpleAllele": simple_allele})
+                    for simple_allele in ensure_list(inp["SimpleAllele"])
+                ),
+            )
+        elif "Genotype" in inp:
+            inp = inp["Genotype"]
+            return (
+                inp["@VariationID"],
+                tuple(
+                    Variation.descendant_tree({"Haplotype": haplotype})
+                    for haplotype in ensure_list(inp["Haplotype"])
+                ),
+            )
+        else:
+            raise RuntimeError("Unknown variation type: " + json.dumps(inp))
+
+    @staticmethod
+    def collapse_descendants(descendant_tree: tuple):
+        """
+        Accepts a descendant_tree. Returns all descendants.
+        """
+        _logger.debug(f"{descendant_tree=}")
+        if descendant_tree is None:
+            return []
+
+        if isinstance(descendant_tree, tuple):
+            children = descendant_tree[1]
+            _logger.debug(f"{children=}")
+            if children:
+                # Direct children
+                child_ids = [
+                    child[0]
+                    for child in children
+                    if child is not None and isinstance(child, tuple)
+                ]
+                _logger.debug(f"{child_ids=}")
+                # Childrens' children
+                recurse = [
+                    grandchild
+                    for child in children
+                    for grandchild in Variation.collapse_descendants(child)
+                ]
+                _logger.debug(f"{recurse=}")
+                return child_ids + recurse
+        return []
+
+    @staticmethod
+    def collapse_children(descendant_tree: tuple):
+        """
+        Accepts a descendant_tree. Returns the first level children.
+        """
+        if descendant_tree is None:
+            return []
+        children = descendant_tree[1]
+        if children is None:
+            return []
+        return [child[0] for child in children]
 
     def disassemble(self):
         yield self
