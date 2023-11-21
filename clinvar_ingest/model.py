@@ -52,8 +52,8 @@ class Variation(Model):
 
     content: dict
 
-    child_ids: List[str] = None
-    descendant_ids: List[str] = None
+    child_ids: List[str]
+    descendant_ids: List[str]
 
     def __post_init__(self):
         self.entity_type = "variation"
@@ -78,20 +78,22 @@ class Variation(Model):
             inp = extract(inp, "Genotype")
         else:
             raise RuntimeError("Unknown variation type: " + json.dumps(inp))
-        return Variation(
+        obj = Variation(
             # VariationID is at the VariationArchive and the SimpleAllele/Haplotype/Genotype level
             id=extract(inp, "@VariationID"),
             name=extract(inp, "Name"),
             variation_type=extract_oneof(inp, "VariantType", "VariationType")[1],
             subclass_type=subclass_type,
             allele_id=extract_in(inp, "@AlleleID"),
-            protein_change=extract_in(inp, "ProteinChange"),
+            protein_change=ensure_list(extract_in(inp, "ProteinChange") or []),
             num_copies=extract_in(inp, "@NumberOfCopies"),
             num_chromosomes=extract_in(inp, "@NumberOfChromosomes"),
             child_ids=child_ids,
             descendant_ids=descendant_ids,
             content=inp,
         )
+        obj.content = json.dumps(inp)
+        return obj
 
     @staticmethod
     def descendant_tree(inp: dict):
@@ -180,18 +182,18 @@ class VariationArchive(Model):
     interp_explanation: str
     interp_date_last_evaluated: str
     interp_content: dict
-    content: dict
+    content: str
 
     def __post_init__(self):
-        self.entity_type = "variation_archive"
         self.variation_id = self.variation.id
+        self.entity_type = "variation_archive"
 
     @staticmethod
     def from_xml(inp: dict):
         _logger.info(f"VariationArchive.from_xml(inp={json.dumps(inp)})")
         interp_record = inp.get("InterpretedRecord", inp.get("IncludedRecord"))
         interp = extract(interp_record, "Interpretations")["Interpretation"]
-        return VariationArchive(
+        obj = VariationArchive(
             id=extract(inp, "@Accession"),
             name=extract(inp, "@VariationName"),
             version=extract(inp, "@Version"),
@@ -209,8 +211,10 @@ class VariationArchive(Model):
             num_submissions=extract_in(interp, "@NumberOfSubmissions"),
             interp_date_last_evaluated=extract_in(interp, "@DateLastEvaluated"),
             interp_content=interp,
-            content=inp,
+            content=None,
         )
+        obj.content = json.dumps(inp)
+        return obj
 
     def disassemble(self):
         self_copy = model_copy(self)
