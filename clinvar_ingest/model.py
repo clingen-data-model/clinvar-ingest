@@ -85,7 +85,7 @@ class Variation(Model):
             variation_type=extract_oneof(inp, "VariantType", "VariationType")[1],
             subclass_type=subclass_type,
             allele_id=extract_in(inp, "@AlleleID"),
-            protein_change=extract_in(inp, "ProteinChange"),
+            protein_change=ensure_list(extract_in(inp, "ProteinChange") or []),
             num_copies=extract_in(inp, "@NumberOfCopies"),
             num_chromosomes=extract_in(inp, "@NumberOfChromosomes"),
             child_ids=child_ids,
