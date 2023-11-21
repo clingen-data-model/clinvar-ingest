@@ -41,7 +41,7 @@ def ensure_dataset_exists(
     try:
         dataset = client.get_dataset(dataset_ref=dataset_ref)
     except NotFound as _:
-        dataset = client.create_dataset(dataset=dataset_ref)
+        dataset = client.create_dataset(dataset=ds_inp)
     except Exception as e:
         _logger.error("Other exception received: %s", str(e))
         raise e
