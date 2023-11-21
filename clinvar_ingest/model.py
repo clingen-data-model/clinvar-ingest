@@ -210,10 +210,11 @@ class VariationArchive(Model):
             num_submitters=extract_in(interp, "@NumberOfSubmitters"),
             num_submissions=extract_in(interp, "@NumberOfSubmissions"),
             interp_date_last_evaluated=extract_in(interp, "@DateLastEvaluated"),
-            interp_content=interp,
+            interp_content=None,
             content=None,
         )
         obj.content = json.dumps(inp)
+        obj.interp_content = json.dumps(interp)
         return obj
 
     def disassemble(self):
