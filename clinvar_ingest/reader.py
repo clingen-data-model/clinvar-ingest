@@ -97,6 +97,7 @@ def read_clinvar_xml(reader: TextIO, disassemble=True) -> Iterator[model.Model]:
         else:
             raise ValueError(f"Unexpected event: {event}. Element: {ET.tostring(elem)}")
 
+        # I'd also make these "tags" enums of some kind.
         if event == "start" and elem.tag == "ClinVarVariationRelease":
             release_date = elem.attrib["ReleaseDate"]
             _logger.info(f"Parsing release date: {release_date}")
