@@ -9,10 +9,11 @@ Data model for ClinVar Variation XML files.
 import dataclasses
 import json
 import logging
-from typing import List
 from abc import ABCMeta, abstractmethod
+from typing import List
 
-from clinvar_ingest.utils import extract, extract_in, extract_oneof, ensure_list
+from clinvar_ingest.utils import (ensure_list, extract, extract_in,
+                                  extract_oneof)
 
 _logger = logging.getLogger(__name__)
 
@@ -63,9 +64,9 @@ class Variation(Model):
         _logger.info(f"Variation.from_xml(inp={json.dumps(inp)})")
         descendant_tree = Variation.descendant_tree(inp)
         # _logger.info(f"descendant_tree: {descendant_tree}")
-        child_ids = Variation.collapse_children(descendant_tree)
+        child_ids = Variation.get_all_children(descendant_tree)
         # _logger.info(f"child_ids: {child_ids}")
-        descendant_ids = Variation.collapse_descendants(descendant_tree)
+        descendant_ids = Variation.get_all_descendants(descendant_tree)
         # _logger.info(f"descendant_ids: {descendant_ids}")
         if "SimpleAllele" in inp:
             subclass_type = "SimpleAllele"
@@ -108,68 +109,54 @@ class Variation(Model):
         """
         if "SimpleAllele" in inp:
             inp = inp["SimpleAllele"]
-            return (inp["@VariationID"], None)
+            return [inp["@VariationID"]]
         elif "Haplotype" in inp:
             inp = inp["Haplotype"]
-            return (
+            return [
                 inp["@VariationID"],
-                tuple(
+                *[
                     Variation.descendant_tree({"SimpleAllele": simple_allele})
                     for simple_allele in ensure_list(inp["SimpleAllele"])
-                ),
-            )
+                ],
+            ]
         elif "Genotype" in inp:
             inp = inp["Genotype"]
-            return (
+            return [
                 inp["@VariationID"],
-                tuple(
+                *[
                     Variation.descendant_tree({"Haplotype": haplotype})
                     for haplotype in ensure_list(inp["Haplotype"])
-                ),
-            )
+                ],
+            ]
         else:
             raise RuntimeError("Unknown variation type: " + json.dumps(inp))
 
     @staticmethod
-    def collapse_descendants(descendant_tree: tuple):
+    def get_all_descendants(descendant_tree: list):
         """
-        Accepts a descendant_tree. Returns all descendants.
+        Accepts a descendant_tree. Returns a list of ids descending from the root.
+        (non inclusive of root)
         """
-        _logger.debug(f"{descendant_tree=}")
-        if descendant_tree is None:
+        if len(descendant_tree) == 0:
             return []
-
-        if isinstance(descendant_tree, tuple):
-            children = descendant_tree[1]
-            _logger.debug(f"{children=}")
-            if children:
-                # Direct children
-                child_ids = [
-                    child[0]
-                    for child in children
-                    if child is not None and isinstance(child, tuple)
-                ]
-                _logger.debug(f"{child_ids=}")
-                # Childrens' children
-                recurse = [
-                    grandchild
-                    for child in children
-                    for grandchild in Variation.collapse_descendants(child)
-                ]
-                _logger.debug(f"{recurse=}")
-                return child_ids + recurse
-        return []
+        _, *children = descendant_tree
+        child_ids = [c[0] for c in children]
+        grandchildren = [
+            grandchild
+            for child in children
+            for grandchild in Variation.get_all_descendants(child)
+        ]
+        print(f"{child_ids=}, {grandchildren=}")
+        return child_ids + grandchildren
 
     @staticmethod
-    def collapse_children(descendant_tree: tuple):
+    def get_all_children(descendant_tree: tuple):
         """
         Accepts a descendant_tree. Returns the first level children.
         """
-        if descendant_tree is None:
+        if descendant_tree is None or len(descendant_tree) == 0:
             return []
-        children = descendant_tree[1]
-        if children is None:
-            return []
+        _, *children = descendant_tree
         return [child[0] for child in children]
 
     def disassemble(self):
