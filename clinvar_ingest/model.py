@@ -10,7 +10,7 @@ import dataclasses
 import json
 import logging
 from abc import ABCMeta, abstractmethod
-from typing import List
+from typing import List, Union
 
 from clinvar_ingest.utils import ensure_list, extract, extract_in, extract_oneof
 
@@ -47,8 +47,8 @@ class Variation(Model):
     subclass_type: str
     allele_id: str
     protein_change: List[str]
-    num_chromosomes: str
-    num_copies: str
+    num_chromosomes: int
+    num_copies: int
 
     content: dict
 
@@ -86,8 +86,8 @@ class Variation(Model):
             subclass_type=subclass_type,
             allele_id=extract_in(inp, "@AlleleID"),
             protein_change=ensure_list(extract_in(inp, "ProteinChange") or []),
-            num_copies=extract_in(inp, "@NumberOfCopies"),
-            num_chromosomes=extract_in(inp, "@NumberOfChromosomes"),
+            num_copies=int_or_none(extract_in(inp, "@NumberOfCopies")),
+            num_chromosomes=int_or_none(extract_in(inp, "@NumberOfChromosomes")),
             child_ids=child_ids,
             descendant_ids=descendant_ids,
             content=inp,
@@ -207,8 +207,8 @@ class VariationArchive(Model):
             interp_description=extract_in(interp, "Description"),
             interp_explanation=extract_in(extract_in(interp, "Explanation"), "#text"),
             # num_submitters and num_submissions are at top and interp level
-            num_submitters=extract_in(interp, "@NumberOfSubmitters"),
-            num_submissions=extract_in(interp, "@NumberOfSubmissions"),
+            num_submitters=int_or_none(extract_in(interp, "@NumberOfSubmitters")),
+            num_submissions=int_or_none(extract_in(interp, "@NumberOfSubmissions")),
             interp_date_last_evaluated=extract_in(interp, "@DateLastEvaluated"),
             interp_content=None,
             content=None,
@@ -256,6 +256,12 @@ def model_copy(obj):
     fields = dataclasses.fields(cls)
     kwargs = {f.name: getattr(obj, f.name) for f in fields}
     return cls(**kwargs)
+
+
+def int_or_none(s: Union[str, None]) -> Union[int, None]:
+    if s is None:
+        return None
+    return int(s)
 
 
 def dictify(obj):
