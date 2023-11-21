@@ -35,3 +35,6 @@ clinvar-ingest = "clinvar_ingest.main:main"
 
 [tool.setuptools.packages.find]
 include = ["clinvar_ingest"]
+
+[tool.isort]
+profile = "black"

@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+set -xo pipefail
+
+if [[ "$1" == "apply" ]]; then
+    # Uses each linter's option to apply the changes if it is supported
+    black clinvar_ingest test
+    isort clinvar_ingest test
+    ruff --fix clinvar_ingest test
+    pylint --disable=C,R,W clinvar_ingest
+else
+    # Check-only mode
+    black --check clinvar_ingest test
+    isort --check-only clinvar_ingest test
+    ruff check clinvar_ingest test
+    pylint --disable=C,R,W clinvar_ingest
+fi

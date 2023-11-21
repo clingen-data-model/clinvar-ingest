@@ -66,7 +66,9 @@ def parse_and_write_files(
                     root_dir=output_release_directory,
                     label=entity_type,
                 )
-                f_out.write(json.dumps(dictify(obj)))
+                obj_dict = dictify(obj)
+                obj_dict["release_date"] = release_date
+                f_out.write(json.dumps(obj_dict))
                 f_out.write("\n")
     except Exception as e:
         print("Exception caught in parse_and_write_files")
