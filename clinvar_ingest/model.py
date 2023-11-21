@@ -12,8 +12,7 @@ import logging
 from abc import ABCMeta, abstractmethod
 from typing import List
 
-from clinvar_ingest.utils import (ensure_list, extract, extract_in,
-                                  extract_oneof)
+from clinvar_ingest.utils import ensure_list, extract, extract_in, extract_oneof
 
 _logger = logging.getLogger(__name__)
 
