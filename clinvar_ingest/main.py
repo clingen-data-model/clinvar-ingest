@@ -112,6 +112,7 @@ def run_cli(argv):
     Primary entrypoint function for CLI args. Takes argv vector excluding program name.
     """
     args = parse_args(argv)
+    # subcommand could/should be a type in some way (we can inject it into the argparser itself)
     if args.subcommand == "parse":
         return run_parse(args)
     elif args.subcommand == "upload":

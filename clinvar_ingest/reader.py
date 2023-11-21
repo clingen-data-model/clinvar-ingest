@@ -76,6 +76,11 @@ def read_clinvar_xml(reader: TextIO, disassemble=True) -> Iterator[model.Model]:
     Accepts `reader` as a readable TextIO/BytesIO object, or a filename.
     """
     unclosed = 0
+    # events would be a nice enum:
+    #
+    # class Enum(enum.StrEnum):
+    #     START = auto()
+    #     END   = auto()
     for event, elem in ET.iterparse(reader, events=["start", "end"]):
         # https://docs.python.org/3/library/xml.etree.elementtree.html#element-objects
         # tag text attrib

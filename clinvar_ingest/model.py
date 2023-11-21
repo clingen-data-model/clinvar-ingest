@@ -17,6 +17,9 @@ from clinvar_ingest.utils import ensure_list, extract, extract_in, extract_oneof
 _logger = logging.getLogger(__name__)
 
 
+# One suggestion here is to evaluate pydantic xml (https://pydantic-xml.readthedocs.io/en/latest/)
+# Pydantic is the gold standard for typed structures in python these days and might help with some
+# of the extraction we're doing in utils.py
 class Model(object, metaclass=ABCMeta):
     @staticmethod
     def from_xml(inp: dict):
@@ -56,6 +59,7 @@ class Variation(Model):
     descendant_ids: List[str]
 
     def __post_init__(self):
+        # yeah, per your comment at the top of the file, we probably should be programmatically doing this.
         self.entity_type = "variation"
 
     @staticmethod

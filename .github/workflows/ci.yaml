@@ -8,6 +8,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+      # I think setup-python v4 has a builtin cache that might be easier to use!
+      # I'd also suggest just using the most recent version of python (3.12?) since 
+      # this is greenfield and internal.
+      # we'd also get the StrEnum class in 3.11 which is bomb.
       - name: Setup Python 3.9
         uses: actions/setup-python@v4
         with:
@@ -26,12 +30,16 @@ jobs:
         run: black --check clinvar_ingest test
       - name: Sort imports
         run: isort --check-only clinvar_ingest test
+      # Out of curiousity, what we seeing pylint catch that ruff doesn't?
+      # We might consider turing on every possible ruff option just to see what happens,
+      # especially since this is greenfield repo.
       - name: Ruff lint
         run: ruff check clinvar_ingest test
       # Pylint catches some things that Ruff doesn't yet support
       # Run error-only mode `--disable=C,R,W` == `-E`
       - name: Pylint
         run: pylint --disable=C,R,W clinvar_ingest
+      # We should try to get mypy/pyright working here since this is a greenfield project.
   test:
     name: Run tests
     runs-on: ubuntu-latest
