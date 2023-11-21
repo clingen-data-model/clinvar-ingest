@@ -17,6 +17,7 @@
 
 create or replace external table `{project}.{dataset}.variation` (
   id string,
+  release_date string,
   name string,
   variation_type string,
   subclass_type string,
@@ -39,6 +40,7 @@ options (
 
 create or replace external table `{project}.{dataset}.variation_archive` (
   id string,
+  release_date string,
   name string,
   version string,
   date_created string,
