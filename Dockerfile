@@ -15,5 +15,6 @@ FROM python:3.9-slim-bullseye as runtime
 COPY --from=build /opt/venv /opt/venv
 ENV VIRTUAL_ENV=/opt/venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+ENV GCLOUD_PROJECT="clingen-dev"
 
 CMD ["clinvar-ingest"]
