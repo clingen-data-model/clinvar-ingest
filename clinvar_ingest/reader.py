@@ -53,6 +53,33 @@ def _parse(file, item_cb, output_queue, depth=2):
     output_queue.put(QUEUE_STOP_VALUE)
 
 
+def textify_xmltext(d: dict) -> dict:
+    """
+    Takes a dict representation of an XML structure, and places all CDATA
+    text data in a key called "#text", as it would have been parsed
+    by xmltodict if there were attributes on the element.
+
+    NOTE: this function was generated with Github Copilot using the above docstring.
+    (Other than adding `not k.startswith("@")` to the if statement)
+
+    Example:
+        input:
+            {"foo": "bar"}
+
+        output:
+            {"foo": {"#text": "bar"}}
+    """
+    for k, v in d.items():
+        if isinstance(v, dict):
+            textify_xmltext(v)
+        elif isinstance(v, list):
+            for item in v:
+                textify_xmltext(item)
+        elif isinstance(v, str) and k != "#text" and not k.startswith("@"):
+            d[k] = {"#text": v}
+    return d
+
+
 def get_clinvar_xml_releaseinfo(file) -> dict:
     """
     Parses top level release info from file.
