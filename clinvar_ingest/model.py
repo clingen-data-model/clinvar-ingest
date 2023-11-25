@@ -81,8 +81,10 @@ class Variation(Model):
         obj = Variation(
             # VariationID is at the VariationArchive and the SimpleAllele/Haplotype/Genotype level
             id=extract(inp, "@VariationID"),
-            name=extract(inp, "Name"),
-            variation_type=extract_oneof(inp, "VariantType", "VariationType")[1],
+            name=extract(extract(inp, "Name"), "$"),
+            variation_type=extract(
+                extract_oneof(inp, "VariantType", "VariationType")[1], "$"
+            ),
             subclass_type=subclass_type,
             allele_id=extract_in(inp, "@AlleleID"),
             protein_change=ensure_list(extract_in(inp, "ProteinChange") or []),
@@ -200,12 +202,12 @@ class VariationArchive(Model):
             variation=Variation.from_xml(interp_record),
             date_created=extract(inp, "@DateCreated"),
             date_last_updated=extract(inp, "@DateLastUpdated"),
-            record_status=extract(inp, "RecordStatus"),
-            species=extract(inp, "Species"),
-            review_status=extract(interp_record, "ReviewStatus"),
+            record_status=extract(extract(inp, "RecordStatus"), "$"),
+            species=extract(extract(inp, "Species"), "$"),
+            review_status=extract(extract(interp_record, "ReviewStatus"), "$"),
             interp_type=extract_in(interp, "@Type"),
-            interp_description=extract_in(interp, "Description"),
-            interp_explanation=extract_in(extract_in(interp, "Explanation"), "#text"),
+            interp_description=extract(extract_in(interp, "Description"), "$"),
+            interp_explanation=extract_in(extract_in(interp, "Explanation"), "$"),
             # num_submitters and num_submissions are at top and interp level
             num_submitters=int_or_none(extract_in(interp, "@NumberOfSubmitters")),
             num_submissions=int_or_none(extract_in(interp, "@NumberOfSubmissions")),

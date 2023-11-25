@@ -78,7 +78,6 @@ def _handle_text_nodes(path, key, value) -> Tuple[Any, Any]:
 
     Used as a postprocessor for xmltodict.parse.
     """
-    print(f"{path=}, {key=}, {value=}")
     if isinstance(value, str) and not key.startswith("@"):
         if key == "#text":
             return ("$", value)
