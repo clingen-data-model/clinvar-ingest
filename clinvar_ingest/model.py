@@ -40,6 +40,47 @@ class Model(object, metaclass=ABCMeta):
 
 
 @dataclasses.dataclass
+class Gene(Model):
+    hgnc_id: str
+    id: str
+    symbol: str
+    full_name: str
+
+    def __post_init__(self):
+        self.entity_type = "gene"
+
+    @staticmethod
+    def from_xml(inp: dict, jsonify_content=True):
+        raise NotImplementedError()
+
+    def disassemble(self):
+        yield self
+
+
+@dataclasses.dataclass
+class GeneAssociation(Model):
+    source: str
+    variation_id: str
+    gene: Gene
+    relationship_type: str
+    content: dict
+
+    def __post_init__(self):
+        self.gene_id = self.gene.id
+        self.entity_type = "gene_association"
+
+    @staticmethod
+    def from_xml(inp: dict, jsonify_content=True):
+        raise NotImplementedError()
+
+    def disassemble(self):
+        self_copy = model_copy(self)
+        yield self_copy.gene
+        del self_copy.gene
+        yield self_copy
+
+
+@dataclasses.dataclass
 class Variation(Model):
     id: str
     name: str
@@ -49,6 +90,7 @@ class Variation(Model):
     protein_change: List[str]
     num_chromosomes: int
     num_copies: int
+    gene_associations: List[GeneAssociation]
 
     content: dict
 
@@ -90,12 +132,31 @@ class Variation(Model):
             protein_change=ensure_list(extract_in(inp, "ProteinChange") or []),
             num_copies=int_or_none(extract_in(inp, "@NumberOfCopies")),
             num_chromosomes=int_or_none(extract_in(inp, "@NumberOfChromosomes")),
+            gene_associations=[],
             child_ids=child_ids,
             descendant_ids=descendant_ids,
             content=inp,
         )
+        obj.gene_associations = [
+            GeneAssociation(
+                source=extract(g, "@Source"),
+                variation_id=obj.id,
+                gene=Gene(
+                    hgnc_id=extract(g, "@HGNC_ID"),
+                    id=extract(g, "@GeneID"),
+                    symbol=extract(g, "@Symbol"),
+                    full_name=extract(g, "@FullName"),
+                ),
+                relationship_type=extract(g, "@RelationshipType"),
+                content=g,
+            )
+            for g in ensure_list(extract(extract(inp, "GeneList"), "Gene"))
+        ]
+
         if jsonify_content:
             obj.content = json.dumps(inp)
+            for ga in obj.gene_associations:
+                ga.content = json.dumps(ga.content)
         return obj
 
     @staticmethod
@@ -164,7 +225,12 @@ class Variation(Model):
         return [child[0] for child in children]
 
     def disassemble(self):
-        yield self
+        self_copy = model_copy(self)
+        for ga in self_copy.gene_associations:
+            for gaobj in ga.disassemble():
+                yield gaobj
+        del self_copy.gene_associations
+        yield self_copy
 
 
 @dataclasses.dataclass
