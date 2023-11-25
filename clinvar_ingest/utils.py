@@ -34,7 +34,8 @@ def extract(d: dict, key: Any) -> Any:
     """
     If `key` is in `d`, remove it and return the value.
     """
-    return d.pop(key, None)
+    if d is not None:
+        return d.pop(key, None)
 
 
 def ensure_list(obj: Any) -> List:
