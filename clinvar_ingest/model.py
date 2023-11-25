@@ -19,7 +19,7 @@ _logger = logging.getLogger(__name__)
 
 class Model(object, metaclass=ABCMeta):
     @staticmethod
-    def from_xml(inp: dict):
+    def from_xml(inp: dict, jsonify_content=True):
         """
         Constructs an instance of this class using the XML structure parsed into a dict.
 
@@ -59,7 +59,7 @@ class Variation(Model):
         self.entity_type = "variation"
 
     @staticmethod
-    def from_xml(inp: dict):
+    def from_xml(inp: dict, jsonify_content=True):
         _logger.info(f"Variation.from_xml(inp={json.dumps(inp)})")
         descendant_tree = Variation.descendant_tree(inp)
         # _logger.info(f"descendant_tree: {descendant_tree}")
@@ -94,7 +94,8 @@ class Variation(Model):
             descendant_ids=descendant_ids,
             content=inp,
         )
-        obj.content = json.dumps(inp)
+        if jsonify_content:
+            obj.content = json.dumps(inp)
         return obj
 
     @staticmethod
@@ -191,15 +192,19 @@ class VariationArchive(Model):
         self.entity_type = "variation_archive"
 
     @staticmethod
-    def from_xml(inp: dict):
-        _logger.info(f"VariationArchive.from_xml(inp={json.dumps(inp)})")
+    def from_xml(inp: dict, jsonify_content=True):
+        _logger.info(
+            f"VariationArchive.from_xml(inp={json.dumps(inp)}, {jsonify_content=})"
+        )
         interp_record = inp.get("InterpretedRecord", inp.get("IncludedRecord"))
         interp = extract(interp_record, "Interpretations")["Interpretation"]
         obj = VariationArchive(
             id=extract(inp, "@Accession"),
             name=extract(inp, "@VariationName"),
             version=extract(inp, "@Version"),
-            variation=Variation.from_xml(interp_record),
+            variation=Variation.from_xml(
+                interp_record, jsonify_content=jsonify_content
+            ),
             date_created=extract(inp, "@DateCreated"),
             date_last_updated=extract(inp, "@DateLastUpdated"),
             record_status=extract(extract(inp, "RecordStatus"), "$"),
@@ -212,11 +217,12 @@ class VariationArchive(Model):
             num_submitters=int_or_none(extract_in(interp, "@NumberOfSubmitters")),
             num_submissions=int_or_none(extract_in(interp, "@NumberOfSubmissions")),
             interp_date_last_evaluated=extract_in(interp, "@DateLastEvaluated"),
-            interp_content=None,
-            content=None,
+            interp_content=interp,
+            content=inp,
         )
-        obj.content = json.dumps(inp)
-        obj.interp_content = json.dumps(interp)
+        if jsonify_content:
+            obj.content = json.dumps(inp)
+            obj.interp_content = json.dumps(interp)
         return obj
 
     def disassemble(self):
