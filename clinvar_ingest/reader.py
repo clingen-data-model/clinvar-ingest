@@ -4,7 +4,7 @@ on appropriate elements.
 """
 import logging
 import xml.etree.ElementTree as ET
-from typing import Iterator, TextIO
+from typing import Any, Iterator, TextIO, Tuple
 
 import xmltodict
 
@@ -53,33 +53,6 @@ def _parse(file, item_cb, output_queue, depth=2):
     output_queue.put(QUEUE_STOP_VALUE)
 
 
-def textify_xmltext(d: dict) -> dict:
-    """
-    Takes a dict representation of an XML structure, and places all CDATA
-    text data in a key called "#text", as it would have been parsed
-    by xmltodict if there were attributes on the element.
-
-    NOTE: this function was generated with Github Copilot using the above docstring.
-    (Other than adding `not k.startswith("@")` to the if statement)
-
-    Example:
-        input:
-            {"foo": "bar"}
-
-        output:
-            {"foo": {"#text": "bar"}}
-    """
-    for k, v in d.items():
-        if isinstance(v, dict):
-            textify_xmltext(v)
-        elif isinstance(v, list):
-            for item in v:
-                textify_xmltext(item)
-        elif isinstance(v, str) and k != "#text" and not k.startswith("@"):
-            d[k] = {"#text": v}
-    return d
-
-
 def get_clinvar_xml_releaseinfo(file) -> dict:
     """
     Parses top level release info from file.
@@ -95,6 +68,23 @@ def get_clinvar_xml_releaseinfo(file) -> dict:
     if release_date is None:
         raise ValueError("Root element ClinVarVariationRelease not found!")
     return {"release_date": release_date}
+
+
+def _handle_text_nodes(path, key, value) -> Tuple[Any, Any]:
+    """
+    Takes a path, key, value, returns a tuple of new (key, value)
+
+    If the value looks like an XML text node, put it in a key "$".
+
+    Used as a postprocessor for xmltodict.parse.
+    """
+    print(f"{path=}, {key=}, {value=}")
+    if isinstance(value, str) and not key.startswith("@"):
+        if key == "#text":
+            return ("$", value)
+        else:
+            return (key, {"$": value})
+    return (key, value)
 
 
 def read_clinvar_xml(reader: TextIO, disassemble=True) -> Iterator[model.Model]:
@@ -129,7 +119,9 @@ def read_clinvar_xml(reader: TextIO, disassemble=True) -> Iterator[model.Model]:
                     f" {unclosed}, element: {ET.tostring(elem)}"
                 )
             else:
-                elem_d = xmltodict.parse(ET.tostring(elem))
+                elem_d = xmltodict.parse(
+                    ET.tostring(elem), postprocessor=_handle_text_nodes
+                )
                 if not isinstance(elem_d, dict):
                     raise RuntimeError(
                         f"xmltodict returned non-dict type: ({type(elem_d)}) {elem_d}"

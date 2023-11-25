@@ -1,37 +1,15 @@
-from clinvar_ingest.reader import textify_xmltext
+import xmltodict
+
+from clinvar_ingest.reader import _handle_text_nodes
 
 
-def test_textify_xmlcdata():
-    """
-    Test the textify_xmlcdata function.
-
-    There are only some structures that are valid xmltodict returns.
-    A non-@ key will with a string as the value will always be the only such key.
-
-
-
-    <root>
-        <foo>bar</foo>
-        <baz>qux</baz>
-    </root>
-
-    """
-    inp = {"foo": "bar"}
-    out = textify_xmltext(inp)
-    expected = {"foo": {"#text": "bar"}}
+def test_handle_text_nodes():
+    inp = "<foo>bar</foo>"
+    out = xmltodict.parse(inp, postprocessor=_handle_text_nodes)
+    expected = {"foo": {"$": "bar"}}
     assert expected == out
 
-    inp = {"foo": {"@bar": "baz"}}
-    out = textify_xmltext(inp)
-    expected = {"foo": {"@bar": "baz"}}
-    assert expected == out
-
-    inp = {"foo": {"bar": {"baz": "qux"}}}
-    out = textify_xmltext(inp)
-    expected = {"foo": {"bar": {"baz": {"#text": "qux"}}}}
-    assert expected == out
-
-    inp = {"foo": "bar", "baz": "qux"}
-    out = textify_xmltext(inp)
-    expected = {"foo": {"#text": "bar"}, "baz": {"#text": "qux"}}
+    inp = "<foo bar='baz'>qux</foo>"
+    out = xmltodict.parse(inp, postprocessor=_handle_text_nodes)
+    expected = {"foo": {"@bar": "baz", "$": "qux"}}
     assert expected == out
