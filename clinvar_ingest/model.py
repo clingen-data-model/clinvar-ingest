@@ -150,7 +150,7 @@ class Variation(Model):
                 relationship_type=extract(g, "@RelationshipType"),
                 content=g,
             )
-            for g in ensure_list(extract(extract(inp, "GeneList"), "Gene"))
+            for g in ensure_list(extract(extract(inp, "GeneList"), "Gene") or [])
         ]
 
         if jsonify_content:
