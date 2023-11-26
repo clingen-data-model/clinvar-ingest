@@ -16,6 +16,11 @@ def parse_args(argv):
         action="store_true",
         help="Disable splitting nested Model objects into separate outputs",
     )
+    parse_sp.add_argument(
+        "--no-jsonify-content",
+        action="store_true",
+        help="Disable JSON encoding of content fields",
+    )
 
     # UPLOAD
     upload_sp = subparsers.add_parser("upload")

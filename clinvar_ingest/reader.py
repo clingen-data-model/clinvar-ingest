@@ -4,7 +4,7 @@ on appropriate elements.
 """
 import logging
 import xml.etree.ElementTree as ET
-from typing import Iterator, TextIO
+from typing import Any, Iterator, TextIO, Tuple
 
 import xmltodict
 
@@ -15,11 +15,11 @@ _logger = logging.getLogger(__name__)
 QUEUE_STOP_VALUE = -1
 
 
-def construct_model(tag, item):
+def construct_model(tag, item, jsonify_content=True):
     _logger.debug(f"construct_model: {tag=}, {item=}")
     if tag == "VariationArchive":
         _logger.debug("Returning new VariationArchive")
-        return model.VariationArchive.from_xml(item)
+        return model.VariationArchive.from_xml(item, jsonify_content=jsonify_content)
     else:
         raise ValueError(f"Unexpected tag: {tag} {item=}")
 
@@ -70,7 +70,25 @@ def get_clinvar_xml_releaseinfo(file) -> dict:
     return {"release_date": release_date}
 
 
-def read_clinvar_xml(reader: TextIO, disassemble=True) -> Iterator[model.Model]:
+def _handle_text_nodes(path, key, value) -> Tuple[Any, Any]:
+    """
+    Takes a path, key, value, returns a tuple of new (key, value)
+
+    If the value looks like an XML text node, put it in a key "$".
+
+    Used as a postprocessor for xmltodict.parse.
+    """
+    if isinstance(value, str) and not key.startswith("@"):
+        if key == "#text":
+            return ("$", value)
+        else:
+            return (key, {"$": value})
+    return (key, value)
+
+
+def read_clinvar_xml(
+    reader: TextIO, disassemble=True, jsonify_content=True
+) -> Iterator[model.Model]:
     """
     Generator function that reads a ClinVar Variation XML file and outputs objects.
     Accepts `reader` as a readable TextIO/BytesIO object, or a filename.
@@ -102,7 +120,9 @@ def read_clinvar_xml(reader: TextIO, disassemble=True) -> Iterator[model.Model]:
                     f" {unclosed}, element: {ET.tostring(elem)}"
                 )
             else:
-                elem_d = xmltodict.parse(ET.tostring(elem))
+                elem_d = xmltodict.parse(
+                    ET.tostring(elem), postprocessor=_handle_text_nodes
+                )
                 if not isinstance(elem_d, dict):
                     raise RuntimeError(
                         f"xmltodict returned non-dict type: ({type(elem_d)}) {elem_d}"
@@ -112,7 +132,9 @@ def read_clinvar_xml(reader: TextIO, disassemble=True) -> Iterator[model.Model]:
                         f"parsed dict had more than 1 key: ({elem_d.keys()}) {elem_d}"
                     )
                 tag, contents = list(elem_d.items())[0]
-                model_obj = construct_model(tag, contents)
+                model_obj = construct_model(
+                    tag, contents, jsonify_content=jsonify_content
+                )
                 if disassemble:
                     for subobj in model_obj.disassemble():
                         yield subobj

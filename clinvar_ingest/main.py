@@ -41,7 +41,7 @@ def _open(filename: str):
 
 
 def parse_and_write_files(
-    input_filename: str, output_directory: str, disassemble=True
+    input_filename: str, output_directory: str, disassemble=True, jsonify_content=True
 ) -> list:
     """
     Parses input file, writes outputs to output directory.
@@ -59,7 +59,9 @@ def parse_and_write_files(
 
     try:
         with _open(input_filename) as f_in:
-            for obj in read_clinvar_xml(f_in, disassemble=disassemble):
+            for obj in read_clinvar_xml(
+                f_in, disassemble=disassemble, jsonify_content=jsonify_content
+            ):
                 entity_type = obj.entity_type
                 f_out = get_open_file(
                     open_output_files,
@@ -87,7 +89,10 @@ def run_parse(args):
     """
     assert_mkdir(args.output_directory)
     output_files = parse_and_write_files(
-        args.input_filename, args.output_directory, disassemble=not args.no_disassemble
+        args.input_filename,
+        args.output_directory,
+        disassemble=not args.no_disassemble,
+        jsonify_content=not args.no_jsonify_content,
     )
     print(output_files)
 

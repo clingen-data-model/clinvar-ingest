@@ -64,3 +64,34 @@ options (
     "gs://{bucket}{path}/variation_archive/*"
   ]
 );
+
+create or replace external table `{project}.{dataset}.gene` (
+  id string,
+  release_date date,
+  hgnc_id string,
+  symbol string,
+  full_name string,
+  entity_type string
+)
+options (
+  format = "json",
+  uris = [
+    "gs://{bucket}{path}/gene/*"
+  ]
+);
+
+create or replace external table `{project}.{dataset}.gene_association` (
+  release_date date,
+  variation_id string,
+  gene_id string,
+  relationship_type string,
+  source string,
+  content string,
+  entity_type string
+)
+options (
+  format = "json",
+  uris = [
+    "gs://{bucket}{path}/gene_association/*"
+  ]
+);

@@ -19,7 +19,7 @@ _logger = logging.getLogger(__name__)
 
 class Model(object, metaclass=ABCMeta):
     @staticmethod
-    def from_xml(inp: dict):
+    def from_xml(inp: dict, jsonify_content=True):
         """
         Constructs an instance of this class using the XML structure parsed into a dict.
 
@@ -40,6 +40,47 @@ class Model(object, metaclass=ABCMeta):
 
 
 @dataclasses.dataclass
+class Gene(Model):
+    hgnc_id: str
+    id: str
+    symbol: str
+    full_name: str
+
+    def __post_init__(self):
+        self.entity_type = "gene"
+
+    @staticmethod
+    def from_xml(inp: dict, jsonify_content=True):
+        raise NotImplementedError()
+
+    def disassemble(self):
+        yield self
+
+
+@dataclasses.dataclass
+class GeneAssociation(Model):
+    source: str
+    variation_id: str
+    gene: Gene
+    relationship_type: str
+    content: dict
+
+    def __post_init__(self):
+        self.gene_id = self.gene.id
+        self.entity_type = "gene_association"
+
+    @staticmethod
+    def from_xml(inp: dict, jsonify_content=True):
+        raise NotImplementedError()
+
+    def disassemble(self):
+        self_copy = model_copy(self)
+        yield self_copy.gene
+        del self_copy.gene
+        yield self_copy
+
+
+@dataclasses.dataclass
 class Variation(Model):
     id: str
     name: str
@@ -49,6 +90,7 @@ class Variation(Model):
     protein_change: List[str]
     num_chromosomes: int
     num_copies: int
+    gene_associations: List[GeneAssociation]
 
     content: dict
 
@@ -59,7 +101,7 @@ class Variation(Model):
         self.entity_type = "variation"
 
     @staticmethod
-    def from_xml(inp: dict):
+    def from_xml(inp: dict, jsonify_content=True):
         _logger.info(f"Variation.from_xml(inp={json.dumps(inp)})")
         descendant_tree = Variation.descendant_tree(inp)
         # _logger.info(f"descendant_tree: {descendant_tree}")
@@ -81,18 +123,40 @@ class Variation(Model):
         obj = Variation(
             # VariationID is at the VariationArchive and the SimpleAllele/Haplotype/Genotype level
             id=extract(inp, "@VariationID"),
-            name=extract(inp, "Name"),
-            variation_type=extract_oneof(inp, "VariantType", "VariationType")[1],
+            name=extract(extract(inp, "Name"), "$"),
+            variation_type=extract(
+                extract_oneof(inp, "VariantType", "VariationType")[1], "$"
+            ),
             subclass_type=subclass_type,
             allele_id=extract_in(inp, "@AlleleID"),
             protein_change=ensure_list(extract_in(inp, "ProteinChange") or []),
             num_copies=int_or_none(extract_in(inp, "@NumberOfCopies")),
             num_chromosomes=int_or_none(extract_in(inp, "@NumberOfChromosomes")),
+            gene_associations=[],
             child_ids=child_ids,
             descendant_ids=descendant_ids,
             content=inp,
         )
-        obj.content = json.dumps(inp)
+        obj.gene_associations = [
+            GeneAssociation(
+                source=extract(g, "@Source"),
+                variation_id=obj.id,
+                gene=Gene(
+                    hgnc_id=extract(g, "@HGNC_ID"),
+                    id=extract(g, "@GeneID"),
+                    symbol=extract(g, "@Symbol"),
+                    full_name=extract(g, "@FullName"),
+                ),
+                relationship_type=extract(g, "@RelationshipType"),
+                content=g,
+            )
+            for g in ensure_list(extract(extract(inp, "GeneList"), "Gene") or [])
+        ]
+
+        if jsonify_content:
+            obj.content = json.dumps(inp)
+            for ga in obj.gene_associations:
+                ga.content = json.dumps(ga.content)
         return obj
 
     @staticmethod
@@ -161,7 +225,12 @@ class Variation(Model):
         return [child[0] for child in children]
 
     def disassemble(self):
-        yield self
+        self_copy = model_copy(self)
+        for ga in self_copy.gene_associations:
+            for gaobj in ga.disassemble():
+                yield gaobj
+        del self_copy.gene_associations
+        yield self_copy
 
 
 @dataclasses.dataclass
@@ -189,32 +258,37 @@ class VariationArchive(Model):
         self.entity_type = "variation_archive"
 
     @staticmethod
-    def from_xml(inp: dict):
-        _logger.info(f"VariationArchive.from_xml(inp={json.dumps(inp)})")
+    def from_xml(inp: dict, jsonify_content=True):
+        _logger.info(
+            f"VariationArchive.from_xml(inp={json.dumps(inp)}, {jsonify_content=})"
+        )
         interp_record = inp.get("InterpretedRecord", inp.get("IncludedRecord"))
         interp = extract(interp_record, "Interpretations")["Interpretation"]
         obj = VariationArchive(
             id=extract(inp, "@Accession"),
             name=extract(inp, "@VariationName"),
             version=extract(inp, "@Version"),
-            variation=Variation.from_xml(interp_record),
+            variation=Variation.from_xml(
+                interp_record, jsonify_content=jsonify_content
+            ),
             date_created=extract(inp, "@DateCreated"),
             date_last_updated=extract(inp, "@DateLastUpdated"),
-            record_status=extract(inp, "RecordStatus"),
-            species=extract(inp, "Species"),
-            review_status=extract(interp_record, "ReviewStatus"),
+            record_status=extract(extract(inp, "RecordStatus"), "$"),
+            species=extract(extract(inp, "Species"), "$"),
+            review_status=extract(extract(interp_record, "ReviewStatus"), "$"),
             interp_type=extract_in(interp, "@Type"),
-            interp_description=extract_in(interp, "Description"),
-            interp_explanation=extract_in(extract_in(interp, "Explanation"), "#text"),
+            interp_description=extract(extract_in(interp, "Description"), "$"),
+            interp_explanation=extract_in(extract_in(interp, "Explanation"), "$"),
             # num_submitters and num_submissions are at top and interp level
             num_submitters=int_or_none(extract_in(interp, "@NumberOfSubmitters")),
             num_submissions=int_or_none(extract_in(interp, "@NumberOfSubmissions")),
             interp_date_last_evaluated=extract_in(interp, "@DateLastEvaluated"),
-            interp_content=None,
-            content=None,
+            interp_content=interp,
+            content=inp,
         )
-        obj.content = json.dumps(inp)
-        obj.interp_content = json.dumps(interp)
+        if jsonify_content:
+            obj.content = json.dumps(inp)
+            obj.interp_content = json.dumps(interp)
         return obj
 
     def disassemble(self):
