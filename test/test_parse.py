@@ -1,4 +1,4 @@
-from clinvar_ingest.model import Variation, VariationArchive, Gene, GeneAssociation
+from clinvar_ingest.model import Gene, GeneAssociation, Variation, VariationArchive
 from clinvar_ingest.reader import read_clinvar_xml
 
 
