@@ -85,6 +85,7 @@ def run_parse(args):
     """
     Primary entrypoint function. Takes CLI arg vector excluding program name.
     """
+    # if we're running this as a cloud function, it probably makes sense to remove all local filesytem ops?
     assert_mkdir(args.output_directory)
     output_files = parse_and_write_files(
         args.input_filename, args.output_directory, disassemble=not args.no_disassemble
@@ -112,7 +113,7 @@ def run_cli(argv):
     Primary entrypoint function for CLI args. Takes argv vector excluding program name.
     """
     args = parse_args(argv)
-    # subcommand could/should be a type in some way (we can inject it into the argparser itself)
+    # subcommand could/should be a type in some way (or just a list of functions)
     if args.subcommand == "parse":
         return run_parse(args)
     elif args.subcommand == "upload":
