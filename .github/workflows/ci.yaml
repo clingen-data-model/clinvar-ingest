@@ -9,7 +9,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
       # I think setup-python v4 has a builtin cache that might be easier to use!
-      # I'd also suggest just using the most recent version of python (3.12?) since 
+      # I'd also suggest just using the most recent version of python (3.11 or 3.12?) since 
       # this is greenfield and internal.
       # we'd also get the StrEnum class in 3.11 which is bomb.
       - name: Setup Python 3.9
