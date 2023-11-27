@@ -103,6 +103,7 @@ def run_upload(args):
         dest_uri_prefix += "/" + args.destination_prefix
 
     for file_path in file_paths:
+        # We should probably use Pathlib here?
         s = args.source_directory + "/" + file_path
         d = dest_uri_prefix + "/" + file_path
         copy_file_to_bucket(s, d)
@@ -114,6 +115,8 @@ def run_cli(argv):
     """
     args = parse_args(argv)
     # subcommand could/should be a type in some way (or just a list of functions)
+    # another suggestion is just getting rid of this file and making a `bin/` folder at the root
+    # with `bin/parse.py`, `bin/upload.py`, and `bin/create_tables.py`.
     if args.subcommand == "parse":
         return run_parse(args)
     elif args.subcommand == "upload":
