@@ -12,7 +12,7 @@ import logging
 from abc import ABCMeta, abstractmethod
 from typing import List, Union
 
-from clinvar_ingest.utils import ensure_list, extract, extract_in, extract_oneof
+from clinvar_ingest.utils import ensure_list, extract, extract_in, extract_oneof, get
 
 _logger = logging.getLogger(__name__)
 
@@ -366,6 +366,244 @@ class Variation(Model):
 
 
 @dataclasses.dataclass
+class Trait(Model):
+    id: str
+    disease_mechanism_id: int
+    name: str
+    attribute_content: List[str]
+    mode_of_inheritance: str
+    release_date: str
+    ghr_links: str
+    keywords: List[str]
+    gard_id: int
+    medgen_id: str
+    public_definition: str
+    type: str
+    symbol: str
+    disease_mechanism: str
+    alternate_symbols: List[str]
+    gene_reviews_short: str
+    alternate_names: List[str]
+    xrefs: List[str]
+
+    content: str
+
+    class XRef:
+        def __init__(
+            self,
+            db: str,
+            id: str,
+            type: str,
+            ref_field: str = None,
+            ref_field_element: str = None,
+        ):
+            """
+            ref_field and ref_field_element are used to differentiate between XRefs which may
+            apply to similar values but which originate from different nodes in the XML.
+
+            ref_field: the field name which differentiates this XRef
+            ref_field_element: the field value which differentiates this XRef
+
+            e.g. ref_field="alternate_symbol", ref_field_element="MC1DN26"
+            """
+            self.db = db
+            self.id = id
+            self.type = type
+            self.ref_field = ref_field
+            self.ref_field_element = ref_field_element
+
+    def __post_init__(self):
+        self.entity_type = "trait"
+
+    @staticmethod
+    def from_xml(inp: dict, jsonify_content=True):
+        _logger.info(f"Trait.from_xml(inp={json.dumps(inp)})")
+        id = extract(inp, "@ID")
+        names = ensure_list(extract(inp, "Name") or [])
+        preferred_names = [
+            n for n in names if get(n, "ElementValue", "@Type") == "Preferred"
+        ]
+        if len(preferred_names) > 1:
+            raise RuntimeError(f"Trait {id} has multiple preferred names")
+        preferred_name = None
+        if len(preferred_names) == 1:
+            preferred_name = preferred_names[0]["ElementValue"]["$"]
+
+        alternate_names = [
+            n for n in names if get(n, "ElementValue", "@Type") == "Alternate"
+        ]
+        alternate_name_strs = [get(n, "ElementValue", "$") for n in alternate_names]
+
+        # XRefs which are within Name objects (type=Preferred)
+        preferred_name_xrefs = [
+            Trait.XRef(
+                db=n["XRef"]["@DB"],
+                id=n["XRef"]["@ID"],
+                type=get(n, "XRef", "@Type"),
+                ref_field="name",
+                ref_field_element=n["ElementValue"]["$"],
+            )
+            for n in preferred_names
+            if "XRef" in n
+        ]
+        _logger.info(
+            "preferred_name_xrefs: " + json.dumps(dictify(preferred_name_xrefs))
+        )
+        # XRefs which are within Name objects (type=Alternate)
+        alternate_name_xrefs = [
+            Trait.XRef(
+                db=n["XRef"]["@DB"],
+                id=n["XRef"]["@ID"],
+                type=get(n, "XRef", "@Type"),
+                ref_field="alternate_names",
+                ref_field_element=n["ElementValue"]["$"],
+            )
+            for n in alternate_names
+            if "XRef" in n
+        ]
+        _logger.info(
+            "alternate_name_xrefs: " + json.dumps(dictify(alternate_name_xrefs))
+        )
+
+        # XRefs from Trait AttributeSet
+        attribute_set_key_map = {
+            "public definition": "public_definition",
+            "GARD ID": "gard_id",
+            "keyword": "keywords",
+            "disease mechanism": "disease_mechanism",
+            "mode of inheritance": "mode_of_inheritance",
+            "GeneReviews short": "gene_reviews_short",
+            "Genetics Home Reference (GHR) links": "ghr_links",
+        }
+        attribute_set_xrefs = []
+        # Map of attribute key (values in attribute_set_key_map) to their values
+        parsed_attributes = {}
+        attribute_set = ensure_list(inp.get("AttributeSet", {}))
+        for attr_name, attr_key in attribute_set_key_map.items():
+            filtered_attrs = [
+                attr
+                for attr in attribute_set
+                if get(attr, "Attribute", "@Type") == attr_name
+            ]
+            for f_attr in filtered_attrs:
+                for xref in ensure_list(f_attr.get("XRef", [])):
+                    attribute_set_xrefs.append(
+                        Trait.XRef(
+                            db=xref.get("@DB"),
+                            id=xref.get("@ID"),
+                            type=xref.get("@Type", None),
+                            ref_field=attr_key,
+                            ref_field_element=get(f_attr, "Attribute", "$"),
+                        )
+                    )
+        _logger.info("attribute_set_xrefs: " + json.dumps(dictify(attribute_set_xrefs)))
+
+        top_xrefs = [
+            # XRefs which are at the top level of Trait objects
+            Trait.XRef(
+                db=x["@DB"],
+                id=x["@ID"],
+                type=get(x, "@Type"),
+                ref_field=None,
+                ref_field_element=None,
+            )
+            for x in ensure_list(inp.get("XRef", None) or [])
+        ]
+        _logger.info("top_xrefs: " + json.dumps(dictify(top_xrefs)))
+
+        obj = Trait(
+            id=id,
+            disease_mechanism_id=None,
+            name=preferred_name,
+            attribute_content=None,
+            mode_of_inheritance=None,
+            release_date=None,
+            ghr_links=None,
+            keywords=None,
+            gard_id=None,
+            medgen_id=None,
+            public_definition=None,
+            type=None,
+            symbol=None,
+            disease_mechanism=None,
+            alternate_symbols=None,
+            gene_reviews_short=None,
+            alternate_names=alternate_name_strs,
+            xrefs=None,
+            content=None,
+        )
+        if jsonify_content:
+            obj.content = json.dumps(inp)
+        return obj
+
+    def disassemble(self):
+        yield self
+
+
+@dataclasses.dataclass
+class TraitSet(Model):
+    id: str
+    type: str
+    traits: List[Trait]
+
+    content: str
+
+    def __post_init__(self):
+        self.trait_ids = [t.id for t in self.traits]
+        self.entity_type = "trait_set"
+
+    @staticmethod
+    def from_xml(inp: dict, jsonify_content=True):
+        _logger.info(f"TraitSet.from_xml(inp={json.dumps(inp)})")
+        obj = TraitSet(
+            id=extract(inp, "@ID"),
+            type=extract(inp, "@Type"),
+            traits=[
+                Trait.from_xml(t, jsonify_content=jsonify_content)
+                for t in ensure_list(extract(inp, "Trait"))
+            ],
+            content=inp,
+        )
+        if jsonify_content:
+            obj.content = json.dumps(inp)
+            for t in obj.traits:
+                t.content = json.dumps(t.content)
+        return obj
+
+    def disassemble(self):
+        yield self
+
+
+@dataclasses.dataclass
+class TraitMapping(Model):
+    clinical_assertion_id: str
+    trait_type: str
+    mapping_type: str
+    mapping_value: str
+    mapping_ref: str
+    medgen_name: str
+    medgen_id: str
+
+    def __post_init__(self):
+        self.entity_type = "trait_mapping"
+
+    @staticmethod
+    def from_xml(inp: dict, jsonify_content=True):
+        return TraitMapping(
+            clinical_assertion_id=extract(inp, "@ClinicalAssertionID"),
+            trait_type=extract(inp, "@TraitType"),
+            mapping_type=extract(inp, "@MappingType"),
+            mapping_value=extract(inp, "@MappingValue"),
+            mapping_ref=extract(inp, "@MappingRef"),
+            medgen_name=extract_in(inp, "MedGen", "@Name"),
+            medgen_id=extract_in(inp, "MedGen", "@CUI"),
+        )
+
+    def disassemble(self):
+        yield self
+
+
+@dataclasses.dataclass
 class VariationArchive(Model):
     id: str
     name: str
@@ -385,6 +623,8 @@ class VariationArchive(Model):
     interp_date_last_evaluated: str
     interp_content: dict
     content: str
+
+    trait_sets: List[TraitSet]
 
     def __post_init__(self):
         self.variation_id = self.variation.id
@@ -422,6 +662,18 @@ class VariationArchive(Model):
             num_submitters=int_or_none(extract_in(interp, "@NumberOfSubmitters")),
             num_submissions=int_or_none(extract_in(interp, "@NumberOfSubmissions")),
             interp_date_last_evaluated=extract_in(interp, "@DateLastEvaluated"),
+            trait_sets=[
+                TraitSet.from_xml(ts, jsonify_content=jsonify_content)
+                for ts in ensure_list(
+                    extract_in(
+                        interp_record,
+                        "Interpretations",
+                        "Interpretation",
+                        "ConditionList",
+                        "TraitSet",
+                    )
+                )
+            ],
             interp_content=interp,
             content=inp,
         )
