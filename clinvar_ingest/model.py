@@ -372,7 +372,6 @@ class Trait(Model):
     name: str
     attribute_content: List[str]
     mode_of_inheritance: str
-    release_date: str
     ghr_links: str
     keywords: List[str]
     gard_id: int
@@ -419,6 +418,18 @@ class Trait(Model):
     def from_xml(inp: dict, jsonify_content=True):
         _logger.info(f"Trait.from_xml(inp={json.dumps(inp)})")
         id = extract(inp, "@ID")
+
+        def make_attr_xref(attr, ref_field, ref_field_element=None):
+            if "XRef" in attr:
+                return Trait.XRef(
+                    db=attr.get("XRef", "@DB"),
+                    id=attr.get("XRef", "@ID"),
+                    type=get(attr, "XRef", "@Type"),
+                    ref_field=ref_field,
+                    ref_field_element=ref_field_element,
+                )
+
+        # Preferred Name (Name type=Preferred)
         names = ensure_list(extract(inp, "Name") or [])
         preferred_names = [
             n for n in names if get(n, "ElementValue", "@Type") == "Preferred"
@@ -429,77 +440,194 @@ class Trait(Model):
         if len(preferred_names) == 1:
             preferred_name = preferred_names[0]["ElementValue"]["$"]
 
+        preferred_name_xrefs = [
+            make_attr_xref(n, "name", n["ElementValue"]["$"]) for n in preferred_names
+        ]
+        _logger.info(
+            "preferred_name: %s, preferred_name_xrefs: %s",
+            preferred_name,
+            json.dumps(dictify(preferred_name_xrefs)),
+        )
+
+        # Alternate Names (Name type=Alternate)
         alternate_names = [
             n for n in names if get(n, "ElementValue", "@Type") == "Alternate"
         ]
         alternate_name_strs = [get(n, "ElementValue", "$") for n in alternate_names]
 
-        # XRefs which are within Name objects (type=Preferred)
-        preferred_name_xrefs = [
-            Trait.XRef(
-                db=n["XRef"]["@DB"],
-                id=n["XRef"]["@ID"],
-                type=get(n, "XRef", "@Type"),
-                ref_field="name",
-                ref_field_element=n["ElementValue"]["$"],
-            )
-            for n in preferred_names
-            if "XRef" in n
-        ]
-        _logger.info(
-            "preferred_name_xrefs: " + json.dumps(dictify(preferred_name_xrefs))
-        )
-        # XRefs which are within Name objects (type=Alternate)
         alternate_name_xrefs = [
-            Trait.XRef(
-                db=n["XRef"]["@DB"],
-                id=n["XRef"]["@ID"],
-                type=get(n, "XRef", "@Type"),
-                ref_field="alternate_names",
-                ref_field_element=n["ElementValue"]["$"],
-            )
+            make_attr_xref(n, "alternate_names", n["ElementValue"]["$"])
             for n in alternate_names
-            if "XRef" in n
         ]
         _logger.info(
-            "alternate_name_xrefs: " + json.dumps(dictify(alternate_name_xrefs))
+            "alternate_names: %s, alternate_name_xrefs: %s",
+            json.dumps(alternate_name_strs),
+            json.dumps(dictify(alternate_name_xrefs)),
         )
 
-        # XRefs from Trait AttributeSet
-        attribute_set_key_map = {
-            "public definition": "public_definition",
-            "GARD ID": "gard_id",
-            "keyword": "keywords",
-            "disease mechanism": "disease_mechanism",
-            "mode of inheritance": "mode_of_inheritance",
-            "GeneReviews short": "gene_reviews_short",
-            "Genetics Home Reference (GHR) links": "ghr_links",
-        }
-        attribute_set_xrefs = []
-        # Map of attribute key (values in attribute_set_key_map) to their values
-        parsed_attributes = {}
-        attribute_set = ensure_list(inp.get("AttributeSet", {}))
-        for attr_name, attr_key in attribute_set_key_map.items():
-            filtered_attrs = [
-                attr
-                for attr in attribute_set
-                if get(attr, "Attribute", "@Type") == attr_name
-            ]
-            for f_attr in filtered_attrs:
-                for xref in ensure_list(f_attr.get("XRef", [])):
-                    attribute_set_xrefs.append(
-                        Trait.XRef(
-                            db=xref.get("@DB"),
-                            id=xref.get("@ID"),
-                            type=xref.get("@Type", None),
-                            ref_field=attr_key,
-                            ref_field_element=get(f_attr, "Attribute", "$"),
-                        )
-                    )
-        _logger.info("attribute_set_xrefs: " + json.dumps(dictify(attribute_set_xrefs)))
+        # TODO the logic here is the same as Preferred and Alternate Name
+        # Preferred Symbol (Symbol type=Preferred)
+        symbols = ensure_list(extract(inp, "Symbol") or [])
+        preferred_symbols = [
+            s for s in symbols if get(s, "ElementValue", "@Type") == "Preferred"
+        ]
+        if len(preferred_symbols) > 1:
+            raise RuntimeError(f"Trait {id} has multiple preferred symbols")
+        preferred_symbol = None
+        if len(preferred_symbols) == 1:
+            preferred_symbol = preferred_symbols[0]["ElementValue"]["$"]
 
+        preferred_symbol_xrefs = [
+            make_attr_xref(s, "symbol", s["ElementValue"]["$"])
+            for s in preferred_symbols
+        ]
+        _logger.info(
+            "preferred_symbol: %s, preferred_symbol_xrefs: %s",
+            preferred_symbol,
+            json.dumps(dictify(preferred_symbol_xrefs)),
+        )
+
+        # Alternate Symbols (Symbol type=Alternate)
+        alternate_symbols = [
+            s for s in symbols if get(s, "ElementValue", "@Type") == "Alternate"
+        ]
+        alternate_symbol_strs = [get(s, "ElementValue", "$") for s in alternate_symbols]
+
+        alternate_symbol_xrefs = [
+            make_attr_xref(s, "alternate_symbols", s["ElementValue"]["$"])
+            for s in alternate_symbols
+        ]
+        _logger.info(
+            "alternate_symbols: %s, alternate_symbol_xrefs: %s",
+            json.dumps(alternate_symbol_strs),
+            json.dumps(dictify(alternate_symbol_xrefs)),
+        )
+
+        # Get XRefs from nodes inside Trait AttributeSet
+        attribute_set = ensure_list(inp.get("AttributeSet", []))
+
+        def pop_attribute(inp_key):
+            """
+            Looks in AttributeSet for 0..1 attributes with type matching inp_key
+            """
+            matching_attributes = [
+                a for a in attribute_set if get(a, "Attribute", "@Type") == inp_key
+            ]
+            if len(matching_attributes) > 1:
+                raise RuntimeError(
+                    f"Trait {id} unexpectedly has multiple attributes of type {inp_key}"
+                )
+            if len(matching_attributes) == 1:
+                attribute_set.remove(matching_attributes[0])
+                return matching_attributes[0]
+
+        def pop_attribute_list(inp_key):
+            """
+            Looks in AttributeSet for 0..N attributes with type matching inp_key
+            """
+            matching_attributes = [
+                a for a in attribute_set if get(a, "Attribute", "@Type") == inp_key
+            ]
+            for a in matching_attributes:
+                attribute_set.remove(a)
+            return matching_attributes
+
+        # public definition
+        public_definition_attr = pop_attribute("public definition")
+        if public_definition_attr is not None:
+            public_definition = get(public_definition_attr, "Attribute", "$")
+            public_definition_xref = make_attr_xref(
+                public_definition_attr, "public_definition"
+            )
+        else:
+            public_definition = None
+            public_definition_xref = None
+
+        # GARD id
+        gard_id_attr = pop_attribute("GARD id")
+        if gard_id_attr is not None:
+            gard_id = int(get(gard_id_attr, "Attribute", "@integerValue"))
+            gard_id_xref = make_attr_xref(gard_id_attr, "gard_id")
+        else:
+            gard_id = None
+            gard_id_xref = None
+
+        # keyword
+        keyword_attrs = pop_attribute_list("keyword")
+        if len(keyword_attrs) > 0:
+            keywords = [get(a, "Attribute", "$") for a in keyword_attrs]
+            keyword_xrefs = [
+                make_attr_xref(a, "keywords", get(a, "Attribute", "$"))
+                for a in keyword_attrs
+            ]
+        else:
+            keywords = None
+            keyword_xrefs = []
+
+        # disease mechanism
+        disease_mechanism_attr = pop_attribute("disease mechanism")
+        if disease_mechanism_attr is not None:
+            disease_mechanism = get(disease_mechanism_attr, "Attribute", "$")
+            disease_mechanism_id = int(
+                get(disease_mechanism_attr, "Attribute", "@integerValue")
+            )
+            disease_mechanism_xref = make_attr_xref(
+                disease_mechanism_attr, "disease_mechanism"
+            )
+        else:
+            disease_mechanism = None
+            disease_mechanism_id = None
+            disease_mechanism_xref = None
+
+        # mode of inheritance
+        mode_of_inheritance_attr = pop_attribute("mode of inheritance")
+        if mode_of_inheritance_attr is not None:
+            mode_of_inheritance = get(mode_of_inheritance_attr, "Attribute", "$")
+            mode_of_inheritance_xref = make_attr_xref(
+                mode_of_inheritance_attr, "mode_of_inheritance"
+            )
+        else:
+            mode_of_inheritance = None
+            mode_of_inheritance_xref = None
+
+        # GeneReviews short
+        gene_reviews_short_attr = pop_attribute("GeneReviews short")
+        if gene_reviews_short_attr is not None:
+            gene_reviews_short = get(gene_reviews_short_attr, "Attribute", "$")
+            gene_reviews_short_xref = make_attr_xref(
+                gene_reviews_short_attr, "gene_reviews_short"
+            )
+        else:
+            gene_reviews_short = None
+            gene_reviews_short_xref = None
+
+        # Genetics Home Reference (GHR) links
+        ghr_links_attr = pop_attribute("Genetics Home Reference (GHR) links")
+        if ghr_links_attr is not None:
+            ghr_links = get(ghr_links_attr, "Attribute", "$")
+            ghr_links_xref = make_attr_xref(gene_reviews_short_attr, "ghr_links")
+        else:
+            ghr_links = None
+            ghr_links_xref = None
+
+        attribute_set_xrefs = keyword_xrefs + [
+            public_definition_xref,
+            gard_id_xref,
+            disease_mechanism_xref,
+            mode_of_inheritance_xref,
+            gene_reviews_short_xref,
+            ghr_links_xref,
+        ]
+        # attribute_set_xrefs = [x for x in attribute_set_xrefs if x is not None]
+        _logger.info(
+            "attribute_set_xrefs: %s", json.dumps(dictify(attribute_set_xrefs))
+        )
+
+        # Overwrite inp AttributeSet to reflect those popped above
+        inp["AttributeSet"] = attribute_set
+
+        # XRefs which are at the top level of Trait objects
         top_xrefs = [
-            # XRefs which are at the top level of Trait objects
             Trait.XRef(
                 db=x["@DB"],
                 id=x["@ID"],
@@ -509,28 +637,37 @@ class Trait(Model):
             )
             for x in ensure_list(inp.get("XRef", None) or [])
         ]
-        _logger.info("top_xrefs: " + json.dumps(dictify(top_xrefs)))
+        _logger.info("top_xrefs: %s", json.dumps(dictify(top_xrefs)))
+
+        all_xrefs = [
+            *preferred_name_xrefs,
+            *alternate_name_xrefs,
+            *preferred_symbol_xrefs,
+            *alternate_symbol_xrefs,
+            *attribute_set_xrefs,
+            *top_xrefs,
+        ]
+        all_xrefs = [x for x in all_xrefs if x is not None]
 
         obj = Trait(
             id=id,
-            disease_mechanism_id=None,
             name=preferred_name,
             attribute_content=None,
-            mode_of_inheritance=None,
-            release_date=None,
-            ghr_links=None,
-            keywords=None,
-            gard_id=None,
+            mode_of_inheritance=mode_of_inheritance,
+            ghr_links=ghr_links,
+            keywords=keywords,
+            gard_id=gard_id,
             medgen_id=None,
-            public_definition=None,
-            type=None,
+            public_definition=public_definition,
+            type=extract(inp, "@Type"),
             symbol=None,
-            disease_mechanism=None,
+            disease_mechanism=disease_mechanism,
+            disease_mechanism_id=disease_mechanism_id,
             alternate_symbols=None,
-            gene_reviews_short=None,
+            gene_reviews_short=gene_reviews_short,
             alternate_names=alternate_name_strs,
-            xrefs=None,
-            content=None,
+            xrefs=all_xrefs,
+            content=inp,
         )
         if jsonify_content:
             obj.content = json.dumps(inp)
