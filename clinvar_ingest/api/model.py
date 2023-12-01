@@ -1,7 +1,6 @@
 from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
-from pydantic.alias_generators import to_pascal
 
 
 def to_title_case(string: str) -> str:
@@ -10,9 +9,9 @@ def to_title_case(string: str) -> str:
 
 class ClinvarFTPWatcherPayload(BaseModel):
     model_config = ConfigDict(
-        alias_generator=to_pascal, 
+        alias_generator=to_title_case,
         populate_by_name=True,
-        json_schema_extra: {
+        json_schema_extra={
             "examples": [
                 {
                     "Name": "ClinVarVariationRelease_2023-1104.xml.gz",
@@ -23,7 +22,7 @@ class ClinvarFTPWatcherPayload(BaseModel):
                     "Release Date": "2023-11-04",
                 }
             ]
-        }
+        },
     )
 
     name: str
@@ -32,6 +31,7 @@ class ClinvarFTPWatcherPayload(BaseModel):
     last_modified: datetime
     directory: str
     release_date: date
+
 
 class ParsePayload(BaseModel):
     input_filename: str

@@ -1,4 +1,5 @@
 import logging
+import logging.config
 from contextlib import asynccontextmanager
 
 import yaml
@@ -11,7 +12,7 @@ from clinvar_ingest.api.model import (
     ParsePayload,
 )
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('api')
 
 
 @asynccontextmanager
@@ -52,24 +53,24 @@ async def copy(payload: ClinvarFTPWatcherPayload):
 
 @app.post("/parse", status_code=status.HTTP_201_CREATED)
 async def parse(payload: ParsePayload):
-    return {"status": "ok!"}
+    return {"todo": "implement me"}
 
 
 @app.post("/create_external_tables", status_code=status.HTTP_201_CREATED)
 async def create_external_tables():
-    return {"status": "ok!"}
+    return {"todo": "implement me"}
 
 
 @app.post("/create_internal_tables", status_code=status.HTTP_201_CREATED)
 async def create_internal_tables():
-    return {"status": "ok!"}
+    return {"todo": "implement me"}
 
 
 @app.post("/create_cleaned_tables", status_code=status.HTTP_201_CREATED)
 async def create_cleaned_tables():
-    return {"status": "ok!"}
+    return {"todo": "implement me"}
 
 
 @app.post("/post_to_slack", status_code=status.HTTP_201_CREATED)
 async def post_to_slack():
-    return {"status": "ok!"}
+    return {"todo": "implement me"}
