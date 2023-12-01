@@ -18,6 +18,7 @@ _logger = logging.getLogger(__name__)
 
 
 class Model(object, metaclass=ABCMeta):
+
     @staticmethod
     def from_xml(inp: dict, jsonify_content=True):
         """
@@ -37,6 +38,135 @@ class Model(object, metaclass=ABCMeta):
         An object referred to by another will be returned before the other.
         """
         raise NotImplementedError()
+
+
+@dataclasses.dataclass
+class Submitter(Model):
+    id: str
+    release_date: str
+    current_name: str
+    current_abbrev: str
+    all_names: List[str]
+    all_abbrevs: List[str]
+    org_category: str
+    content: dict
+
+    def __post_init__(self):
+        self.entity_type = "submitter"
+
+    @staticmethod
+    def from_xml(inp: dict, jsonify_content=True):
+        _logger.info(
+            f"Submitter.from_xml(inp={json.dumps(inp)}, {jsonify_content=})"
+        )
+        current_name = extract(inp, "@SubmitterName")
+        current_abbrev = extract(inp, "@OrgAbbreviation")
+        obj = Submitter(
+            id=extract(inp, "@OrgID"),
+            current_name=current_name,
+            current_abbrev=current_abbrev,
+            release_date="",  # TODO - Fix
+            org_category=extract(inp, "@OrganizationCategory"),
+            all_names=[] if not current_name else [current_name],
+            all_abbrevs=[] if not current_abbrev else [current_abbrev],
+            content=inp
+        )
+        return obj
+
+    def disassemble(self):
+        yield self
+
+@dataclasses.dataclass
+class Submission(Model):
+    id: str
+    submitter_id: str
+    release_date: str
+    additional_submitter_ids: List[str]
+    submission_date: str
+    content: dict
+
+    def __post_init__(self):
+        self.entity_type = "submission"
+
+    @staticmethod
+    def from_xml(inp: dict, jsonify_content=True, submitter: Submitter = {}, additional_submitters: list = [Submitter]):
+        _logger.info(
+            f"Submission.from_xml(inp={json.dumps(inp)}, {jsonify_content=}, {submitter=}, "
+            f"{additional_submitters=})"
+        )
+        obj = Submission(
+            id=f"{submitter.id}",  # TODO - FIX w/ Date
+            release_date=submitter.release_date,
+            submitter_id=submitter.id,
+            additional_submitter_ids=list(filter('id', additional_submitters)),
+            submission_date=extract(inp, "@SubmissionDate"),
+            content=inp
+        )
+        return obj
+
+    def disassemble(self):
+        yield self
+
+@dataclasses.dataclass
+class ClinicalAssertion(Model):
+    assertion_id: str
+    title: str
+    local_key: str
+    assertion_accession: str
+    version: str
+    assertion_type: str
+    date_created: str
+    date_last_updated: str
+    submitted_assembly: str
+    record_status: str
+    review_status: str
+    interpretation_date_last_evaluated: str
+    interpretation_description: str
+    submitter: Submitter
+    submission: Submission
+    content: dict
+
+    def __post_init__(self):
+        self.entity_type = "clinical_assertion"
+
+    @staticmethod
+    def from_xml(inp: dict, jsonify_content=True):
+        _logger.info(
+            f"ClinicalAssertion.from_xml(inp={json.dumps(inp)}, {jsonify_content=})"
+        )
+        raw_accession = extract(inp, "ClinVarAccession")
+        clinvar_submission = extract(inp, "ClinVarSubmissionID")
+        interpretation = extract(inp, "Interpretation")
+        additional_submitters = list(
+           map(
+               Submitter.from_xml,
+               ensure_list(extract_in(raw_accession, 'AdditionalSubmitters', 'SubmitterDescription') or [])
+           )
+        )
+        submitter = Submitter.from_xml(raw_accession)
+        submission = Submission.from_xml(inp, jsonify_content, submitter, additional_submitters)
+        obj = ClinicalAssertion(
+            assertion_id=extract(inp, "@ID"),
+            title=extract(clinvar_submission, "@title"),
+            local_key=extract(clinvar_submission, "@localKey"),
+            assertion_accession=extract(raw_accession, "@Accession"),
+            version=extract(raw_accession, "@Version"),
+            assertion_type=extract(extract(inp, "Assertion"), "$"),
+            date_created=extract(inp, "@DateCreated"),
+            date_last_updated=extract(inp, "@DateLastUpdated"),
+            submitted_assembly=extract(clinvar_submission, "@submittedAssembly"),
+            record_status=extract(extract(inp, "RecordStatus"), "$"),
+            review_status=extract(extract(inp, "ReviewStatus"), "$"),
+            interpretation_date_last_evaluated=extract(interpretation, "@DateLastEvaluated"),
+            interpretation_description=extract(extract(interpretation, "Description"), "$"),
+            submitter=submitter,
+            submission=submission,
+            content=inp
+        )
+        return obj
+
+    def disassemble(self):
+        yield self
 
 
 @dataclasses.dataclass
@@ -102,7 +232,7 @@ class Variation(Model):
 
     @staticmethod
     def from_xml(inp: dict, jsonify_content=True):
-        _logger.info(f"Variation.from_xml(inp={json.dumps(inp)})")
+        _logger.info(f"Variation.from_xml(inp={json.dumps(inp)}, {jsonify_content=})")
         descendant_tree = Variation.descendant_tree(inp)
         # _logger.info(f"descendant_tree: {descendant_tree}")
         child_ids = Variation.get_all_children(descendant_tree)
@@ -239,6 +369,7 @@ class VariationArchive(Model):
     name: str
     version: str
     variation: Variation
+    clinical_assertions: List[ClinicalAssertion]
     date_created: str
     record_status: str
     species: str
@@ -271,6 +402,12 @@ class VariationArchive(Model):
             variation=Variation.from_xml(
                 interp_record, jsonify_content=jsonify_content
             ),
+            clinical_assertions=list(
+                map(
+                    ClinicalAssertion.from_xml,
+                    extract(extract(interp_record, "ClinicalAssertionList"), "ClinicalAssertion"),
+                )
+            ),
             date_created=extract(inp, "@DateCreated"),
             date_last_updated=extract(inp, "@DateLastUpdated"),
             record_status=extract(extract(inp, "RecordStatus"), "$"),
@@ -295,6 +432,10 @@ class VariationArchive(Model):
         self_copy = model_copy(self)
         for val in self_copy.variation.disassemble():
             yield val
+        for clinical_assertion in self.clinical_assertions:
+            for sub_obj in clinical_assertion.disassemble():
+                yield sub_obj
+        del self_copy.clinical_assertions
         del self_copy.variation
         yield self_copy
 
