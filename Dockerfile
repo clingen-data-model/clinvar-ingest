@@ -6,8 +6,9 @@ RUN python3 -m venv $VIRTUAL_ENV
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 WORKDIR /app
-COPY ./clinvar_ingest ./clinvar_ingest
 COPY pyproject.toml .
+COPY log_config.yaml .
+COPY ./clinvar_ingest ./clinvar_ingest
 RUN python -m pip install .
 
 # Runtime Image
