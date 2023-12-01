@@ -7,8 +7,8 @@ def test_read_original_clinvar_variation_2():
     """
     Test a SimpleAllele record
     """
-    # filename = "test/data/original-clinvar-variation-2.xml"
-    filename = "data/original-clinvar-variation-2.xml"
+    filename = "test/data/original-clinvar-variation-2.xml"
+    #filename = "data/original-clinvar-variation-2.xml"
     with open(filename) as f:
         objects = list(read_clinvar_xml(f))
 
@@ -70,8 +70,8 @@ def test_read_original_clinvar_variation_634266():
     """
     Test a Genotype record
     """
-    # filename = "test/data/original-clinvar-variation-634266.xml"
-    filename = "data/original-clinvar-variation-634266.xml"
+    filename = "test/data/original-clinvar-variation-634266.xml"
+    # filename = "data/original-clinvar-variation-634266.xml"
     with open(filename) as f:
         objects = list(read_clinvar_xml(f))
 
