@@ -30,6 +30,7 @@ dev = [
     "ruff~=0.1.5",
     "pytest~=7.4.3",
     "pylint~=3.0.2"
+    "httpx~=0.25.2"
 ]
 
 [project.scripts]

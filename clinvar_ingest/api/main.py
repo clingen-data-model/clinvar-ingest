@@ -1,18 +1,21 @@
 from fastapi import FastAPI, status
 
-from clinvar_ingest.api.model import ClinvarFTPWatcherPayload, ParsePayload
+from clinvar_ingest.api.model import ClinvarFTPWatcherPayload, CopyResponse, ParsePayload
 
 app = FastAPI()
 
 
-@app.get("/status", status_code=status.HTTP_200_OK)
-async def status():
-    return {"status": "ok!"}
+@app.get("/health", status_code=status.HTTP_200_OK)
+async def health():
+    return {"health": "ok!"}
 
 
-@app.get("/copy", status_code=status.HTTP_201_CREATED)
+@app.get("/copy", status_code=status.HTTP_201_CREATED, response_model=CopyResponse)
 async def copy(payload: ClinvarFTPWatcherPayload):
-    return {"status": "ok!"}
+    try:
+
+    except Exception:
+        
 
 
 @app.post("/parse", status_code=status.HTTP_201_CREATED)

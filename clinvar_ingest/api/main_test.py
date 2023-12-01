@@ -6,6 +6,6 @@ client = TestClient(app)
 
 
 def test_status_check():
-    response = client.get("/status")
+    response = client.get("/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok!"}
+    assert response.json() == {"health": "ok!"}
