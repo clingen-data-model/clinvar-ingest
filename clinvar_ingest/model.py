@@ -5,7 +5,7 @@ Data model for ClinVar Variation XML files.
 # TODO https://github.com/jpvanhal/inflection does good conversion
 # between PascalCase and snake_case for entity_type. If Model names are
 # reliable we could generate entity_type strings.
-
+from __future__ import annotations
 import dataclasses
 import json
 import logging
@@ -415,7 +415,7 @@ class Trait(Model):
         self.entity_type = "trait"
 
     @staticmethod
-    def from_xml(inp: dict, jsonify_content=True):
+    def from_xml(inp: dict, jsonify_content=True) -> Trait:
         _logger.info(f"Trait.from_xml(inp={json.dumps(inp)})")
         id = extract(inp, "@ID")
 
@@ -651,22 +651,22 @@ class Trait(Model):
 
         obj = Trait(
             id=id,
+            type=extract(inp, "@Type"),
             name=preferred_name,
-            attribute_content=None,
+            alternate_names=alternate_name_strs,
+            symbol=preferred_symbol,
+            alternate_symbols=alternate_symbol_strs,
             mode_of_inheritance=mode_of_inheritance,
             ghr_links=ghr_links,
             keywords=keywords,
             gard_id=gard_id,
             medgen_id=None,
             public_definition=public_definition,
-            type=extract(inp, "@Type"),
-            symbol=None,
             disease_mechanism=disease_mechanism,
             disease_mechanism_id=disease_mechanism_id,
-            alternate_symbols=None,
             gene_reviews_short=gene_reviews_short,
-            alternate_names=alternate_name_strs,
             xrefs=all_xrefs,
+            attribute_content=None,
             content=inp,
         )
         if jsonify_content:
