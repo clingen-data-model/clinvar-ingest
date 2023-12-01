@@ -76,6 +76,7 @@ class Submitter(Model):
     def disassemble(self):
         yield self
 
+
 @dataclasses.dataclass
 class Submission(Model):
     id: str
@@ -106,6 +107,7 @@ class Submission(Model):
 
     def disassemble(self):
         yield self
+
 
 @dataclasses.dataclass
 class ClinicalAssertion(Model):
@@ -138,10 +140,10 @@ class ClinicalAssertion(Model):
         clinvar_submission = extract(inp, "ClinVarSubmissionID")
         interpretation = extract(inp, "Interpretation")
         additional_submitters = list(
-           map(
-               Submitter.from_xml,
-               ensure_list(extract_in(raw_accession, 'AdditionalSubmitters', 'SubmitterDescription') or [])
-           )
+            map(
+                Submitter.from_xml,
+                ensure_list(extract_in(raw_accession, 'AdditionalSubmitters', 'SubmitterDescription') or [])
+            )
         )
         submitter = Submitter.from_xml(raw_accession)
         submission = Submission.from_xml(inp, jsonify_content, submitter, additional_submitters)
