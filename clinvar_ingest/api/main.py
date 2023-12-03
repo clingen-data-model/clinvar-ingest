@@ -57,8 +57,3 @@ async def create_internal_tables():
 @app.post("/create_cleaned_tables", status_code=status.HTTP_201_CREATED)
 async def create_cleaned_tables():
     return {"todo": "implement me"}
-
-
-@app.post("/post_to_slack", status_code=status.HTTP_201_CREATED)
-async def post_to_slack():
-    return {"todo": "implement me"}
