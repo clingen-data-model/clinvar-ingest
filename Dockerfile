@@ -6,9 +6,9 @@ RUN python3 -m venv $VIRTUAL_ENV
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 WORKDIR /app
+COPY ./clinvar_ingest ./clinvar_ingest
 COPY pyproject.toml .
 RUN python -m pip install .
-COPY ./clinvar_ingest ./clinvar_ingest
 
 # Runtime Image
 FROM python:3.9-slim-bullseye as runtime

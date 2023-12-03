@@ -20,6 +20,10 @@ log_conf = {
             "level": "INFO",
             "handlers": ["default"],
             "propagate": True,  # Necessary for the pytest caplog fixture.
+        },
+        "uvicorn": {
+            "level": "CRITICAL",
+            "handlers": ["default"],
         }
     },
 }
