@@ -39,5 +39,6 @@ class ParseRequest(BaseModel):
     no_disassemble: bool = Field(default=True)
     no_jsonify_content: bool = Field(default=True)
 
+
 class TodoRequest(BaseModel):  # A shim to get the workflow pieced together
     todo: str

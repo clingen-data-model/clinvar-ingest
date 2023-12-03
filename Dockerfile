@@ -7,7 +7,7 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 WORKDIR /app
 COPY pyproject.toml .
-COPY log_config.yaml .
+COPY log_conf.yaml .
 COPY ./clinvar_ingest ./clinvar_ingest
 RUN python -m pip install .
 
