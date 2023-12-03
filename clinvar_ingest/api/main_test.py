@@ -14,6 +14,7 @@ def test_status_check(caplog) -> None:
         assert "GET /health" in caplog.records[0].msg
         assert "elapsed_ms" in caplog.records[1].msg
 
+
 def test_copy_endpoint_success(caplog) -> None:
     with TestClient(app) as client:
         body = {

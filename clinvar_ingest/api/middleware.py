@@ -7,7 +7,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, Request, Response
 
 from clinvar_ingest.api.constants import MS_PER_S
 
-logger = logging.getLogger('api')
+logger = logging.getLogger("api")
 
 
 class LogRequests(BaseHTTPMiddleware):

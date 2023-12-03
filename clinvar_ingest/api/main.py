@@ -1,10 +1,8 @@
 import logging
-import logging.config
-from contextlib import asynccontextmanager
 
-import yaml
 from fastapi import FastAPI, HTTPException, status
 
+from clinvar_ingest.api.lifespan_hooks import read_log_conf
 from clinvar_ingest.api.middleware import LogRequests
 from clinvar_ingest.api.model import (
     ClinvarFTPWatcherPayload,
@@ -12,19 +10,9 @@ from clinvar_ingest.api.model import (
     ParsePayload,
 )
 
-logger = logging.getLogger('api')
+logger = logging.getLogger("api")
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # https://fastapi.tiangolo.com/advanced/events/
-    with open("log_conf.yaml", "rt") as f:
-        config = yaml.safe_load(f.read())
-        logging.config.dictConfig(config)
-    yield
-
-
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=read_log_conf)
 app.add_middleware(LogRequests)
 
 
