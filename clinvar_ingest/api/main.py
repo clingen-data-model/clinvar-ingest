@@ -4,11 +4,12 @@ from fastapi import FastAPI, HTTPException, status
 
 from clinvar_ingest.api.lifespan_hooks import read_log_conf
 from clinvar_ingest.api.middleware import LogRequests
-from clinvar_ingest.api.model import (
-    ClinvarFTPWatcherPayload,
-    CopyResponse,
-    ParsePayload,
+from clinvar_ingest.api.model.requests import (
+    ClinvarFTPWatcherRequest,
+    ParseRequest,
+    TodoRequest,
 )
+from clinvar_ingest.api.model.responses import CopyResponse
 
 logger = logging.getLogger("api")
 
@@ -22,7 +23,7 @@ async def health():
 
 
 @app.post("/copy", status_code=status.HTTP_201_CREATED, response_model=CopyResponse)
-async def copy(payload: ClinvarFTPWatcherPayload):
+async def copy(payload: ClinvarFTPWatcherRequest):
     try:
         ftp_path = f"{payload.directory}/{payload.name}"
         gcs_path = "gs://tbd-not-a-real-bucket"
@@ -40,20 +41,20 @@ async def copy(payload: ClinvarFTPWatcherPayload):
 
 
 @app.post("/parse", status_code=status.HTTP_201_CREATED)
-async def parse(payload: ParsePayload):
+async def parse(payload: ParseRequest):
     return {"todo": "implement me"}
 
 
 @app.post("/create_external_tables", status_code=status.HTTP_201_CREATED)
-async def create_external_tables():
+async def create_external_tables(payload: TodoRequest):
     return {"todo": "implement me"}
 
 
 @app.post("/create_internal_tables", status_code=status.HTTP_201_CREATED)
-async def create_internal_tables():
+async def create_internal_tables(payload: TodoRequest):
     return {"todo": "implement me"}
 
 
 @app.post("/create_cleaned_tables", status_code=status.HTTP_201_CREATED)
-async def create_cleaned_tables():
+async def create_cleaned_tables(payload: TodoRequest):
     return {"todo": "implement me"}

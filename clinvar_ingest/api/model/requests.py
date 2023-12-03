@@ -7,7 +7,7 @@ def to_title_case(string: str) -> str:
     return " ".join(word.capitalize() for word in string.split("_"))
 
 
-class ClinvarFTPWatcherPayload(BaseModel):
+class ClinvarFTPWatcherRequest(BaseModel):
     model_config = ConfigDict(
         alias_generator=to_title_case,
         populate_by_name=True,
@@ -33,13 +33,11 @@ class ClinvarFTPWatcherPayload(BaseModel):
     release_date: date
 
 
-class ParsePayload(BaseModel):
+class ParseRequest(BaseModel):
     input_filename: str
     output_directory: str
     no_disassemble: bool = Field(default=True)
     no_jsonify_content: bool = Field(default=True)
 
-
-class CopyResponse(BaseModel):
-    ftp_path: str
-    gcs_path: str
+class TodoRequest(BaseModel):  # A shim to get the workflow pieced together
+    todo: str
