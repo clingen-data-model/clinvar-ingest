@@ -2,7 +2,7 @@ steps:
 - name: 'gcr.io/kaniko-project/executor:v1.3.0'
   args:
   - --destination=gcr.io/clingen-dev/clinvar-ingest:${COMMIT_SHA}
-  - --destination=gcr.io/clingen-dev/clinvar-ingest:${_CUSTOM_BRANCH_TAG}
+  - --destination=gcr.io/clingen-dev/clinvar-ingest:${CUSTOM_BRANCH_TAG}
   - --destination=gcr.io/clingen-dev/clinvar-ingest:latest
   - --dockerfile=Dockerfile
   - --cache=true
