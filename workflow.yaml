@@ -1,0 +1,15 @@
+- copy:
+    call: http.post
+    args:
+        url: https://clinvar-ingest-qmojsrhb3q-uc.a.run.app/copy
+        auth:
+            type: OIDC
+    result: copy_result
+- parse:
+    call: http.post
+    args:
+        url: https://clinvar-ingest-qmojsrhb3q-uc.a.run.app/copy
+        body:
+            input: ${copy_result.body}
+- result:
+    return: ${log_result}

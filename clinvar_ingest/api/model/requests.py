@@ -34,8 +34,8 @@ class ClinvarFTPWatcherRequest(BaseModel):
 
 
 class ParseRequest(BaseModel):
-    input_filename: str
-    output_directory: str
+    ftp_path: str
+    gcs_path: str
     no_disassemble: bool = Field(default=True)
     no_jsonify_content: bool = Field(default=True)
 

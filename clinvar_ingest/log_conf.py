@@ -24,6 +24,6 @@ log_conf = {
         "uvicorn": {
             "level": "CRITICAL",
             "handlers": ["default"],
-        }
+        },
     },
 }

@@ -9,7 +9,6 @@ from clinvar_ingest.api.model.requests import (
     ParseRequest,
     TodoRequest,
 )
-from clinvar_ingest.api.model.responses import CopyResponse
 
 logger = logging.getLogger("api")
 
@@ -22,12 +21,12 @@ async def health():
     return {"health": "ok!"}
 
 
-@app.post("/copy", status_code=status.HTTP_201_CREATED, response_model=CopyResponse)
+@app.post("/copy", status_code=status.HTTP_201_CREATED, response_model=ParseRequest)
 async def copy(payload: ClinvarFTPWatcherRequest):
     try:
         ftp_path = f"{payload.directory}/{payload.name}"
         gcs_path = "gs://tbd-not-a-real-bucket"
-        return CopyResponse(
+        return ParseRequest(
             ftp_path=ftp_path,
             gcs_path=gcs_path,
         )
