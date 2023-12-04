@@ -12,13 +12,19 @@ import logging
 from abc import ABCMeta, abstractmethod
 from typing import List, Union
 
-from clinvar_ingest.utils import ensure_list, extract, extract_in, extract_oneof, get
+from clinvar_ingest.utils import (
+    ensure_list,
+    extract,
+    extract_in,
+    extract_oneof,
+    flatten1,
+    get,
+)
 
 _logger = logging.getLogger(__name__)
 
 
 class Model(object, metaclass=ABCMeta):
-
     @staticmethod
     def from_xml(inp: dict, jsonify_content=True):
         """
@@ -56,9 +62,7 @@ class Submitter(Model):
 
     @staticmethod
     def from_xml(inp: dict, jsonify_content=True):
-        _logger.info(
-            f"Submitter.from_xml(inp={json.dumps(inp)}, {jsonify_content=})"
-        )
+        _logger.info(f"Submitter.from_xml(inp={json.dumps(inp)}, {jsonify_content=})")
         current_name = extract(inp, "@SubmitterName")
         current_abbrev = extract(inp, "@OrgAbbreviation")
         obj = Submitter(
@@ -69,7 +73,7 @@ class Submitter(Model):
             org_category=extract(inp, "@OrganizationCategory"),
             all_names=[] if not current_name else [current_name],
             all_abbrevs=[] if not current_abbrev else [current_abbrev],
-            content=inp
+            content=inp,
         )
         return obj
 
@@ -90,7 +94,12 @@ class Submission(Model):
         self.entity_type = "submission"
 
     @staticmethod
-    def from_xml(inp: dict, jsonify_content=True, submitter: Submitter = {}, additional_submitters: list = [Submitter]):
+    def from_xml(
+        inp: dict,
+        jsonify_content=True,
+        submitter: Submitter = {},
+        additional_submitters: list = [Submitter],
+    ):
         _logger.info(
             f"Submission.from_xml(inp={json.dumps(inp)}, {jsonify_content=}, {submitter=}, "
             f"{additional_submitters=})"
@@ -99,9 +108,9 @@ class Submission(Model):
             id=f"{submitter.id}",  # TODO - FIX w/ Date
             release_date=submitter.release_date,
             submitter_id=submitter.id,
-            additional_submitter_ids=list(filter('id', additional_submitters)),
+            additional_submitter_ids=list(filter("id", additional_submitters)),
             submission_date=extract(inp, "@SubmissionDate"),
-            content=inp
+            content=inp,
         )
         return obj
 
@@ -142,11 +151,18 @@ class ClinicalAssertion(Model):
         additional_submitters = list(
             map(
                 Submitter.from_xml,
-                ensure_list(extract_in(raw_accession, 'AdditionalSubmitters', 'SubmitterDescription') or [])
+                ensure_list(
+                    extract_in(
+                        raw_accession, "AdditionalSubmitters", "SubmitterDescription"
+                    )
+                    or []
+                ),
             )
         )
         submitter = Submitter.from_xml(raw_accession)
-        submission = Submission.from_xml(inp, jsonify_content, submitter, additional_submitters)
+        submission = Submission.from_xml(
+            inp, jsonify_content, submitter, additional_submitters
+        )
         obj = ClinicalAssertion(
             assertion_id=extract(inp, "@ID"),
             title=extract(clinvar_submission, "@title"),
@@ -159,11 +175,15 @@ class ClinicalAssertion(Model):
             submitted_assembly=extract(clinvar_submission, "@submittedAssembly"),
             record_status=extract(extract(inp, "RecordStatus"), "$"),
             review_status=extract(extract(inp, "ReviewStatus"), "$"),
-            interpretation_date_last_evaluated=extract(interpretation, "@DateLastEvaluated"),
-            interpretation_description=extract(extract(interpretation, "Description"), "$"),
+            interpretation_date_last_evaluated=extract(
+                interpretation, "@DateLastEvaluated"
+            ),
+            interpretation_description=extract(
+                extract(interpretation, "Description"), "$"
+            ),
             submitter=submitter,
             submission=submission,
-            content=inp
+            content=inp,
         )
         return obj
 
@@ -234,7 +254,7 @@ class Variation(Model):
 
     @staticmethod
     def from_xml(inp: dict, jsonify_content=True):
-        _logger.info(f"Variation.from_xml(inp={json.dumps(inp)}, {jsonify_content=})")
+        _logger.debug(f"Variation.from_xml(inp={json.dumps(inp)}), {jsonify_content=}")
         descendant_tree = Variation.descendant_tree(inp)
         # _logger.info(f"descendant_tree: {descendant_tree}")
         child_ids = Variation.get_all_children(descendant_tree)
@@ -419,15 +439,21 @@ class Trait(Model):
         _logger.info(f"Trait.from_xml(inp={json.dumps(inp)})")
         id = extract(inp, "@ID")
 
-        def make_attr_xref(attr, ref_field, ref_field_element=None):
-            if "XRef" in attr:
-                return Trait.XRef(
-                    db=attr.get("XRef", "@DB"),
-                    id=attr.get("XRef", "@ID"),
-                    type=get(attr, "XRef", "@Type"),
-                    ref_field=ref_field,
-                    ref_field_element=ref_field_element,
+        def make_attr_xrefs(
+            attr, ref_field, ref_field_element=None
+        ) -> List[Trait.XRef]:
+            outputs = []
+            for x in ensure_list(attr.get("XRef", [])):
+                outputs.append(
+                    Trait.XRef(
+                        db=x["@DB"],
+                        id=x["@ID"],
+                        type=get(x, "@Type"),
+                        ref_field=ref_field,
+                        ref_field_element=ref_field_element,
+                    )
                 )
+            return outputs
 
         # Preferred Name (Name type=Preferred)
         names = ensure_list(extract(inp, "Name") or [])
@@ -441,9 +467,9 @@ class Trait(Model):
             preferred_name = preferred_names[0]["ElementValue"]["$"]
 
         preferred_name_xrefs = [
-            make_attr_xref(n, "name", n["ElementValue"]["$"]) for n in preferred_names
+            make_attr_xrefs(n, "name", n["ElementValue"]["$"]) for n in preferred_names
         ]
-        _logger.info(
+        _logger.debug(
             "preferred_name: %s, preferred_name_xrefs: %s",
             preferred_name,
             json.dumps(dictify(preferred_name_xrefs)),
@@ -456,10 +482,10 @@ class Trait(Model):
         alternate_name_strs = [get(n, "ElementValue", "$") for n in alternate_names]
 
         alternate_name_xrefs = [
-            make_attr_xref(n, "alternate_names", n["ElementValue"]["$"])
+            make_attr_xrefs(n, "alternate_names", n["ElementValue"]["$"])
             for n in alternate_names
         ]
-        _logger.info(
+        _logger.debug(
             "alternate_names: %s, alternate_name_xrefs: %s",
             json.dumps(alternate_name_strs),
             json.dumps(dictify(alternate_name_xrefs)),
@@ -478,10 +504,10 @@ class Trait(Model):
             preferred_symbol = preferred_symbols[0]["ElementValue"]["$"]
 
         preferred_symbol_xrefs = [
-            make_attr_xref(s, "symbol", s["ElementValue"]["$"])
+            make_attr_xrefs(s, "symbol", s["ElementValue"]["$"])
             for s in preferred_symbols
         ]
-        _logger.info(
+        _logger.debug(
             "preferred_symbol: %s, preferred_symbol_xrefs: %s",
             preferred_symbol,
             json.dumps(dictify(preferred_symbol_xrefs)),
@@ -494,10 +520,10 @@ class Trait(Model):
         alternate_symbol_strs = [get(s, "ElementValue", "$") for s in alternate_symbols]
 
         alternate_symbol_xrefs = [
-            make_attr_xref(s, "alternate_symbols", s["ElementValue"]["$"])
+            make_attr_xrefs(s, "alternate_symbols", s["ElementValue"]["$"])
             for s in alternate_symbols
         ]
-        _logger.info(
+        _logger.debug(
             "alternate_symbols: %s, alternate_symbol_xrefs: %s",
             json.dumps(alternate_symbol_strs),
             json.dumps(dictify(alternate_symbol_xrefs)),
@@ -536,7 +562,7 @@ class Trait(Model):
         public_definition_attr = pop_attribute("public definition")
         if public_definition_attr is not None:
             public_definition = get(public_definition_attr, "Attribute", "$")
-            public_definition_xref = make_attr_xref(
+            public_definition_xref = make_attr_xrefs(
                 public_definition_attr, "public_definition"
             )
         else:
@@ -547,7 +573,7 @@ class Trait(Model):
         gard_id_attr = pop_attribute("GARD id")
         if gard_id_attr is not None:
             gard_id = int(get(gard_id_attr, "Attribute", "@integerValue"))
-            gard_id_xref = make_attr_xref(gard_id_attr, "gard_id")
+            gard_id_xref = make_attr_xrefs(gard_id_attr, "gard_id")
         else:
             gard_id = None
             gard_id_xref = None
@@ -557,7 +583,7 @@ class Trait(Model):
         if len(keyword_attrs) > 0:
             keywords = [get(a, "Attribute", "$") for a in keyword_attrs]
             keyword_xrefs = [
-                make_attr_xref(a, "keywords", get(a, "Attribute", "$"))
+                make_attr_xrefs(a, "keywords", get(a, "Attribute", "$"))
                 for a in keyword_attrs
             ]
         else:
@@ -571,7 +597,7 @@ class Trait(Model):
             disease_mechanism_id = int(
                 get(disease_mechanism_attr, "Attribute", "@integerValue")
             )
-            disease_mechanism_xref = make_attr_xref(
+            disease_mechanism_xref = make_attr_xrefs(
                 disease_mechanism_attr, "disease_mechanism"
             )
         else:
@@ -583,7 +609,7 @@ class Trait(Model):
         mode_of_inheritance_attr = pop_attribute("mode of inheritance")
         if mode_of_inheritance_attr is not None:
             mode_of_inheritance = get(mode_of_inheritance_attr, "Attribute", "$")
-            mode_of_inheritance_xref = make_attr_xref(
+            mode_of_inheritance_xref = make_attr_xrefs(
                 mode_of_inheritance_attr, "mode_of_inheritance"
             )
         else:
@@ -594,7 +620,7 @@ class Trait(Model):
         gene_reviews_short_attr = pop_attribute("GeneReviews short")
         if gene_reviews_short_attr is not None:
             gene_reviews_short = get(gene_reviews_short_attr, "Attribute", "$")
-            gene_reviews_short_xref = make_attr_xref(
+            gene_reviews_short_xref = make_attr_xrefs(
                 gene_reviews_short_attr, "gene_reviews_short"
             )
         else:
@@ -605,7 +631,7 @@ class Trait(Model):
         ghr_links_attr = pop_attribute("Genetics Home Reference (GHR) links")
         if ghr_links_attr is not None:
             ghr_links = get(ghr_links_attr, "Attribute", "$")
-            ghr_links_xref = make_attr_xref(gene_reviews_short_attr, "ghr_links")
+            ghr_links_xref = make_attr_xrefs(gene_reviews_short_attr, "ghr_links")
         else:
             ghr_links = None
             ghr_links_xref = None
@@ -618,8 +644,7 @@ class Trait(Model):
             gene_reviews_short_xref,
             ghr_links_xref,
         ]
-        # attribute_set_xrefs = [x for x in attribute_set_xrefs if x is not None]
-        _logger.info(
+        _logger.debug(
             "attribute_set_xrefs: %s", json.dumps(dictify(attribute_set_xrefs))
         )
 
@@ -637,7 +662,17 @@ class Trait(Model):
             )
             for x in ensure_list(inp.get("XRef", None) or [])
         ]
-        _logger.info("top_xrefs: %s", json.dumps(dictify(top_xrefs)))
+        _logger.debug("top_xrefs: %s", json.dumps(dictify(top_xrefs)))
+
+        # Try to get a MedGen ID from the only the top level XRefs
+        medgen_id = None
+        _medgen_xrefs = [x for x in top_xrefs if x.db == "MedGen"]
+        if len(_medgen_xrefs) > 1:
+            raise RuntimeError(
+                f"Trait {id} has multiple MedGen XRefs: {[m.id for m in _medgen_xrefs]}"
+            )
+        if len(_medgen_xrefs) == 1:
+            medgen_id = _medgen_xrefs[0].id
 
         all_xrefs = [
             *preferred_name_xrefs,
@@ -647,6 +682,10 @@ class Trait(Model):
             *attribute_set_xrefs,
             *top_xrefs,
         ]
+
+        # Flatten XRefs
+        all_xrefs = flatten1(all_xrefs)
+        # Filter out None XRefs
         all_xrefs = [x for x in all_xrefs if x is not None]
 
         obj = Trait(
@@ -660,7 +699,7 @@ class Trait(Model):
             ghr_links=ghr_links,
             keywords=keywords,
             gard_id=gard_id,
-            medgen_id=None,
+            medgen_id=medgen_id,
             public_definition=public_definition,
             disease_mechanism=disease_mechanism,
             disease_mechanism_id=disease_mechanism_id,
@@ -708,6 +747,10 @@ class TraitSet(Model):
         return obj
 
     def disassemble(self):
+        for t in self.traits:
+            for val in t.disassemble():
+                yield val
+        del self.traits
         yield self
 
 
@@ -769,7 +812,7 @@ class VariationArchive(Model):
 
     @staticmethod
     def from_xml(inp: dict, jsonify_content=True):
-        _logger.info(
+        _logger.debug(
             f"VariationArchive.from_xml(inp={json.dumps(inp)}, {jsonify_content=})"
         )
         interp_record = inp.get("InterpretedRecord", inp.get("IncludedRecord"))
@@ -785,7 +828,10 @@ class VariationArchive(Model):
             clinical_assertions=list(
                 map(
                     ClinicalAssertion.from_xml,
-                    extract(extract(interp_record, "ClinicalAssertionList"), "ClinicalAssertion"),
+                    extract(
+                        extract(interp_record, "ClinicalAssertionList"),
+                        "ClinicalAssertion",
+                    ),
                 )
             ),
             date_created=extract(inp, "@DateCreated"),
@@ -814,6 +860,7 @@ class VariationArchive(Model):
                         "ConditionList",
                         "TraitSet",
                     )
+                    or []
                 )
             ],
             interp_content=interpretation,
@@ -833,6 +880,10 @@ class VariationArchive(Model):
                 yield sub_obj
         del self_copy.clinical_assertions
         del self_copy.variation
+        for ts in self_copy.trait_sets:
+            for val in ts.disassemble():
+                yield val
+        del self_copy.trait_sets
         yield self_copy
 
 

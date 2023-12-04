@@ -78,3 +78,28 @@ def ensure_list(obj: Any) -> List:
     if not isinstance(obj, list):
         return [obj]
     return obj
+
+
+def flatten1(things: List[List[Any]]) -> List[Any]:
+    """
+    Takes a list of things. If any of the things are lists, they are flattened
+    to the top level. The result is a list of things that is nested one fewer levels.
+
+    Example:
+        >>> flatten1([['foo'], ['bar']])
+        ['foo', 'bar']
+        >>> flatten1([['foo', 'bar'], ['baz']])
+        ['foo', 'bar', 'baz']
+        >>> flatten1(['foo', 'bar'])
+        ['foo', 'bar']
+        >>> flatten1([['foo'], 'bar'])
+        ['foo', 'bar']
+    """
+    outputs = []
+    for thing in things:
+        if isinstance(thing, list):
+            for item in thing:
+                outputs.append(item)
+        else:
+            outputs.append(thing)
+    return outputs
