@@ -773,7 +773,8 @@ class VariationArchive(Model):
             f"VariationArchive.from_xml(inp={json.dumps(inp)}, {jsonify_content=})"
         )
         interp_record = inp.get("InterpretedRecord", inp.get("IncludedRecord"))
-        interp = extract(interp_record, "Interpretations")["Interpretation"]
+        interpretations = extract(interp_record, "Interpretations")
+        interpretation = interpretations["Interpretation"]
         obj = VariationArchive(
             id=extract(inp, "@Accession"),
             name=extract(inp, "@VariationName"),
@@ -792,31 +793,35 @@ class VariationArchive(Model):
             record_status=extract(extract(inp, "RecordStatus"), "$"),
             species=extract(extract(inp, "Species"), "$"),
             review_status=extract(extract(interp_record, "ReviewStatus"), "$"),
-            interp_type=extract_in(interp, "@Type"),
-            interp_description=extract(extract_in(interp, "Description"), "$"),
-            interp_explanation=extract_in(extract_in(interp, "Explanation"), "$"),
+            interp_type=extract_in(interpretation, "@Type"),
+            interp_description=extract(extract_in(interpretation, "Description"), "$"),
+            interp_explanation=extract_in(
+                extract_in(interpretation, "Explanation"), "$"
+            ),
             # num_submitters and num_submissions are at top and interp level
-            num_submitters=int_or_none(extract_in(interp, "@NumberOfSubmitters")),
-            num_submissions=int_or_none(extract_in(interp, "@NumberOfSubmissions")),
-            interp_date_last_evaluated=extract_in(interp, "@DateLastEvaluated"),
+            num_submitters=int_or_none(
+                extract_in(interpretation, "@NumberOfSubmitters")
+            ),
+            num_submissions=int_or_none(
+                extract_in(interpretation, "@NumberOfSubmissions")
+            ),
+            interp_date_last_evaluated=extract_in(interpretation, "@DateLastEvaluated"),
             trait_sets=[
                 TraitSet.from_xml(ts, jsonify_content=jsonify_content)
                 for ts in ensure_list(
                     extract_in(
-                        interp_record,
-                        "Interpretations",
-                        "Interpretation",
+                        interpretation,
                         "ConditionList",
                         "TraitSet",
                     )
                 )
             ],
-            interp_content=interp,
+            interp_content=interpretation,
             content=inp,
         )
         if jsonify_content:
             obj.content = json.dumps(inp)
-            obj.interp_content = json.dumps(interp)
+            obj.interp_content = json.dumps(interpretation)
         return obj
 
     def disassemble(self):
