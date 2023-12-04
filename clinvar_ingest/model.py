@@ -6,6 +6,7 @@ Data model for ClinVar Variation XML files.
 # between PascalCase and snake_case for entity_type. If Model names are
 # reliable we could generate entity_type strings.
 from __future__ import annotations
+
 import dataclasses
 import json
 import logging
