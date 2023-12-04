@@ -875,15 +875,15 @@ class VariationArchive(Model):
         self_copy = model_copy(self)
         for val in self_copy.variation.disassemble():
             yield val
-        for clinical_assertion in self.clinical_assertions:
-            for sub_obj in clinical_assertion.disassemble():
-                yield sub_obj
-        del self_copy.clinical_assertions
         del self_copy.variation
         for ts in self_copy.trait_sets:
             for val in ts.disassemble():
                 yield val
         del self_copy.trait_sets
+        for clinical_assertion in self_copy.clinical_assertions:
+            for sub_obj in clinical_assertion.disassemble():
+                yield sub_obj
+        del self_copy.clinical_assertions
         yield self_copy
 
 
