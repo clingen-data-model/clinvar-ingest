@@ -1,15 +1,12 @@
 from clinvar_ingest.model import (
+    ClinicalAssertion,
     Gene,
     GeneAssociation,
     Trait,
     TraitSet,
     Variation,
     VariationArchive,
-    ClinicalAssertion,
-    Submitter,
-    Submission,
 )
-
 from clinvar_ingest.reader import read_clinvar_xml
 
 
@@ -26,9 +23,9 @@ def test_read_original_clinvar_variation_2():
     assert 8 == len(objects)
     assert isinstance(objects[0], Gene)
     assert isinstance(objects[1], GeneAssociation)
-    assert isinstance(objects[2], Trait)
-    assert isinstance(objects[3], TraitSet)
-    assert isinstance(objects[4], Variation)
+    assert isinstance(objects[2], Variation)
+    assert isinstance(objects[3], Trait)
+    assert isinstance(objects[4], TraitSet)
     assert isinstance(objects[5], ClinicalAssertion)
     assert isinstance(objects[6], ClinicalAssertion)
     assert isinstance(objects[7], VariationArchive)
