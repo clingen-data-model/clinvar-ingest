@@ -1,8 +1,9 @@
 import json
 from typing import List
 
-from clinvar_ingest.model import Trait, dictify
+from clinvar_ingest.model import Trait, TraitSet, dictify
 from clinvar_ingest.reader import _parse_xml_document
+from clinvar_ingest.utils import ensure_list
 
 
 def unordered_dict_list_equal(list1: List[dict], list2: List[dict]) -> bool:
@@ -41,7 +42,7 @@ def test_trait_from_xml_32():
     assert trait.disease_mechanism == "loss of function"
     assert trait.disease_mechanism_id == 273
     assert trait.gene_reviews_short is None
-    assert trait.attribute_content is None
+    assert trait.attribute_content == []
     assert trait.content is not None
 
     assert unordered_dict_list_equal(
@@ -229,36 +230,56 @@ def test_trait_from_xml_3510():
     ]
 
 
-"""
-def test_trait_from_xml_51():
-    filename = "test/data/original-clinvar-variation-51.xml"
-    with open(filename) as f:
+def test_trait_set_from_xml_10():
+    with open("test/data/original-clinvar-variation-10.xml") as f:
         content = f.read()
     root = _parse_xml_document(content)
     release = root["ClinVarVariationRelease"]
     interp_record = release["VariationArchive"]["InterpretedRecord"]
     interp = interp_record["Interpretations"]["Interpretation"]
-    interp_traitset = interp["ConditionList"]["TraitSet"]
-    raw_trait = interp_traitset["Trait"]  # only 1 trait in this example
+    interp_traitset = ensure_list(interp["ConditionList"]["TraitSet"])
 
-    trait = Trait.from_xml(raw_trait)
-    assert trait.id == "9592"
-    assert trait.type == "Disease"
-    assert trait.name == "Primary hyperoxaluria type 3"
-    assert trait.alternate_names == ["PH III", "Primary hyperoxaluria, type III"]
-    assert trait.symbol is None
-    assert trait.alternate_symbols == ["HP3", "HOGA1", "PH3"]
-    assert trait.mode_of_inheritance is None
-    assert trait.ghr_links is None
-    assert trait.keywords is None
-    assert trait.gard_id == 10738
-    assert trait.medgen_id is None
-    assert trait.public_definition is None
+    trait_sets = [TraitSet.from_xml(raw_traitset) for raw_traitset in interp_traitset]
+    assert len(trait_sets) == 11
+    assert [ts.id for ts in trait_sets] == [
+        "55473",
+        "7",
+        "13451",
+        "21210",
+        "9460",
+        "9590",
+        "8589",
+        "2387",
+        "1961",
+        "52490",
+        "16994",
+    ]
+    assert [ts.type for ts in trait_sets] == [
+        "Disease",
+        "Disease",
+        "Disease",
+        "Disease",
+        "Disease",
+        "Disease",
+        "Disease",
+        "Disease",
+        "Disease",
+        "Finding",
+        "PhenotypeInstruction",
+    ]
 
-    assert trait.disease_mechanism == "loss of function"
-    assert trait.disease_mechanism_id == 273
-    assert trait.gene_reviews_short is None
-    assert trait.xrefs
-    assert trait.attribute_content is None
-    assert trait.content is not None
-"""
+    # test traits
+    ts13451 = trait_sets[2]
+    assert ts13451.id == "13451"
+    assert len(ts13451.traits) == 6
+    assert [t.id for t in ts13451.traits] == [
+        "3370",
+        "222",
+        "9601",
+        "9582",
+        "9587",
+        "5535",
+    ]
+
+    # test content
+    assert ts13451.content == json.dumps({"@ContributesToAggregateClinsig": "true"})
