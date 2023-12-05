@@ -230,6 +230,36 @@ def test_trait_from_xml_3510():
     ]
 
 
+def test_trait_from_xml_406155():
+    with open("test/data/original-clinvar-variation-406155.xml") as f:
+        content = f.read()
+    root = _parse_xml_document(content)
+    release = root["ClinVarVariationRelease"]
+    interp_record = release["VariationArchive"]["InterpretedRecord"]
+    interp = interp_record["Interpretations"]["Interpretation"]
+    interp_traitset = interp["ConditionList"]["TraitSet"]
+    raw_trait = interp_traitset["Trait"]  # only 1 trait in this example
+
+    trait = Trait.from_xml(raw_trait)
+    assert trait.id == "1150"
+
+    # This trait has ghr_links
+    assert trait.ghr_links == "MECP2-related severe neonatal encephalopathy"
+
+    # And a public_definition (with xref)
+    assert (
+        trait.public_definition
+        == "The spectrum of MECP2-related phenotypes in females ranges from classic Rett syndrome to variant Rett syndrome with a broader clinical phenotype (either milder or more severe than classic Rett syndrome) to mild learning disabilities; the spectrum in males ranges from severe neonatal encephalopathy to pyramidal signs, parkinsonism, and macroorchidism (PPM-X) syndrome to severe syndromic/nonsyndromic intellectual disability. Females: Classic Rett syndrome, a progressive neurodevelopmental disorder primarily affecting girls, is characterized by apparently normal psychomotor development during the first six to 18 months of life, followed by a short period of developmental stagnation, then rapid regression in language and motor skills, followed by long-term stability. During the phase of rapid regression, repetitive, stereotypic hand movements replace purposeful hand use. Additional findings include fits of screaming and inconsolable crying, autistic features, panic-like attacks, bruxism, episodic apnea and/or hyperpnea, gait ataxia and apraxia, tremors, seizures, and acquired microcephaly. Males: Severe neonatal-onset encephalopathy, the most common phenotype in affected males, is characterized by a relentless clinical course that follows a metabolic-degenerative type of pattern, abnormal tone, involuntary movements, severe seizures, and breathing abnormalities. Death often occurs before age two years."
+    )
+    assert {
+        "db": "GeneReviews",
+        "id": "NBK1497",
+        "type": None,
+        "ref_field": "public_definition",
+        "ref_field_element": None,
+    } in dictify(trait.xrefs)
+
+
 def test_trait_set_from_xml_10():
     with open("test/data/original-clinvar-variation-10.xml") as f:
         content = f.read()
