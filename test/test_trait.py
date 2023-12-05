@@ -1,7 +1,7 @@
 import json
 from typing import List
 
-from clinvar_ingest.model import Trait, TraitSet, dictify
+from clinvar_ingest.model import Trait, TraitMapping, TraitSet, dictify
 from clinvar_ingest.reader import _parse_xml_document
 from clinvar_ingest.utils import ensure_list
 
@@ -10,6 +10,17 @@ def unordered_dict_list_equal(list1: List[dict], list2: List[dict]) -> bool:
     set1 = set([tuple(elem.items()) for elem in list1])
     set2 = set([tuple(elem.items()) for elem in list2])
     return len(list1) == len(list2) and set1 == set2
+
+
+def distinct_dict_set(list1: List[dict]) -> List[dict]:
+    """
+    N^2 algorithm to remove duplicates from a list of dicts
+    """
+    outs = []
+    for elem in list1:
+        if elem not in outs:
+            outs.append(elem)
+    return outs
 
 
 def test_trait_from_xml_32():
@@ -313,3 +324,32 @@ def test_trait_set_from_xml_10():
 
     # test content
     assert ts13451.content == json.dumps({"@ContributesToAggregateClinsig": "true"})
+
+
+def test_trait_mapping_10():
+    with open("test/data/original-clinvar-variation-10.xml") as f:
+        content = f.read()
+    root = _parse_xml_document(content)
+    release = root["ClinVarVariationRelease"]
+    interp_record = release["VariationArchive"]["InterpretedRecord"]
+    trait_mappings_raw = ensure_list(interp_record["TraitMappingList"]["TraitMapping"])
+    assert len(trait_mappings_raw) == 344
+
+    trait_mappings_raw_distinct = distinct_dict_set(trait_mappings_raw)
+    assert len(trait_mappings_raw_distinct) == 175
+
+    trait_mappings = [TraitMapping.from_xml(raw) for raw in trait_mappings_raw_distinct]
+
+    tm0 = [
+        tm
+        for tm in trait_mappings
+        if tm.clinical_assertion_id == "1174366"
+        and tm.trait_type == "Finding"
+        and tm.mapping_type == "XRef"
+        and tm.mapping_value == "HP:0002087"
+        and tm.mapping_ref == "HP"
+    ]
+    assert len(tm0) == 1
+    tm0 = tm0[0]
+    assert tm0.medgen_id == "C4025727"
+    assert tm0.medgen_name == "Abnormality of the upper respiratory tract"

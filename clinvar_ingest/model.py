@@ -809,6 +809,7 @@ class VariationArchive(Model):
     content: str
 
     trait_sets: List[TraitSet]
+    trait_mappings: List[TraitMapping]
 
     def __post_init__(self):
         self.variation_id = self.variation.id
@@ -865,6 +866,19 @@ class VariationArchive(Model):
                         interpretation,
                         "ConditionList",
                         "TraitSet",
+                    )
+                    or []
+                )
+            ],
+            trait_mappings=[
+                TraitMapping.from_xml(tm, jsonify_content=jsonify_content)
+                for tm in ensure_list(
+                    extract(
+                        extract_in(
+                            interp_record,
+                            "TraitMapping",
+                        ),
+                        "TraitMapping",
                     )
                     or []
                 )
