@@ -634,7 +634,7 @@ class Trait(Model):
         ghr_links_attr = pop_attribute("Genetics Home Reference (GHR) links")
         if ghr_links_attr is not None:
             ghr_links = get(ghr_links_attr, "Attribute", "$")
-            ghr_links_xref = make_attr_xrefs(gene_reviews_short_attr, "ghr_links")
+            ghr_links_xref = make_attr_xrefs(ghr_links_attr, "ghr_links")
         else:
             ghr_links = None
             ghr_links_xref = None
