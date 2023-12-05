@@ -46,6 +46,9 @@ class Model(object, metaclass=ABCMeta):
         """
         raise NotImplementedError()
 
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.__dict__.__repr__()})"
+
 
 @dataclasses.dataclass
 class Submitter(Model):
@@ -536,15 +539,14 @@ class Trait(Model):
         def pop_attribute(inp_key):
             """
             Looks in AttributeSet for 0..1 attributes with type matching inp_key
+
+            If there are multiple, returns the first. Use pop_attribute_list to get all.
             """
             matching_attributes = [
                 a for a in attribute_set if get(a, "Attribute", "@Type") == inp_key
             ]
-            if len(matching_attributes) > 1:
-                raise RuntimeError(
-                    f"Trait {id} unexpectedly has multiple attributes of type {inp_key}"
-                )
-            if len(matching_attributes) == 1:
+
+            if len(matching_attributes) > 0:
                 attribute_set.remove(matching_attributes[0])
                 return matching_attributes[0]
 
@@ -706,11 +708,12 @@ class Trait(Model):
             disease_mechanism_id=disease_mechanism_id,
             gene_reviews_short=gene_reviews_short,
             xrefs=all_xrefs,
-            attribute_content=None,
+            attribute_content=attribute_set,
             content=inp,
         )
         if jsonify_content:
             obj.content = json.dumps(inp)
+            obj.attribute_content = [json.dumps(a) for a in attribute_set]
         return obj
 
     def disassemble(self):
@@ -829,9 +832,11 @@ class VariationArchive(Model):
             clinical_assertions=list(
                 map(
                     ClinicalAssertion.from_xml,
-                    extract(
-                        extract(interp_record, "ClinicalAssertionList"),
-                        "ClinicalAssertion",
+                    ensure_list(
+                        extract(
+                            extract(interp_record, "ClinicalAssertionList"),
+                            "ClinicalAssertion",
+                        )
                     ),
                 )
             ),
