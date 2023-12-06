@@ -2,7 +2,6 @@ import logging
 
 from fastapi import FastAPI, HTTPException, status
 
-from clinvar_ingest.api.lifespan_hooks import read_log_conf
 from clinvar_ingest.api.middleware import LogRequests
 from clinvar_ingest.api.model.requests import (
     ClinvarFTPWatcherRequest,
@@ -12,7 +11,7 @@ from clinvar_ingest.api.model.requests import (
 
 logger = logging.getLogger("api")
 
-app = FastAPI(lifespan=read_log_conf)
+app = FastAPI()
 app.add_middleware(LogRequests)
 
 
