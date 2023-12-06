@@ -13,14 +13,6 @@ jobs:
         with:
           python-version: 3.12
           cache: pip
-      # - name: Use pip cache
-      #   uses: actions/cache@v3
-      #   with:
-      #       path: ~/.cache/pip
-      #       key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
-      #       restore-keys: |
-      #         ${{ runner.os }}-pip-
-      #
       - name: Install dependencies
         run: |
           pip install '.[dev]'
@@ -45,13 +37,6 @@ jobs:
         with:
           python-version: 3.12
           cache: pip
-      # - name: Use pip cache
-      #   uses: actions/cache@v3
-      #   with:
-      #       path: ~/.cache/pip
-      #       key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
-      #       restore-keys: |
-      #         ${{ runner.os }}-pip-
       - name: Install dependencies
         run: |
           pip install '.[dev]'
