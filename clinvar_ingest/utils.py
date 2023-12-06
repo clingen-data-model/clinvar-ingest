@@ -38,6 +38,21 @@ def extract(d: dict, key: Any) -> Any:
         return d.pop(key, None)
 
 
+def get(d: dict, *keys: List[Any]) -> Any:
+    """
+    Traverses the path of `keys` in `d` and returns the value.
+    If any key does not exist, returns None.
+    """
+    for i, k in enumerate(keys):
+        if d and k in d:
+            if i == len(keys) - 1:
+                return d[k]
+            else:
+                d = d[k]
+        else:
+            return None
+
+
 def ensure_list(obj: Any) -> List:
     """
     Ensure that the given object is a list. If it is not a list, it will be
@@ -63,3 +78,28 @@ def ensure_list(obj: Any) -> List:
     if not isinstance(obj, list):
         return [obj]
     return obj
+
+
+def flatten1(things: List[List[Any]]) -> List[Any]:
+    """
+    Takes a list of things. If any of the things are lists, they are flattened
+    to the top level. The result is a list of things that is nested one fewer levels.
+
+    Example:
+        >>> flatten1([['foo'], ['bar']])
+        ['foo', 'bar']
+        >>> flatten1([['foo', 'bar'], ['baz']])
+        ['foo', 'bar', 'baz']
+        >>> flatten1(['foo', 'bar'])
+        ['foo', 'bar']
+        >>> flatten1([['foo'], 'bar'])
+        ['foo', 'bar']
+    """
+    outputs = []
+    for thing in things:
+        if isinstance(thing, list):
+            for item in thing:
+                outputs.append(item)
+        else:
+            outputs.append(thing)
+    return outputs

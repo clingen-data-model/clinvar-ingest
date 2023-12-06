@@ -1,5 +1,12 @@
-from clinvar_ingest.model import Gene, GeneAssociation, Variation, VariationArchive, ClinicalAssertion, \
-    Submitter, Submission
+from clinvar_ingest.model import (
+    ClinicalAssertion,
+    Gene,
+    GeneAssociation,
+    Trait,
+    TraitSet,
+    Variation,
+    VariationArchive,
+)
 from clinvar_ingest.reader import read_clinvar_xml
 
 
@@ -8,18 +15,20 @@ def test_read_original_clinvar_variation_2():
     Test a SimpleAllele record
     """
     filename = "test/data/original-clinvar-variation-2.xml"
-    #filename = "data/original-clinvar-variation-2.xml"
+    # filename = "data/original-clinvar-variation-2.xml"
     with open(filename) as f:
         objects = list(read_clinvar_xml(f))
 
     # gene, gene_association, variation, variation_archive
-    assert 6 == len(objects)
+    assert 8 == len(objects)
     assert isinstance(objects[0], Gene)
     assert isinstance(objects[1], GeneAssociation)
     assert isinstance(objects[2], Variation)
-    assert isinstance(objects[3], ClinicalAssertion)
-    assert isinstance(objects[4], ClinicalAssertion)
-    assert isinstance(objects[5], VariationArchive)
+    assert isinstance(objects[3], Trait)
+    assert isinstance(objects[4], TraitSet)
+    assert isinstance(objects[5], ClinicalAssertion)
+    assert isinstance(objects[6], ClinicalAssertion)
+    assert isinstance(objects[7], VariationArchive)
 
     variation = objects[2]
 
@@ -47,16 +56,16 @@ def test_read_original_clinvar_variation_2():
     assert gene_association.variation_id == "2"
 
     # SCVs - TODO build out further
-    scv = objects[3]
+    scv = objects[5]
     assert scv.assertion_id == "20155"
     submitter = scv.submitter
     assert submitter.id == "3"
-    assert submitter.current_name == 'OMIM'
+    assert submitter.current_name == "OMIM"
     submission = scv.submission
     assert submission.id == "3"
     assert submission.submission_date == "2017-01-26"
 
-    scv = objects[4]
+    scv = objects[6]
     assert scv.assertion_id == "2865972"
     submitter = scv.submitter
     assert submitter.id == "507826"
@@ -75,13 +84,21 @@ def test_read_original_clinvar_variation_634266():
     with open(filename) as f:
         objects = list(read_clinvar_xml(f))
 
-    assert 6 == len(objects)
+    assert 14 == len(objects)
     assert isinstance(objects[0], Variation)
-    assert isinstance(objects[1], ClinicalAssertion)
-    assert isinstance(objects[2], ClinicalAssertion)
-    assert isinstance(objects[3], ClinicalAssertion)
-    assert isinstance(objects[4], ClinicalAssertion)
-    assert isinstance(objects[5], VariationArchive)
+    assert isinstance(objects[1], Trait)
+    assert isinstance(objects[2], TraitSet)
+    assert isinstance(objects[3], Trait)
+    assert isinstance(objects[4], TraitSet)
+    assert isinstance(objects[5], Trait)
+    assert isinstance(objects[6], TraitSet)
+    assert isinstance(objects[7], Trait)
+    assert isinstance(objects[8], TraitSet)
+    assert isinstance(objects[9], ClinicalAssertion)
+    assert isinstance(objects[10], ClinicalAssertion)
+    assert isinstance(objects[11], ClinicalAssertion)
+    assert isinstance(objects[12], ClinicalAssertion)
+    assert isinstance(objects[13], VariationArchive)
 
     # Verify variation
     variation = objects[0]
@@ -101,7 +118,7 @@ def test_read_original_clinvar_variation_634266():
     ]
 
     # Verify variation archive
-    variation_archive = objects[5]
+    variation_archive = objects[13]
     assert variation_archive.id == "VCV000634266"
     assert variation_archive.name == "CYP2C19*12/*34"
     assert variation_archive.date_created == "2019-06-17"
@@ -124,42 +141,50 @@ def test_read_original_clinvar_variation_634266():
     assert "GeneList" in variation.content
 
     # SCVs - TODO build out further
-    scv = objects[1]
+    scv = objects[9]
     assert scv.assertion_id == "1801318"
     submitter = scv.submitter
     assert submitter.id == "505961"
-    assert submitter.current_name == "Clinical Pharmacogenetics Implementation Consortium"
+    assert (
+        submitter.current_name == "Clinical Pharmacogenetics Implementation Consortium"
+    )
     submission = scv.submission
     assert submission.id == "505961"
     assert submission.submission_date == "2018-03-01"
 
-    scv = objects[2]
+    scv = objects[10]
     assert scv.assertion_id == "1801467"
     submitter = scv.submitter
     assert submitter.id == "505961"
-    assert submitter.current_name == "Clinical Pharmacogenetics Implementation Consortium"
+    assert (
+        submitter.current_name == "Clinical Pharmacogenetics Implementation Consortium"
+    )
     submission = scv.submission
     assert submission.id == "505961"
     assert submission.submission_date == "2018-03-01"
 
-    scv = objects[3]
+    scv = objects[11]
     assert scv.assertion_id == "1802126"
     submitter = scv.submitter
     assert submitter.id == "505961"
-    assert submitter.current_name == "Clinical Pharmacogenetics Implementation Consortium"
+    assert (
+        submitter.current_name == "Clinical Pharmacogenetics Implementation Consortium"
+    )
     submission = scv.submission
     assert submission.id == "505961"
     assert submission.submission_date == "2018-03-01"
 
-    scv = objects[4]
+    scv = objects[12]
     assert scv.assertion_id == "1802127"
     submitter = scv.submitter
     assert submitter.id == "505961"
-    assert submitter.current_name == "Clinical Pharmacogenetics Implementation Consortium"
+    assert (
+        submitter.current_name == "Clinical Pharmacogenetics Implementation Consortium"
+    )
     submission = scv.submission
     assert submission.id == "505961"
     assert submission.submission_date == "2018-03-01"
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_read_original_clinvar_variation_2()

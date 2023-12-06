@@ -86,6 +86,13 @@ def _handle_text_nodes(path, key, value) -> Tuple[Any, Any]:
     return (key, value)
 
 
+def _parse_xml_document(doc_str: str):
+    """
+    Reads an XML document from a string.
+    """
+    return xmltodict.parse(doc_str, postprocessor=_handle_text_nodes)
+
+
 def read_clinvar_xml(
     reader: TextIO, disassemble=True, jsonify_content=True
 ) -> Iterator[model.Model]:
@@ -120,9 +127,7 @@ def read_clinvar_xml(
                     f" {unclosed}, element: {ET.tostring(elem)}"
                 )
             else:
-                elem_d = xmltodict.parse(
-                    ET.tostring(elem), postprocessor=_handle_text_nodes
-                )
+                elem_d = _parse_xml_document(ET.tostring(elem))
                 if not isinstance(elem_d, dict):
                     raise RuntimeError(
                         f"xmltodict returned non-dict type: ({type(elem_d)}) {elem_d}"
