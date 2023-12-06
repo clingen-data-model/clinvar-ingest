@@ -1,0 +1,21 @@
+main:
+    params: [args]
+    steps:
+        - copy:
+            call: http.post
+            args:
+                url: https://clinvar-ingest-qmojsrhb3q-uc.a.run.app/copy
+                body: '${args}'
+                auth:
+                    type: OIDC
+            result: copy_result
+        - parse:
+            call: http.post
+            args:
+                url: https://clinvar-ingest-qmojsrhb3q-uc.a.run.app/parse
+                body: '${copy_result.body}'
+                auth:
+                    type: OIDC
+            result: parse_result
+        - result:
+            return: ${parse_result}

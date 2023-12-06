@@ -17,4 +17,4 @@ ENV VIRTUAL_ENV=/opt/venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 ENV GCLOUD_PROJECT="clingen-dev"
 
-CMD ["clinvar-ingest"]
+CMD ["uvicorn", "clinvar_ingest.api.main:app", "--host", "0.0.0.0", "--port", "80"]
