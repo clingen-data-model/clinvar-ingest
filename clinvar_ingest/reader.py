@@ -2,9 +2,9 @@
 Module for iterating over XML files and calling Model constructors
 on appropriate elements.
 """
-from enum import StrEnum
 import logging
 import xml.etree.ElementTree as ET
+from enum import StrEnum
 from typing import Any, Iterator, TextIO, Tuple
 
 import xmltodict
