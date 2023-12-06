@@ -2,6 +2,10 @@ from fastapi.testclient import TestClient
 
 from clinvar_ingest.api.main import app
 
+@pytest.fixture
+def log_conf():
+    logging.config.dictConfig(log_conf)
+
 
 def test_status_check(caplog) -> None:
     # per https://fastapi.tiangolo.com/advanced/testing-events/
