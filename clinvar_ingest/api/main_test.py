@@ -1,13 +1,20 @@
+import json
+import logging.config
+
+import pytest
 from fastapi.testclient import TestClient
 
 from clinvar_ingest.api.main import app
 
+
 @pytest.fixture
 def log_conf():
-    logging.config.dictConfig(log_conf)
+    with open("log_conf.json", "r") as f:
+        conf = json.load(f)
+        logging.config.dictConfig(conf)
 
 
-def test_status_check(caplog) -> None:
+def test_status_check(log_conf, caplog) -> None:
     # per https://fastapi.tiangolo.com/advanced/testing-events/
     # perfer testing with the context manager...
     with TestClient(app) as client:
@@ -19,7 +26,7 @@ def test_status_check(caplog) -> None:
         assert "elapsed_ms" in caplog.records[1].msg
 
 
-def test_copy_endpoint_success(caplog) -> None:
+def test_copy_endpoint_success(log_conf, caplog) -> None:
     with TestClient(app) as client:
         body = {
             "Name": "ClinVarVariationRelease_2023-1104.xml.gz",
