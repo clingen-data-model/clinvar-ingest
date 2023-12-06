@@ -4,6 +4,7 @@ on appropriate elements.
 """
 import logging
 import xml.etree.ElementTree as ET
+from enum import StrEnum
 from typing import Any, Iterator, TextIO, Tuple
 
 import xmltodict
@@ -53,6 +54,17 @@ def _parse(file, item_cb, output_queue, depth=2):
     output_queue.put(QUEUE_STOP_VALUE)
 
 
+class ElementTreeEvent(StrEnum):
+    """
+    Enum for ElementTree events
+    """
+
+    START = "start"
+    END = "end"
+    START_NS = "start-ns"
+    END_NS = "end-ns"
+
+
 def get_clinvar_xml_releaseinfo(file) -> dict:
     """
     Parses top level release info from file.
@@ -60,8 +72,10 @@ def get_clinvar_xml_releaseinfo(file) -> dict:
     """
     release_date = None
     _logger.debug(f"{file=}")
-    for event, elem in ET.iterparse(file, events=["start", "end"]):
-        if event == "start" and elem.tag == "ClinVarVariationRelease":
+    for event, elem in ET.iterparse(
+        file, events=[ElementTreeEvent.START, ElementTreeEvent.END]
+    ):
+        if event == ElementTreeEvent.START and elem.tag == "ClinVarVariationRelease":
             release_date = elem.attrib["ReleaseDate"]
         else:
             break
