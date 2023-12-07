@@ -45,7 +45,7 @@ async def copy(payload: ClinvarFTPWatcherRequest):
             f"gs://{config.bucket_name}/{config.bucket_staging_prefix}/{payload.name}"
         )
         logger.info(f"Copying {ftp_path} to {gcs_path}")
-        http_upload_shell(ftp_path, gcs_path)
+        http_upload_urllib(ftp_path, gcs_path, client=gcs_storage_client)
         return CopyResponse(
             ftp_path=ftp_path,
             gcs_path=gcs_path,
