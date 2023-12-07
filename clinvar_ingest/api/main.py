@@ -1,5 +1,5 @@
-from contextlib import asynccontextmanager
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, status
 
@@ -11,6 +11,7 @@ from clinvar_ingest.api.model.requests import (
 )
 
 logger = logging.getLogger("api")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
