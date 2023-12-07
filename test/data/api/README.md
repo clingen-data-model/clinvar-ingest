@@ -7,7 +7,7 @@ This example uses as input a file in github, downloaded into a string using curl
 
 ```bash
 curl -X POST -H "Authorization: Bearer `gcloud auth print-identity-token`" \
-    --json "$(curl -s https://raw.githubusercontent.com/clingen-data-model/clinvar-ingest/44-workflow-copy-job/test/data/api/copy-request-body-test.json)" \
+    --json "`curl -s https://raw.githubusercontent.com/clingen-data-model/clinvar-ingest/44-workflow-copy-job/test/data/api/copy-request-body-test.json`" \
     'https://clinvar-ingest-qmojsrhb3q-uc.a.run.app/copy'
 ```
 
@@ -30,4 +30,14 @@ Workflow payload example:
     "argument": "{\"Name\": \"OriginalTestDataSet.xml.gz\", \"Size\": 46719, \"Released\": \"2023-10-07 15:47:16\", \"Last Modified\": \"2023-10-07 15:47:16\", \"Directory\": \"\", \"Release Date\": \"2023-10-07\"}"
 }
 
+```
+
+One other difference between the Cloud Run and the Workflow request is that the Cloud Run expects an OIDC identity token but the Workflow expects an OAuth2 access token. An access token for the currently activated account in gcloud can be retrieved with `gcloud auth print-access-token` (vs `print-identity-token`).
+
+Example workflow invoke command:
+```bash
+curl -X POST \
+    -H "Authorization: Bearer `gcloud auth print-access-token`" \
+    --json "`curl -s https://raw.githubusercontent.com/clingen-data-model/clinvar-ingest/44-workflow-copy-job/test/data/api/workflow-request-body-test.json`" \
+    "https://workflowexecutions.googleapis.com/v1/projects/clingen-dev/locations/us-central1/workflows/clinvar-ingest/executions"
 ```
