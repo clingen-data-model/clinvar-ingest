@@ -21,9 +21,10 @@ def test_status_check(log_conf, caplog) -> None:
         response = client.get("/health")
         assert response.status_code == 200
         assert response.json() == {"health": "ok!"}
-        assert len(caplog.records) == 2
-        assert "GET /health" in caplog.records[0].msg
-        assert "elapsed_ms" in caplog.records[1].msg
+        assert len(caplog.records) == 3
+        assert "starting" in caplog.records[0].msg
+        assert "GET /health" in caplog.records[1].msg
+        assert "elapsed_ms" in caplog.records[2].msg
 
 
 def test_copy_endpoint_success(log_conf, caplog) -> None:
@@ -55,5 +56,5 @@ def test_copy_endpoint_success(log_conf, caplog) -> None:
         )
         assert response.status_code == 422
         assert "Input should be a valid datetime" in response.text
-        assert len(caplog.records) == 4
-        assert "status_code=422" in caplog.records[3].msg
+        assert len(caplog.records) == 5
+        assert "status_code=422" in caplog.records[4].msg
