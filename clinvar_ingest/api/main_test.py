@@ -45,8 +45,6 @@ def test_copy_endpoint_success(log_conf, caplog) -> None:
         assert response.json() == {
             "ftp_path": "/pub/clinvar/xml/clinvar_variation/weekly_release/ClinVarVariationRelease_2023-1104.xml.gz",
             "gcs_path": "gs://tbd-not-a-real-bucket",
-            "no_disassemble": True,
-            "no_jsonify_content": True,
         }
 
         body["Released"] = "2022-12-05"
