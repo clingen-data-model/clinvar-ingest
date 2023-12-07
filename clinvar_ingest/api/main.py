@@ -2,13 +2,17 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, status
+from google.cloud.storage import Client as GCSClient
 
 from clinvar_ingest.api.middleware import LogRequests
 from clinvar_ingest.api.model.requests import (
     ClinvarFTPWatcherRequest,
+    CopyResponse,
     ParseRequest,
     TodoRequest,
 )
+import clinvar_ingest.config as config
+from clinvar_ingest.cloud.gcs import http_upload_urllib
 
 logger = logging.getLogger("api")
 
@@ -22,6 +26,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 app.add_middleware(LogRequests)
 
+gcs_storage_client = GCSClient()
+
 
 @app.get("/health", status_code=status.HTTP_200_OK)
 async def health():
@@ -31,9 +37,12 @@ async def health():
 @app.post("/copy", status_code=status.HTTP_201_CREATED, response_model=ParseRequest)
 async def copy(payload: ClinvarFTPWatcherRequest):
     try:
-        ftp_path = f"{payload.directory}/{payload.name}"
-        gcs_path = "gs://tbd-not-a-real-bucket"
-        return ParseRequest(
+        ftp_path = f"{config.clinvar_ftp_base_url}/{payload.directory}/{payload.name}"
+        gcs_path = (
+            f"gs://{config.bucket_name}/{config.bucket_staging_prefix}/{payload.name}"
+        )
+        http_upload_urllib(ftp_path, gcs_path, client=gcs_storage_client)
+        return CopyResponse(
             ftp_path=ftp_path,
             gcs_path=gcs_path,
         )
