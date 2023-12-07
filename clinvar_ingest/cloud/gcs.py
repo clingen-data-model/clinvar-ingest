@@ -38,6 +38,9 @@ def blob_writer(blob_uri: str, client=storage.Client(), binary=True) -> storage.
 
 
 def http_upload_shell(http_uri: str, blob_uri: str):
+    """
+    Upload the contents of `http_uri` to `blob_uri` using curl and gsutil
+    """
     p = subprocess.run(
         ["bash", "-c", f"curl {http_uri} | gcloud storage cp - {blob_uri}"],
         capture_output=True,
@@ -49,8 +52,9 @@ def http_upload_shell(http_uri: str, blob_uri: str):
 
 
 def http_upload_urllib(
-    http_uri: str, blob_uri: str, client=storage.Client(), chunk_size=1024 * 1024 * 4
+    http_uri: str, blob_uri: str, client=storage.Client(), chunk_size=1024 * 16
 ):
+    _logger.info(f"Uploading {http_uri} to {blob_uri}")
     with urllib.request.urlopen(http_uri) as f:
         with blob_writer(
             blob_uri=blob_uri,

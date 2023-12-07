@@ -1,5 +1,6 @@
 import logging
 from contextlib import asynccontextmanager
+import os
 
 from fastapi import FastAPI, HTTPException, status
 from google.cloud.storage import Client as GCSClient
@@ -12,7 +13,7 @@ from clinvar_ingest.api.model.requests import (
     TodoRequest,
 )
 import clinvar_ingest.config as config
-from clinvar_ingest.cloud.gcs import http_upload_urllib
+from clinvar_ingest.cloud.gcs import http_upload_urllib, http_upload_shell
 
 logger = logging.getLogger("api")
 
@@ -34,14 +35,17 @@ async def health():
     return {"health": "ok!"}
 
 
-@app.post("/copy", status_code=status.HTTP_201_CREATED, response_model=ParseRequest)
+@app.post("/copy", status_code=status.HTTP_201_CREATED, response_model=CopyResponse)
 async def copy(payload: ClinvarFTPWatcherRequest):
     try:
-        ftp_path = f"{config.clinvar_ftp_base_url}/{payload.directory}/{payload.name}"
+        ftp_path = os.path.join(
+            config.clinvar_ftp_base_url, payload.directory, payload.name
+        )
         gcs_path = (
             f"gs://{config.bucket_name}/{config.bucket_staging_prefix}/{payload.name}"
         )
-        http_upload_urllib(ftp_path, gcs_path, client=gcs_storage_client)
+        logger.info(f"Copying {ftp_path} to {gcs_path}")
+        http_upload_shell(ftp_path, gcs_path)
         return CopyResponse(
             ftp_path=ftp_path,
             gcs_path=gcs_path,
