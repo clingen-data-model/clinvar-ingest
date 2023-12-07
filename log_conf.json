@@ -1,29 +1,29 @@
-log_conf = {
+{
     "version": 1,
-    "disable_existing_loggers": False,
-    "propagate": True,
+    "disable_existing_loggers": false,
+    "propagate": true,
     "formatters": {
         "default": {
             "format": "%(asctime)s - %(module)s - %(levelname)s - %(message)s",
-            "datefmt": "%Y-%m-%d %H:%M:%S",
+            "datefmt": "%Y-%m-%d %H:%M:%S"
         }
     },
     "handlers": {
         "default": {
             "formatter": "default",
             "class": "logging.StreamHandler",
-            "stream": "ext://sys.stderr",
+            "stream": "ext://sys.stderr"
         }
     },
     "loggers": {
         "api": {
             "level": "INFO",
             "handlers": ["default"],
-            "propagate": True,  # Necessary for the pytest caplog fixture.
+            "propagate": true
         },
         "uvicorn": {
             "level": "CRITICAL",
-            "handlers": ["default"],
-        },
-    },
+            "handlers": ["default"]
+        }
+    }
 }
