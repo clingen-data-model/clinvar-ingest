@@ -5,6 +5,7 @@ import os
 from fastapi import FastAPI, HTTPException, status
 from google.cloud.storage import Client as GCSClient
 
+import clinvar_ingest.config as config
 from clinvar_ingest.api.middleware import LogRequests
 from clinvar_ingest.api.model.requests import (
     ClinvarFTPWatcherRequest,
@@ -12,8 +13,7 @@ from clinvar_ingest.api.model.requests import (
     ParseRequest,
     TodoRequest,
 )
-import clinvar_ingest.config as config
-from clinvar_ingest.cloud.gcs import http_upload_urllib, http_upload_shell
+from clinvar_ingest.cloud.gcs import http_upload_urllib
 
 logger = logging.getLogger("api")
 

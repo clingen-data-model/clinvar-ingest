@@ -1,8 +1,8 @@
 import logging
 import subprocess
+import urllib
 
 from google.cloud import storage
-import urllib
 
 _logger = logging.getLogger(__name__)
 
