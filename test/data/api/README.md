@@ -14,7 +14,7 @@ curl -X POST -H "Authorization: Bearer `gcloud auth print-identity-token`" \
 
 ### Runinng a whole workflow
 
-For this, the input to the workflow is a wrapper object with the value passed to the first step of hte workflow being a field called `argument` and the value being the JSON-encoded payload. For example the value passed as the POST payload to teh `/copy` Cloud Run Service can be JSON-encoded as a JSON string in the `argument` field. It will not accept `argument` as being a JSON object, the value of that field itself, despite being JSON, must be JSON-encoded into a string.
+For this, the input to the workflow is a wrapper object with the value passed to the first step of the workflow being a field called `argument` and the value being the JSON-encoded payload. For example the value passed as the POST payload to the `/copy` Cloud Run Service can be JSON-encoded as a JSON string in the `argument` field. It will not accept `argument` as being a JSON object, the value of that field itself, despite being JSON, must be JSON-encoded into a string.
 
 Creating a workflow payload from a cloud run service payload:
 
