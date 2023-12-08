@@ -1,4 +1,4 @@
-from clinvar_ingest.utils import extract, extract_in, extract_oneof, slashjoin
+from clinvar_ingest.utils import extract, extract_in, extract_oneof
 
 
 def test_extract():
@@ -37,40 +37,3 @@ def test_extract_in():
     assert extract_in(d, "B") is None
     assert extract_in(d, "A", "B", "C", "D") is None
     assert extract_in(d, "A", "B", "C", "D", "E") is None
-
-
-def test_slashjoin():
-    args = []
-    assert slashjoin(*args) is None
-    args = ["a"]
-    assert slashjoin(*args) == "a"
-    args = ["a", "b"]
-    assert slashjoin(*args) == "a/b"
-    args = ["a", "b", "c"]
-    assert slashjoin(*args) == "a/b/c"
-
-    # Test args with leading slashes
-    args = ["/a"]
-    assert slashjoin(*args) == "/a"
-    args = ["/a", "/b"]
-    assert slashjoin(*args) == "/a/b"
-
-    # Test args with trailing slashes
-    args = ["a/"]
-    assert slashjoin(*args) == "a/"
-    args = ["a/", "b/"]
-    assert slashjoin(*args) == "a/b/"
-    args = ["a/", "b/", "c/"]
-    assert slashjoin(*args) == "a/b/c/"
-
-    # Test args with leading and trailing slashes
-    args = ["/a/"]
-    assert slashjoin(*args) == "/a/"
-    args = ["/a/", "/b/"]
-    assert slashjoin(*args) == "/a/b/"
-    args = ["/a/", "b", "/c/"]
-    assert slashjoin(*args) == "/a/b/c/"
-    args = ["/a/", "b", "/c"]
-    assert slashjoin(*args) == "/a/b/c"
-    args = ["a/", "b", "/c"]
-    assert slashjoin(*args) == "a/b/c"
