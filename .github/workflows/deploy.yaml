@@ -1,0 +1,43 @@
+name: Release
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
+    branches:
+      - main
+
+permissions:
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+
+      - name: authenticate to google cloud
+        id: "auth"
+        uses: google-github-actions/auth@v0
+        with:
+          workload_identity_provider: projects/522856288592/locations/global/workloadIdentityPools/clingen-actions-pool/providers/clingen-github-actions
+          service_account: clinvar-ingest-deployment@clingen-dev.iam.gserviceaccount.com
+
+      - name: "setup gcloud sdk"
+        uses: google-github-actions/setup-gcloud@v0
+
+      - name: Build and push image
+        run: |-
+          gcloud builds submit --quiet --substitutions="COMMIT_SHA=${{ github.event.workflow_run.head_sha }},CUSTOM_BRANCH_TAG=latest" --config .cloudbuild/docker.cloudbuild.yaml --gcs-log-dir=gs://clinvar-ingest/build/logs .
+
+      - name: Change image on cloud run service
+        run: |-
+          gcloud run deploy clinvar-ingest --image gcr.io/clingen-dev/clinvar-ingest:latest
+
+      - name: Deploy Workflow
+        run: |-
+          gcloud workflows deploy clinvar-ingest --source=workflow.yaml
