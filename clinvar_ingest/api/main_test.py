@@ -58,5 +58,5 @@ def test_copy_endpoint_success(log_conf, caplog) -> None:
         )
         assert response.status_code == 422
         assert "Input should be a valid datetime" in response.text
-        assert len(caplog.records) == 5
-        assert "status_code=422" in caplog.records[4].msg
+        assert len(caplog.records) == 6
+        assert "status_code=422" in caplog.records[5].msg
