@@ -1,11 +1,12 @@
 import json
 import logging.config
+from unittest.mock import patch
+
 import pytest
 from fastapi.testclient import TestClient
 
-from clinvar_ingest.api.main import app
 from clinvar_ingest import config
-from unittest.mock import patch
+from clinvar_ingest.api.main import app
 
 
 @pytest.fixture
