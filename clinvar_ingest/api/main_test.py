@@ -1,10 +1,11 @@
 import json
 import logging.config
-
 import pytest
 from fastapi.testclient import TestClient
 
 from clinvar_ingest.api.main import app
+from clinvar_ingest import config
+from unittest.mock import patch
 
 
 @pytest.fixture
@@ -28,7 +29,9 @@ def test_status_check(log_conf, caplog) -> None:
 
 
 def test_copy_endpoint_success(log_conf, caplog) -> None:
-    with TestClient(app) as client:
+    with patch(
+        "clinvar_ingest.api.main.http_upload_urllib", return_value=None
+    ), TestClient(app) as client:
         body = {
             "Name": "ClinVarVariationRelease_2023-1104.xml.gz",
             "Size": 10,
@@ -43,8 +46,8 @@ def test_copy_endpoint_success(log_conf, caplog) -> None:
         )
         assert response.status_code == 201
         assert response.json() == {
-            "ftp_path": "/pub/clinvar/xml/clinvar_variation/weekly_release/ClinVarVariationRelease_2023-1104.xml.gz",
-            "gcs_path": "gs://tbd-not-a-real-bucket",
+            "ftp_path": f"{config.clinvar_ftp_base_url}/pub/clinvar/xml/clinvar_variation/weekly_release/ClinVarVariationRelease_2023-1104.xml.gz",
+            "gcs_path": f"gs://{config.bucket_name}/{config.bucket_staging_prefix}/ClinVarVariationRelease_2023-1104.xml.gz",
         }
 
         body["Released"] = "2022-12-05"

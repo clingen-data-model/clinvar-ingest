@@ -14,6 +14,7 @@ from clinvar_ingest.api.model.requests import (
     TodoRequest,
 )
 from clinvar_ingest.cloud.gcs import http_upload_urllib
+from clinvar_ingest.utils import slashjoin
 
 logger = logging.getLogger("api")
 
@@ -38,11 +39,11 @@ async def health():
 @app.post("/copy", status_code=status.HTTP_201_CREATED, response_model=CopyResponse)
 async def copy(payload: ClinvarFTPWatcherRequest):
     try:
-        ftp_path = os.path.join(
+        ftp_path = slashjoin(
             config.clinvar_ftp_base_url, payload.directory, payload.name
         )
-        gcs_path = (
-            f"gs://{config.bucket_name}/{config.bucket_staging_prefix}/{payload.name}"
+        gcs_path = slashjoin(
+            f"gs://{config.bucket_name}", config.bucket_staging_prefix, payload.name
         )
         logger.info(f"Copying {ftp_path} to {gcs_path}")
         http_upload_urllib(ftp_path, gcs_path, client=gcs_storage_client)
