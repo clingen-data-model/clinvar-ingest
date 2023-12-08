@@ -24,8 +24,8 @@ jobs:
         id: "auth"
         uses: google-github-actions/auth@v0
         with:
-          workload_identity_provider: # TODO Fill me in.
-          service_account: #TODO Fill me in
+          workload_identity_provider: projects/522856288592/locations/global/workloadIdentityPools/clingen-actions-pool/providers/clingen-github-actions
+          service_account: clinvar-ingest-deployment@clingen-dev.iam.gserviceaccount.com
 
       - name: "setup gcloud sdk"
         uses: google-github-actions/setup-gcloud@v0
