@@ -103,3 +103,32 @@ def flatten1(things: List[List[Any]]) -> List[Any]:
         else:
             outputs.append(thing)
     return outputs
+
+
+def slashjoin(*args: List[Any]) -> str:
+    """
+    Joins the given arguments with a slash.
+
+    If two adjacent arguments have a slash, the result will have one between them.
+
+    Leading and trailing slashes are preserved.
+
+    Example:
+        >>> slashjoin('foo', 'bar')
+        'foo/bar'
+        >>> slashjoin('foo/', 'bar')
+        'foo/bar'
+        >>> slashjoin('foo', '/bar')
+        'foo/bar'
+        >>> slashjoin('foo/', '/bar')
+        'foo/bar'
+        >>> slashjoin('/foo/', '/bar/')
+        '/foo/bar/'
+    """
+    if len(args) > 0:
+        joined = "/".join([str(arg).strip("/") for arg in args if arg is not None])
+        if args[0].startswith("/"):
+            joined = "/" + joined
+        if args[-1].endswith("/"):
+            joined = joined + "/"
+        return joined
