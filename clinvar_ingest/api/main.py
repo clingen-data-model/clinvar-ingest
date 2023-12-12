@@ -37,18 +37,19 @@ async def health():
 
 @app.post("/copy", status_code=status.HTTP_201_CREATED, response_model=CopyResponse)
 async def copy(payload: ClinvarFTPWatcherRequest):
+    ftp_base = config.clinvar_ftp_base_url.strip("/")
+    ftp_dir = PurePosixPath(payload.directory)
+    ftp_file = PurePosixPath(payload.name)
+    ftp_path = f"{ftp_base}/{ftp_dir.relative_to(ftp_dir.anchor) / ftp_file}"
+
+    gcs_base = f"gs://{config.bucket_name}"
+    gcs_dir = PurePosixPath(config.bucket_staging_prefix)
+    gcs_file = PurePosixPath(payload.name)
+    gcs_path = f"{gcs_base}/{gcs_dir.relative_to(gcs_dir.anchor) / gcs_file}"
+
+    logger.info(f"Copying {ftp_path} to {gcs_path}")
+
     try:
-        ftp_base = config.clinvar_ftp_base_url.strip("/")
-        ftp_dir = PurePosixPath(payload.directory)
-        ftp_file = PurePosixPath(payload.name)
-        ftp_path = f"{ftp_base}/{ftp_dir.relative_to(ftp_dir.anchor) / ftp_file}"
-
-        gcs_base = f"gs://{config.bucket_name}"
-        gcs_dir = PurePosixPath(config.bucket_staging_prefix)
-        gcs_file = PurePosixPath(payload.name)
-        gcs_path = f"{gcs_base}/{gcs_dir.relative_to(gcs_dir.anchor) / gcs_file}"
-
-        logger.info(f"Copying {ftp_path} to {gcs_path}")
         http_upload_urllib(ftp_path, gcs_path, client=gcs_storage_client)
         return CopyResponse(
             ftp_path=ftp_path,
