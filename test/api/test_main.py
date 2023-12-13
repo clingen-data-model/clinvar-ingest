@@ -1,6 +1,5 @@
 import json
 import logging.config
-from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -8,7 +7,6 @@ from fastapi.testclient import TestClient
 
 # from clinvar_ingest import config
 from clinvar_ingest.api.main import app
-import clinvar_ingest
 
 
 @pytest.fixture
