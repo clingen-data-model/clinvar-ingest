@@ -1,7 +1,6 @@
-import os
 from types import SimpleNamespace
+
 import pytest
-from unittest.mock import patch
 
 
 @pytest.fixture(scope="session", autouse=True)
