@@ -1,12 +1,14 @@
 import json
 import logging.config
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
 
-from clinvar_ingest import config
+# from clinvar_ingest import config
 from clinvar_ingest.api.main import app
+import clinvar_ingest
 
 
 @pytest.fixture
@@ -29,10 +31,13 @@ def test_status_check(log_conf, caplog) -> None:
         assert "elapsed_ms" in caplog.records[2].msg
 
 
-def test_copy_endpoint_success(log_conf, caplog) -> None:
-    with patch(
-        "clinvar_ingest.api.main.http_upload_urllib", return_value=None
-    ), TestClient(app) as client:
+def test_copy_endpoint_success(log_conf, env_config, caplog) -> None:
+    with (
+        patch("clinvar_ingest.api.main.http_upload_urllib", return_value=None),
+        patch("clinvar_ingest.api.main.config", new=env_config),
+        TestClient(app) as client,
+    ):
+        config = env_config
         body = {
             "Name": "ClinVarVariationRelease_2023-1104.xml.gz",
             "Size": 10,
