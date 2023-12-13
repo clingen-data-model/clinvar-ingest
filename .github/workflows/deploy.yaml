@@ -36,7 +36,7 @@ jobs:
 
       - name: Change image on cloud run service
         run: |-
-          gcloud run deploy clinvar-ingest --image gcr.io/clingen-dev/clinvar-ingest:latest
+          gcloud run deploy clinvar-ingest --region us-central1 --image gcr.io/clingen-dev/clinvar-ingest:latest
 
       - name: Deploy Workflow
         run: |-
