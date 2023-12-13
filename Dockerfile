@@ -14,8 +14,9 @@ RUN python -m pip install .
 # Runtime Image
 FROM python:3.11-slim-bullseye as runtime
 COPY --from=build /opt/venv /opt/venv
+COPY --from=build /app/log_conf.json /app/log_conf.json
 ENV VIRTUAL_ENV=/opt/venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 ENV GCLOUD_PROJECT="clingen-dev"
 
-CMD ["uvicorn", "clinvar_ingest.api.main:app", "--host", "0.0.0.0", "--port", "80", "--log-config", "log_conf.json"]
+CMD ["uvicorn", "clinvar_ingest.api.main:app", "--host", "0.0.0.0", "--port", "80", "--log-config", "/app/log_conf.json"]
