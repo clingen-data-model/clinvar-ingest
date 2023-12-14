@@ -27,7 +27,11 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 app.add_middleware(LogRequests)
 
-gcs_storage_client = GCSClient()
+
+def _get_gcs_client() -> GCSClient:
+    if getattr(_get_gcs_client, "client", None) is None:
+        setattr(_get_gcs_client, "client", GCSClient())
+    return getattr(_get_gcs_client, "client")
 
 
 @app.get("/health", status_code=status.HTTP_200_OK)
@@ -50,7 +54,7 @@ async def copy(payload: ClinvarFTPWatcherRequest):
     logger.info(f"Copying {ftp_path} to {gcs_path}")
 
     try:
-        http_upload_urllib(ftp_path, gcs_path, client=gcs_storage_client)
+        http_upload_urllib(ftp_path, gcs_path, client=_get_gcs_client())
         return CopyResponse(
             ftp_path=ftp_path,
             gcs_path=gcs_path,

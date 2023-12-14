@@ -33,6 +33,7 @@ def test_copy_endpoint_success(log_conf, env_config, caplog) -> None:
     with (
         patch("clinvar_ingest.api.main.http_upload_urllib", return_value=None),
         patch("clinvar_ingest.api.main.config", new=env_config),
+        patch("clinvar_ingest.api.main._get_gcs_client", return_value="not a client"),
         TestClient(app) as client,
     ):
         config = env_config
