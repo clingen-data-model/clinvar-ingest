@@ -40,5 +40,10 @@ class ParseRequest(BaseModel):
     no_jsonify_content: bool = Field(default=True)
 
 
+class CopyResponse(BaseModel):
+    ftp_path: str
+    gcs_path: str
+
+
 class TodoRequest(BaseModel):  # A shim to get the workflow pieced together
     todo: str

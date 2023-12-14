@@ -8,13 +8,12 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 WORKDIR /app
 COPY ./clinvar_ingest ./clinvar_ingest
 COPY pyproject.toml .
-COPY log_conf.json .
 RUN python -m pip install .
 
 # Runtime Image
 FROM python:3.11-slim-bullseye as runtime
 COPY --from=build /opt/venv /opt/venv
-COPY --from=build /app/log_conf.json /app/log_conf.json
+COPY log_conf.json /app/log_conf.json
 ENV VIRTUAL_ENV=/opt/venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 ENV GCLOUD_PROJECT="clingen-dev"

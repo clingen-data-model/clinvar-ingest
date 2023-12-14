@@ -1,9 +1,11 @@
 import json
 import logging.config
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
 
+# from clinvar_ingest import config
 from clinvar_ingest.api.main import app
 
 
@@ -27,8 +29,14 @@ def test_status_check(log_conf, caplog) -> None:
         assert "elapsed_ms" in caplog.records[2].msg
 
 
-def test_copy_endpoint_success(log_conf, caplog) -> None:
-    with TestClient(app) as client:
+def test_copy_endpoint_success(log_conf, env_config, caplog) -> None:
+    with (
+        patch("clinvar_ingest.api.main.http_upload_urllib", return_value=None),
+        patch("clinvar_ingest.api.main.config", new=env_config),
+        patch("clinvar_ingest.api.main._get_gcs_client", return_value="not a client"),
+        TestClient(app) as client,
+    ):
+        config = env_config
         body = {
             "Name": "ClinVarVariationRelease_2023-1104.xml.gz",
             "Size": 10,
@@ -43,10 +51,8 @@ def test_copy_endpoint_success(log_conf, caplog) -> None:
         )
         assert response.status_code == 201
         assert response.json() == {
-            "ftp_path": "/pub/clinvar/xml/clinvar_variation/weekly_release/ClinVarVariationRelease_2023-1104.xml.gz",
-            "gcs_path": "gs://tbd-not-a-real-bucket",
-            "no_disassemble": True,
-            "no_jsonify_content": True,
+            "ftp_path": f"{config.clinvar_ftp_base_url}/pub/clinvar/xml/clinvar_variation/weekly_release/ClinVarVariationRelease_2023-1104.xml.gz",
+            "gcs_path": f"gs://{config.bucket_name}/{config.bucket_staging_prefix}/ClinVarVariationRelease_2023-1104.xml.gz",
         }
 
         body["Released"] = "2022-12-05"
@@ -56,5 +62,5 @@ def test_copy_endpoint_success(log_conf, caplog) -> None:
         )
         assert response.status_code == 422
         assert "Input should be a valid datetime" in response.text
-        assert len(caplog.records) == 5
-        assert "status_code=422" in caplog.records[4].msg
+        assert len(caplog.records) == 6
+        assert "status_code=422" in caplog.records[5].msg

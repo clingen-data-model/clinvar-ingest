@@ -22,7 +22,7 @@
             "propagate": true
         },
         "uvicorn": {
-            "level": "CRITICAL",
+            "level": "ERROR",
             "handlers": ["default"]
         }
     }
