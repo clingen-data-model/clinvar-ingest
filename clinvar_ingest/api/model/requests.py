@@ -72,7 +72,7 @@ class GCSBlobPath(RootModel):
 
 class ParseResponse(BaseModel):
     # Either URLs (such as gs:// URLs) or paths to local files which exist
-    parsed_files: list[Union[GCSBlobPath, FilePath]]
+    parsed_files: dict[str, Union[GCSBlobPath, FilePath]]
 
 
 class TodoRequest(BaseModel):  # A shim to get the workflow pieced together

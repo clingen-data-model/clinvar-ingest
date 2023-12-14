@@ -367,7 +367,7 @@ class Variation(Model):
             for child in children
             for grandchild in Variation.get_all_descendants(child)
         ]
-        print(f"{child_ids=}, {grandchildren=}")
+        _logger.debug(f"{child_ids=}, {grandchildren=}")
         return child_ids + grandchildren
 
     @staticmethod
