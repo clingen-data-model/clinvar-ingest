@@ -1,5 +1,3 @@
-import gzip
-import json
 import logging
 import sys
 
@@ -8,86 +6,16 @@ import coloredlogs
 from clinvar_ingest.cli import parse_args
 from clinvar_ingest.cloud.bigquery.create_tables import run_create
 from clinvar_ingest.cloud.gcs import copy_file_to_bucket
-from clinvar_ingest.fs import assert_mkdir, find_files
-from clinvar_ingest.model import dictify
-from clinvar_ingest.reader import get_clinvar_xml_releaseinfo, read_clinvar_xml
+from clinvar_ingest.fs import find_files
+from clinvar_ingest.parse import parse_and_write_files
 
-_logger = logging.getLogger(__name__)
-
-
-def get_open_file(d: dict, root_dir: str, label: str, suffix=".ndjson", mode="w"):
-    """
-    Takes a dictionary of labels to file handles. Opens a new file handle using
-    label and suffix in root_dir if not already in the dictionary.
-    """
-    if label not in d:
-        label_dir = f"{root_dir}/{label}"
-        assert_mkdir(root_dir)
-        assert_mkdir(label_dir)
-        filepath = f"{label_dir}/{label}{suffix}"
-        _logger.info("Opening file for writing: %s", filepath)
-        d[label] = open(filepath, mode, encoding="utf-8")
-    return d[label]
-
-
-def _open(filename: str):
-    """
-    Opens a file with path `filename`. If `filename` ends in .gz, opens as gzip.
-    """
-    if filename.endswith(".gz"):
-        return gzip.open(filename)
-    else:
-        return open(filename, "rb")
-
-
-def parse_and_write_files(
-    input_filename: str, output_directory: str, disassemble=True, jsonify_content=True
-) -> list:
-    """
-    Parses input file, writes outputs to output directory.
-
-    Returns the dict of types to their output files.
-    """
-    open_output_files = {}
-    with _open(input_filename) as f_in:
-        releaseinfo = get_clinvar_xml_releaseinfo(f_in)
-        release_date = releaseinfo["release_date"]
-        print(f"Parsing release date: {release_date}")
-
-    # Release directory is within the output directory
-    output_release_directory = f"{output_directory}/{release_date}"
-
-    try:
-        with _open(input_filename) as f_in:
-            for obj in read_clinvar_xml(
-                f_in, disassemble=disassemble, jsonify_content=jsonify_content
-            ):
-                entity_type = obj.entity_type
-                f_out = get_open_file(
-                    open_output_files,
-                    root_dir=output_release_directory,
-                    label=entity_type,
-                )
-                obj_dict = dictify(obj)
-                obj_dict["release_date"] = release_date
-                f_out.write(json.dumps(obj_dict))
-                f_out.write("\n")
-    except Exception as e:
-        print("Exception caught in parse_and_write_files")
-        raise e
-    finally:
-        print("Closing output files")
-        for f in open_output_files.values():
-            f.close()
-
-    return {k: v.name for k, v in open_output_files.items()}
+_logger = logging.getLogger("clinvar-ingest")
 
 
 def run_parse(args):
     """
     Primary entrypoint function. Takes CLI arg vector excluding program name.
     """
-    assert_mkdir(args.output_directory)
     output_files = parse_and_write_files(
         args.input_filename,
         args.output_directory,

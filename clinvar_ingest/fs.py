@@ -1,5 +1,8 @@
+import gzip
 import os
 from dataclasses import dataclass
+from enum import StrEnum
+from pathlib import PurePosixPath
 from typing import List
 
 
@@ -7,6 +10,11 @@ from typing import List
 class FileListing:
     proto = "file://"
     files = []
+
+
+class BinaryOpenMode(StrEnum):
+    READ = "rb"
+    WRITE = "wb"
 
 
 def assert_mkdir(db_directory: str):
@@ -39,3 +47,17 @@ def find_files(root_directory: str) -> List[str]:
                 filepath = f"{relativized_dir_path}/{filename}"
                 outputs.append(filepath)
     return outputs
+
+
+def _open(filename: str, make_parents=True, mode: BinaryOpenMode = BinaryOpenMode.READ):
+    """
+    Opens a file with path `filename`. If `filename` ends in .gz, opens as gzip.
+
+    If `make_parents` is True, creates parent directories if they do not exist.
+    """
+    if make_parents:
+        for parent in reversed(PurePosixPath(filename).parents):
+            assert_mkdir(parent)
+    if filename.endswith(".gz"):
+        return gzip.open(filename, mode)
+    return open(filename, mode=mode)  # pylint: disable=W1514
