@@ -20,6 +20,7 @@ logger = logging.getLogger("api")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    _get_gcs_client()
     logger.info("Server starting up")
     yield
 
