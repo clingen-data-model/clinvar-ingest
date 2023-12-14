@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from pathlib import PurePath
-from typing import Union
+from typing import Any, Callable, Union
 
 from pydantic import (
     AnyUrl,
@@ -9,12 +9,33 @@ from pydantic import (
     Field,
     FilePath,
     RootModel,
+    field_serializer,
     validator,
 )
 
 
 def to_title_case(string: str) -> str:
     return " ".join(word.capitalize() for word in string.split("_"))
+
+
+def walk_and_replace(d: dict, dump_fn: Callable[[Any], Any]):
+    if isinstance(d, dict):
+        for k, v in d.items():
+            d[k] = walk_and_replace(v, dump_fn)
+    elif isinstance(d, list):
+        for i in range(len(d)):
+            d[i] = walk_and_replace(d[i], dump_fn)
+    else:
+        d = dump_fn(d)
+    return d
+
+
+def _dump_fn(val):
+    if isinstance(val, PurePath):
+        return str(val)
+    if isinstance(val, BaseModel):
+        return val.model_dump()
+    return val
 
 
 class ClinvarFTPWatcherRequest(BaseModel):
@@ -87,8 +108,12 @@ class PurePathModel(RootModel):
 
 
 class ParseResponse(BaseModel):
-    # Either URLs (such as gs:// URLs) or paths to local files which exist
+    # Either GCS path (gs:// URLs) or paths to local files
     parsed_files: dict[str, Union[GCSBlobPath, PurePathModel]]
+
+    @field_serializer("parsed_files", when_used="always")
+    def _serialize(self, v):
+        return walk_and_replace(v, _dump_fn)
 
 
 class TodoRequest(BaseModel):  # A shim to get the workflow pieced together
