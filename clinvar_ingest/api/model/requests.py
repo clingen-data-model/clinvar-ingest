@@ -7,7 +7,6 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
-    FilePath,
     RootModel,
     field_serializer,
     validator,
