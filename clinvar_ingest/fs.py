@@ -2,7 +2,7 @@ import gzip
 import os
 from dataclasses import dataclass
 from enum import StrEnum
-from pathlib import PurePosixPath
+from pathlib import PurePath
 from typing import List
 
 
@@ -56,7 +56,7 @@ def _open(filename: str, make_parents=True, mode: BinaryOpenMode = BinaryOpenMod
     If `make_parents` is True, creates parent directories if they do not exist.
     """
     if make_parents:
-        for parent in reversed(PurePosixPath(filename).parents):
+        for parent in reversed(PurePath(filename).parents):
             assert_mkdir(parent)
     if filename.endswith(".gz"):
         return gzip.open(filename, mode)
