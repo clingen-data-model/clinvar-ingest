@@ -77,7 +77,7 @@ class ParseRequest(BaseModel):
     no_jsonify_content: bool = Field(default=True)
 
 
-class GCSBlobPath(RootModel):
+class GcsBlobPath(RootModel):
     """
     A GCS blob path, such as gs://my-bucket/my-file.txt
     Validates path structure, does not check if the file exists.
@@ -108,13 +108,42 @@ class PurePathModel(RootModel):
         return v
 
 
+class GcsBucketName(RootModel):
+    root: str
+
+    @validator("root")
+    def _validate(cls, v):  # pylint: disable=E0213
+        alpha_lower = "abcdefghijklmnopqrstuvwxyz"
+        alpha_upper = alpha_lower.upper()
+        nums = "0123456789"
+        symbols = "-_."
+        allowed_chars = set(alpha_lower + alpha_upper + nums + symbols)
+
+        for c in v:
+            if c not in allowed_chars:
+                raise ValueError(f"Invalid character in bucket name: {c}")
+        return v
+
+
 class ParseResponse(BaseModel):
     # Either GCS path (gs:// URLs) or paths to local files
-    parsed_files: dict[str, Union[GCSBlobPath, PurePathModel]]
+    parsed_files: dict[str, Union[GcsBlobPath, PurePathModel]]
 
     @field_serializer("parsed_files", when_used="always")
     def _serialize(self, v):
         return walk_and_replace(v, _dump_fn)
+
+
+class CreateExternalTablesRequest(BaseModel):
+    """
+    Defines the arguments to the create_external_tables endpoint.
+    Values are used by create_tables.run_create.
+    """
+
+    destination_project: str
+
+    source_path: PurePathModel
+    source_bucket: str
 
 
 class TodoRequest(BaseModel):  # A shim to get the workflow pieced together

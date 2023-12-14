@@ -94,6 +94,7 @@ async def parse(payload: ParseRequest):
 
 @app.post("/create_external_tables", status_code=status.HTTP_201_CREATED)
 async def create_external_tables(payload: TodoRequest):
+    create_args = SimpleNamespace()
     return {"todo": "implement me"}
 
 
