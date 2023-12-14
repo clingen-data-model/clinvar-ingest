@@ -1,5 +1,4 @@
 import logging
-import subprocess
 import urllib
 
 from google.cloud import storage
@@ -45,23 +44,12 @@ def blob_writer(
     return blob.open("wb" if binary else "w")
 
 
-def http_upload_shell(http_uri: str, blob_uri: str):
-    """
-    Upload the contents of `http_uri` to `blob_uri` using curl and gsutil
-    """
-    p = subprocess.run(
-        ["bash", "-c", f"curl {http_uri} | gcloud storage cp - {blob_uri}"],
-        capture_output=True,
-        check=True,
-    )
-
-    if p.returncode != 0:
-        raise RuntimeError(f"curl failed:\n{p.stdout}\n{p.stderr}")
-
-
 def http_upload_urllib(
     http_uri: str, blob_uri: str, client: storage.Client = None, chunk_size=1024 * 16
 ):
+    """
+    Upload the contents of `http_uri` to `blob_uri` using urllib urlopen and Blob.open
+    """
     _logger.info(f"Uploading {http_uri} to {blob_uri}")
     if client is None:
         client = storage.Client()
