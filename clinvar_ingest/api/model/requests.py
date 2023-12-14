@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from pathlib import PurePath
 from typing import Union
 
 from pydantic import (
@@ -70,9 +71,24 @@ class GCSBlobPath(RootModel):
         return v
 
 
+class PurePathModel(RootModel):
+    """
+    A PurePath, such as /my/file.txt
+    Validates path structure, does not check if the file exists.
+    Keeps the value as a str, so it is JSON serializable without a custom serializer.
+    """
+
+    root: str
+
+    @validator("root")
+    def _validate(cls, v):  # pylint: disable=E0213
+        PurePath(v)
+        return v
+
+
 class ParseResponse(BaseModel):
     # Either URLs (such as gs:// URLs) or paths to local files which exist
-    parsed_files: dict[str, Union[GCSBlobPath, FilePath]]
+    parsed_files: dict[str, Union[GCSBlobPath, PurePathModel]]
 
 
 class TodoRequest(BaseModel):  # A shim to get the workflow pieced together
