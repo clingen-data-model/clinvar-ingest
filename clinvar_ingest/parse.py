@@ -12,7 +12,7 @@ _logger = logging.getLogger("clinvar-ingest")
 
 
 def _open(filepath: str, mode: BinaryOpenMode = BinaryOpenMode.READ):
-    print(f"Opening file: {filepath}, mode: {mode}")
+    _logger.debug(f"Opening file: {filepath}, mode: {mode}")
     if filepath.startswith("gs://"):
         if mode == BinaryOpenMode.WRITE:
             f = blob_writer(filepath)
@@ -58,12 +58,11 @@ def parse_and_write_files(
 
     Returns the dict of types to their output files.
     """
-    print(f"{input_filename=}, {output_directory=}, {disassemble=}, {jsonify_content=}")
     open_output_files = {}
     with _open(input_filename) as f_in:
         releaseinfo = get_clinvar_xml_releaseinfo(f_in)
         release_date = releaseinfo["release_date"]
-        print(f"Parsing release date: {release_date}")
+        _logger.debug(f"Parsing release date: {release_date}")
 
     # Release directory is within the output directory
     output_release_directory = f"{output_directory}/{release_date}"
@@ -84,7 +83,7 @@ def parse_and_write_files(
                 f_out.write(json.dumps(obj_dict).encode("utf-8"))
                 f_out.write("\n".encode("utf-8"))
     except Exception as e:
-        print("Exception caught in parse_and_write_files")
+        _logger.critical("Exception caught in parse_and_write_files")
         raise e
     finally:
         _logger.debug("Closing output files")
