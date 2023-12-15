@@ -141,6 +141,7 @@ class CreateExternalTablesRequest(BaseModel):
     """
 
     destination_project: str
+    destination_dataset: str
 
     source_path: PurePathModel
     source_bucket: str

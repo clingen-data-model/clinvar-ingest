@@ -1,6 +1,7 @@
 import logging
 from contextlib import asynccontextmanager
 from pathlib import PurePosixPath
+from types import SimpleNamespace
 
 from fastapi import FastAPI, HTTPException, Request, status
 from google.cloud.storage import Client as GCSClient
@@ -10,10 +11,12 @@ from clinvar_ingest.api.middleware import LogRequests
 from clinvar_ingest.api.model.requests import (
     ClinvarFTPWatcherRequest,
     CopyResponse,
+    CreateExternalTablesRequest,
     ParseRequest,
     ParseResponse,
     TodoRequest,
 )
+from clinvar_ingest.cloud.bigquery.create_tables import run_create
 from clinvar_ingest.cloud.gcs import http_upload_urllib
 from clinvar_ingest.parse import parse_and_write_files
 
@@ -93,9 +96,18 @@ async def parse(payload: ParseRequest):
 
 
 @app.post("/create_external_tables", status_code=status.HTTP_201_CREATED)
-async def create_external_tables(payload: TodoRequest):
+async def create_external_tables(payload: CreateExternalTablesRequest):
     create_args = SimpleNamespace()
-    return {"todo": "implement me"}
+    # destination
+    create_args.project = payload.destination_project
+    create_args.dataset = payload.destination_dataset
+    # source
+    create_args.path = str(payload.source_path)
+    create_args.bucket = payload.source_bucket
+
+    run_create(create_args)
+
+    return {"msg": "ok"}
 
 
 @app.post("/create_internal_tables", status_code=status.HTTP_201_CREATED)
