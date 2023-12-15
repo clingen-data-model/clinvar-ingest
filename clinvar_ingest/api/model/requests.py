@@ -44,22 +44,24 @@ class ClinvarFTPWatcherRequest(BaseModel):
         json_schema_extra={
             "examples": [
                 {
+                    "Host": "https://ftp.ncbi.nlm.nih.gov",
+                    "Directory": "/pub/clinvar/xml/clinvar_variation/weekly_release",
                     "Name": "ClinVarVariationRelease_2023-1104.xml.gz",
                     "Size": 3160398711,
                     "Released": "2023-11-05 15:47:16",
                     "Last Modified": "2023-11-05 15:47:16",
-                    "Directory": "/pub/clinvar/xml/clinvar_variation/weekly_release",
                     "Release Date": "2023-11-04",
                 }
             ]
         },
     )
 
+    host: AnyUrl
+    directory: str
     name: str
     size: int
     released: datetime
     last_modified: datetime
-    directory: str
     release_date: date
 
 

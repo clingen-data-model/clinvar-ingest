@@ -22,6 +22,7 @@ logger = logging.getLogger("api")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    assert config.bucket_name is not None, "config.bucket_name must be set"
     logger.info("Server starting up")
     yield
 
@@ -43,7 +44,8 @@ async def health():
 
 @app.post("/copy", status_code=status.HTTP_201_CREATED, response_model=CopyResponse)
 async def copy(payload: ClinvarFTPWatcherRequest):
-    ftp_base = config.clinvar_ftp_base_url.strip("/")
+    # TODO allow source path to be in a bucket or file (for testing)
+    ftp_base = str(payload.host).strip("/")
     ftp_dir = PurePosixPath(payload.directory)
     ftp_file = PurePosixPath(payload.name)
     ftp_path = f"{ftp_base}/{ftp_dir.relative_to(ftp_dir.anchor) / ftp_file}"
@@ -62,7 +64,7 @@ async def copy(payload: ClinvarFTPWatcherRequest):
             gcs_path=gcs_path,
         )
     except Exception as e:
-        msg = f"Failed to copy {ftp_path}."
+        msg = f"Failed to copy {ftp_path}"
         logger.exception(msg)
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

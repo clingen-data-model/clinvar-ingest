@@ -43,6 +43,7 @@ def test_copy_endpoint_success(log_conf, env_config, caplog) -> None:
             "Released": "2022-12-05 15:47:16",
             "Last Modified": "2023-12-05 15:47:16",
             "Directory": "/pub/clinvar/xml/clinvar_variation/weekly_release",
+            "Host": "https://ftp.ncbi.nlm.nih.gov",
             "Release Date": "2023-12-04",
         }
         response = client.post(
