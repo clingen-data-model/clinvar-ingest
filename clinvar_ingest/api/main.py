@@ -11,9 +11,11 @@ from clinvar_ingest.api.model.requests import (
     ClinvarFTPWatcherRequest,
     CopyResponse,
     ParseRequest,
+    ParseResponse,
     TodoRequest,
 )
 from clinvar_ingest.cloud.gcs import http_upload_urllib
+from clinvar_ingest.parse import parse_and_write_files
 
 logger = logging.getLogger("api")
 
@@ -59,18 +61,24 @@ async def copy(payload: ClinvarFTPWatcherRequest):
             ftp_path=ftp_path,
             gcs_path=gcs_path,
         )
-    except Exception:
+    except Exception as e:
         msg = f"Failed to copy {ftp_path}."
         logger.exception(msg)
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=msg,
-        )
+        ) from e
 
 
-@app.post("/parse", status_code=status.HTTP_201_CREATED)
+@app.post("/parse", status_code=status.HTTP_201_CREATED, response_model=ParseResponse)
 async def parse(payload: ParseRequest):
-    return {"todo": "implement me"}
+    output_files = parse_and_write_files(
+        payload.input_path,
+        payload.output_path,
+        disassemble=not payload.no_disassemble,
+        jsonify_content=not payload.no_jsonify_content,
+    )
+    return ParseResponse(parsed_files=output_files)
 
 
 @app.post("/create_external_tables", status_code=status.HTTP_201_CREATED)

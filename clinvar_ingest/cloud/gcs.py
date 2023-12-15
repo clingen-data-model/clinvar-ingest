@@ -44,6 +44,18 @@ def blob_writer(
     return blob.open("wb" if binary else "w")
 
 
+def blob_reader(
+    blob_uri: str, client: storage.Client = None, binary=True
+) -> storage.Blob:
+    """
+    Returns a file-like object that can be used to read from the blob at `blob_uri`
+    """
+    if client is None:
+        client = storage.Client()
+    blob = parse_blob_uri(blob_uri, client=client)
+    return blob.open("rb" if binary else "r")
+
+
 def http_upload_urllib(
     http_uri: str, blob_uri: str, client: storage.Client = None, chunk_size=1024 * 16
 ):
