@@ -1,0 +1,74 @@
+[
+  {
+    "name": "datarepo_row_id",
+    "type": "STRING"
+  },
+  {
+    "name": "interp_content",
+    "type": "STRING"
+  },
+  {
+    "name": "date_created",
+    "type": "DATE"
+  },
+  {
+    "name": "record_status",
+    "type": "STRING"
+  },
+  {
+    "name": "variation_id",
+    "type": "STRING"
+  },
+  {
+    "name": "interp_description",
+    "type": "STRING"
+  },
+  {
+    "name": "release_date",
+    "type": "DATE"
+  },
+  {
+    "name": "content",
+    "type": "STRING"
+  },
+  {
+    "name": "species",
+    "type": "STRING"
+  },
+  {
+    "name": "id",
+    "type": "STRING"
+  },
+  {
+    "name": "interp_type",
+    "type": "STRING"
+  },
+  {
+    "name": "interp_explanation",
+    "type": "STRING"
+  },
+  {
+    "name": "interp_date_last_evaluated",
+    "type": "DATE"
+  },
+  {
+    "name": "version",
+    "type": "INTEGER"
+  },
+  {
+    "name": "num_submitters",
+    "type": "INTEGER"
+  },
+  {
+    "name": "date_last_updated",
+    "type": "DATE"
+  },
+  {
+    "name": "num_submissions",
+    "type": "INTEGER"
+  },
+  {
+    "name": "review_status",
+    "type": "STRING"
+  }
+]

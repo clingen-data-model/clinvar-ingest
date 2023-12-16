@@ -1,0 +1,40 @@
+[
+  {
+    "name": "datarepo_row_id",
+    "type": "STRING"
+  },
+  {
+    "name": "variation_type",
+    "type": "STRING"
+  },
+  {
+    "name": "release_date",
+    "type": "DATE"
+  },
+  {
+    "name": "subclass_type",
+    "type": "STRING"
+  },
+  {
+    "name": "content",
+    "type": "STRING"
+  },
+  {
+    "name": "id",
+    "type": "STRING"
+  },
+  {
+    "mode": "REPEATED",
+    "name": "descendant_ids",
+    "type": "STRING"
+  },
+  {
+    "mode": "REPEATED",
+    "name": "child_ids",
+    "type": "STRING"
+  },
+  {
+    "name": "clinical_assertion_id",
+    "type": "STRING"
+  }
+]

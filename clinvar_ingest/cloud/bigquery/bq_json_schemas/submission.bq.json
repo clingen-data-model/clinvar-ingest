@@ -1,0 +1,27 @@
+[
+  {
+    "name": "datarepo_row_id",
+    "type": "STRING"
+  },
+  {
+    "name": "submitter_id",
+    "type": "STRING"
+  },
+  {
+    "name": "release_date",
+    "type": "DATE"
+  },
+  {
+    "name": "id",
+    "type": "STRING"
+  },
+  {
+    "mode": "REPEATED",
+    "name": "additional_submitter_ids",
+    "type": "STRING"
+  },
+  {
+    "name": "submission_date",
+    "type": "DATE"
+  }
+]

@@ -1,0 +1,57 @@
+[
+  {
+    "name": "datarepo_row_id",
+    "type": "STRING"
+  },
+  {
+    "name": "name",
+    "type": "STRING"
+  },
+  {
+    "name": "variation_type",
+    "type": "STRING"
+  },
+  {
+    "name": "allele_id",
+    "type": "STRING"
+  },
+  {
+    "name": "release_date",
+    "type": "DATE"
+  },
+  {
+    "name": "subclass_type",
+    "type": "STRING"
+  },
+  {
+    "mode": "REPEATED",
+    "name": "protein_change",
+    "type": "STRING"
+  },
+  {
+    "name": "content",
+    "type": "STRING"
+  },
+  {
+    "name": "id",
+    "type": "STRING"
+  },
+  {
+    "mode": "REPEATED",
+    "name": "descendant_ids",
+    "type": "STRING"
+  },
+  {
+    "name": "num_chromosomes",
+    "type": "INTEGER"
+  },
+  {
+    "name": "num_copies",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "REPEATED",
+    "name": "child_ids",
+    "type": "STRING"
+  }
+]
