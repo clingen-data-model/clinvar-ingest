@@ -1,6 +1,5 @@
 import argparse
 import json
-from argparse import Action
 
 
 def parse_args(argv):
