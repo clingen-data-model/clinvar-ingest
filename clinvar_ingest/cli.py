@@ -1,4 +1,5 @@
 import argparse
+import json
 
 
 def parse_args(argv):
@@ -12,14 +13,16 @@ def parse_args(argv):
     parse_sp.add_argument("--input-filename", "-i", required=True, type=str)
     parse_sp.add_argument("--output-directory", "-o", required=True, type=str)
     parse_sp.add_argument(
-        "--no-disassemble",
-        action="store_true",
-        help="Disable splitting nested Model objects into separate outputs",
+        "--disassemble",
+        type=bool,
+        default=True,
+        help="Split nested Model objects into separate output files (default: true)",
     )
     parse_sp.add_argument(
-        "--no-jsonify-content",
-        action="store_true",
-        help="Disable JSON encoding of content fields",
+        "--jsonify-content",
+        type=bool,
+        default=True,
+        help="JSON encode content fields (default: true)",
     )
 
     # UPLOAD
@@ -48,9 +51,8 @@ def parse_args(argv):
 
     # CREATE TABLES
     create_table_sp = subparsers.add_parser("create-tables")
-    create_table_sp.add_argument("--project", type=str, required=False)
-    create_table_sp.add_argument("--dataset", type=str, required=True)
-    create_table_sp.add_argument("--bucket", type=str, required=True)
-    create_table_sp.add_argument("--path", type=str, default="")
+    create_table_sp.add_argument("--destination-project", type=str, required=False)
+    create_table_sp.add_argument("--destination-dataset", type=str, required=True)
+    create_table_sp.add_argument("--source-table-paths", type=json.loads, required=True)
 
     return parser.parse_args(argv)

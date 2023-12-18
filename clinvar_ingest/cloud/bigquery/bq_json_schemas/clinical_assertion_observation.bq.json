@@ -1,0 +1,18 @@
+[
+  {
+    "name": "id",
+    "type": "STRING"
+  },
+  {
+    "name": "release_date",
+    "type": "DATE"
+  },
+  {
+    "name": "clinical_assertion_trait_set_id",
+    "type": "STRING"
+  },
+  {
+    "name": "content",
+    "type": "STRING"
+  }
+]

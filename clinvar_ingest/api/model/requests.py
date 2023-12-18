@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from pathlib import PurePath
-from typing import Any, Callable, Union
+from typing import Annotated, Any, Callable, Union
 
 from pydantic import (
     AnyUrl,
@@ -8,6 +8,7 @@ from pydantic import (
     ConfigDict,
     Field,
     RootModel,
+    StringConstraints,
     field_serializer,
     validator,
 )
@@ -73,11 +74,11 @@ class CopyResponse(BaseModel):
 class ParseRequest(BaseModel):
     input_path: str
     output_path: str
-    no_disassemble: bool = Field(default=True)
-    no_jsonify_content: bool = Field(default=True)
+    disassemble: bool = Field(default=True)
+    jsonify_content: bool = Field(default=True)
 
 
-class GCSBlobPath(RootModel):
+class GcsBlobPath(RootModel):
     """
     A GCS blob path, such as gs://my-bucket/my-file.txt
     Validates path structure, does not check if the file exists.
@@ -93,7 +94,7 @@ class GCSBlobPath(RootModel):
         return v
 
 
-class PurePathModel(RootModel):
+class PurePathStr(RootModel):
     """
     A PurePath, such as /my/file.txt
     Validates path structure, does not check if the file exists.
@@ -109,12 +110,40 @@ class PurePathModel(RootModel):
 
 
 class ParseResponse(BaseModel):
-    # Either GCS path (gs:// URLs) or paths to local files
-    parsed_files: dict[str, Union[GCSBlobPath, PurePathModel]]
+    """
+    Map of entity type to either GCS path (gs:// URLs) or path to local file
+    """
+
+    parsed_files: dict[str, Union[GcsBlobPath, PurePathStr]]
 
     @field_serializer("parsed_files", when_used="always")
     def _serialize(self, v):
         return walk_and_replace(v, _dump_fn)
+
+
+class CreateExternalTablesRequest(BaseModel):
+    """
+    Defines the arguments to the create_external_tables endpoint.
+    Values are used by create_tables.run_create_external_tables.
+    """
+
+    destination_project: str
+    destination_dataset: str
+
+    source_table_paths: dict[str, GcsBlobPath]
+
+
+bigquery_full_table_id = Annotated[
+    str, StringConstraints(pattern=r"^[a-zA-Z0-9-_]+:[a-zA-Z0-9_]+.[a-zA-Z0-9-_]+$")
+]
+
+
+class CreateExternalTablesResponse(RootModel):
+    """
+    Map of entity type to full table id (project:dataset.table)
+    """
+
+    root: dict[str, bigquery_full_table_id]
 
 
 class TodoRequest(BaseModel):  # A shim to get the workflow pieced together

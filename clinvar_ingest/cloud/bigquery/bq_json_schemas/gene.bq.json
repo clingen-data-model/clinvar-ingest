@@ -1,0 +1,22 @@
+[
+  {
+    "name": "release_date",
+    "type": "DATE"
+  },
+  {
+    "name": "hgnc_id",
+    "type": "STRING"
+  },
+  {
+    "name": "id",
+    "type": "STRING"
+  },
+  {
+    "name": "symbol",
+    "type": "STRING"
+  },
+  {
+    "name": "full_name",
+    "type": "STRING"
+  }
+]

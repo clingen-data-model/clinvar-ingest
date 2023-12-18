@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from pathlib import PurePosixPath
 
 from fastapi import FastAPI, HTTPException, Request, status
+from google.cloud import bigquery
 from google.cloud.storage import Client as GCSClient
 
 import clinvar_ingest.config
@@ -10,10 +11,13 @@ from clinvar_ingest.api.middleware import LogRequests
 from clinvar_ingest.api.model.requests import (
     ClinvarFTPWatcherRequest,
     CopyResponse,
+    CreateExternalTablesRequest,
+    CreateExternalTablesResponse,
     ParseRequest,
     ParseResponse,
     TodoRequest,
 )
+from clinvar_ingest.cloud.bigquery.create_tables import run_create_external_tables
 from clinvar_ingest.cloud.gcs import http_upload_urllib
 from clinvar_ingest.parse import parse_and_write_files
 
@@ -79,8 +83,8 @@ async def parse(payload: ParseRequest):
         output_files = parse_and_write_files(
             payload.input_path,
             payload.output_path,
-            disassemble=not payload.no_disassemble,
-            jsonify_content=not payload.no_jsonify_content,
+            disassemble=payload.disassemble,
+            jsonify_content=payload.jsonify_content,
         )
         return ParseResponse(parsed_files=output_files)
     except Exception as e:
@@ -92,9 +96,36 @@ async def parse(payload: ParseRequest):
         ) from e
 
 
-@app.post("/create_external_tables", status_code=status.HTTP_201_CREATED)
-async def create_external_tables(payload: TodoRequest):
-    return {"todo": "implement me"}
+@app.post(
+    "/create_external_tables",
+    status_code=status.HTTP_201_CREATED,
+    response_model=CreateExternalTablesResponse,
+)
+async def create_external_tables(payload: CreateExternalTablesRequest):
+    try:
+        tables_created = run_create_external_tables(payload)
+
+        for table_name, table in tables_created.items():
+            table: bigquery.Table = table
+            logger.info(
+                "Created table %s:%s.%s",
+                table.project,
+                table.dataset_id,
+                table.table_id,
+            )
+        entity_type_table_ids = {
+            entity_type: table.full_table_id
+            for entity_type, table in tables_created.items()
+        }
+
+        return entity_type_table_ids
+    except Exception as e:
+        msg = f"Failed to create external tables for {payload.model_dump()}"
+        logger.exception(msg)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=msg,
+        ) from e
 
 
 @app.post("/create_internal_tables", status_code=status.HTTP_201_CREATED)

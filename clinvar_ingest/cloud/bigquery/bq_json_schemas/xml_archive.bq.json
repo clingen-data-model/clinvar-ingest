@@ -1,0 +1,10 @@
+[
+  {
+    "name": "release_date",
+    "type": "DATE"
+  },
+  {
+    "name": "archive_path",
+    "type": "STRING"
+  }
+]

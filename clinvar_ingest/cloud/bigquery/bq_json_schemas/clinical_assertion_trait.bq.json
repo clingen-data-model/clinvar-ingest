@@ -1,0 +1,40 @@
+[
+  {
+    "name": "name",
+    "type": "STRING"
+  },
+  {
+    "name": "release_date",
+    "type": "DATE"
+  },
+  {
+    "name": "content",
+    "type": "STRING"
+  },
+  {
+    "name": "id",
+    "type": "STRING"
+  },
+  {
+    "name": "medgen_id",
+    "type": "STRING"
+  },
+  {
+    "name": "trait_id",
+    "type": "STRING"
+  },
+  {
+    "name": "type",
+    "type": "STRING"
+  },
+  {
+    "mode": "REPEATED",
+    "name": "alternate_names",
+    "type": "STRING"
+  },
+  {
+    "mode": "REPEATED",
+    "name": "xrefs",
+    "type": "STRING"
+  }
+]

@@ -1,0 +1,83 @@
+[
+  {
+    "name": "disease_mechanism_id",
+    "type": "INTEGER"
+  },
+  {
+    "name": "name",
+    "type": "STRING"
+  },
+  {
+    "mode": "REPEATED",
+    "name": "attribute_content",
+    "type": "STRING"
+  },
+  {
+    "name": "mode_of_inheritance",
+    "type": "STRING"
+  },
+  {
+    "name": "release_date",
+    "type": "DATE"
+  },
+  {
+    "name": "ghr_links",
+    "type": "STRING"
+  },
+  {
+    "mode": "REPEATED",
+    "name": "keywords",
+    "type": "STRING"
+  },
+  {
+    "name": "content",
+    "type": "STRING"
+  },
+  {
+    "name": "gard_id",
+    "type": "INTEGER"
+  },
+  {
+    "name": "id",
+    "type": "STRING"
+  },
+  {
+    "name": "medgen_id",
+    "type": "STRING"
+  },
+  {
+    "name": "public_definition",
+    "type": "STRING"
+  },
+  {
+    "name": "type",
+    "type": "STRING"
+  },
+  {
+    "name": "symbol",
+    "type": "STRING"
+  },
+  {
+    "name": "disease_mechanism",
+    "type": "STRING"
+  },
+  {
+    "mode": "REPEATED",
+    "name": "alternate_symbols",
+    "type": "STRING"
+  },
+  {
+    "name": "gene_reviews_short",
+    "type": "STRING"
+  },
+  {
+    "mode": "REPEATED",
+    "name": "alternate_names",
+    "type": "STRING"
+  },
+  {
+    "mode": "REPEATED",
+    "name": "xrefs",
+    "type": "STRING"
+  }
+]

@@ -1,0 +1,34 @@
+[
+  {
+    "name": "trait_type",
+    "type": "STRING"
+  },
+  {
+    "name": "mapping_value",
+    "type": "STRING"
+  },
+  {
+    "name": "release_date",
+    "type": "DATE"
+  },
+  {
+    "name": "mapping_type",
+    "type": "STRING"
+  },
+  {
+    "name": "medgen_name",
+    "type": "STRING"
+  },
+  {
+    "name": "mapping_ref",
+    "type": "STRING"
+  },
+  {
+    "name": "medgen_id",
+    "type": "STRING"
+  },
+  {
+    "name": "clinical_assertion_id",
+    "type": "STRING"
+  }
+]

@@ -1,0 +1,32 @@
+[
+  {
+    "name": "release_date",
+    "type": "DATE"
+  },
+  {
+    "name": "current_name",
+    "type": "STRING"
+  },
+  {
+    "mode": "REPEATED",
+    "name": "all_names",
+    "type": "STRING"
+  },
+  {
+    "mode": "REPEATED",
+    "name": "all_abbrevs",
+    "type": "STRING"
+  },
+  {
+    "name": "id",
+    "type": "STRING"
+  },
+  {
+    "name": "current_abbrev",
+    "type": "STRING"
+  },
+  {
+    "name": "org_category",
+    "type": "STRING"
+  }
+]

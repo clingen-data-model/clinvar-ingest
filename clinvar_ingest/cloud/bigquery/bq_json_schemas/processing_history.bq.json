@@ -1,0 +1,14 @@
+[
+  {
+    "name": "release_date",
+    "type": "DATE"
+  },
+  {
+    "name": "processing_date",
+    "type": "DATE"
+  },
+  {
+    "name": "pipeline_version",
+    "type": "STRING"
+  }
+]

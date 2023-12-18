@@ -1,0 +1,23 @@
+[
+  {
+    "mode": "REPEATED",
+    "name": "clinical_assertion_trait_ids",
+    "type": "STRING"
+  },
+  {
+    "name": "release_date",
+    "type": "DATE"
+  },
+  {
+    "name": "content",
+    "type": "STRING"
+  },
+  {
+    "name": "id",
+    "type": "STRING"
+  },
+  {
+    "name": "type",
+    "type": "STRING"
+  }
+]

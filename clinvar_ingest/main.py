@@ -3,8 +3,9 @@ import sys
 
 import coloredlogs
 
+from clinvar_ingest.api.model.requests import CreateExternalTablesRequest
 from clinvar_ingest.cli import parse_args
-from clinvar_ingest.cloud.bigquery.create_tables import run_create
+from clinvar_ingest.cloud.bigquery.create_tables import run_create_external_tables
 from clinvar_ingest.cloud.gcs import copy_file_to_bucket
 from clinvar_ingest.fs import find_files
 from clinvar_ingest.parse import parse_and_write_files
@@ -19,8 +20,8 @@ def run_parse(args):
     output_files = parse_and_write_files(
         args.input_filename,
         args.output_directory,
-        disassemble=not args.no_disassemble,
-        jsonify_content=not args.no_jsonify_content,
+        disassemble=args.disassemble,
+        jsonify_content=args.jsonify_content,
     )
     print(output_files)
 
@@ -50,7 +51,9 @@ def run_cli(argv):
     elif args.subcommand == "upload":
         return run_upload(args)
     elif args.subcommand == "create-tables":
-        return run_create(args)
+        req = CreateExternalTablesRequest(**vars(args))
+        resp = run_create_external_tables(req)
+        return {entity_type: table.full_table_id for entity_type, table in resp.items()}
     else:
         raise ValueError(f"Unknown subcommand: {args.subcommand}")
 

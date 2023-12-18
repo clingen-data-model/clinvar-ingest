@@ -1,0 +1,105 @@
+[
+  {
+    "name": "date_created",
+    "type": "DATE"
+  },
+  {
+    "name": "rcv_accession_id",
+    "type": "STRING"
+  },
+  {
+    "name": "record_status",
+    "type": "STRING"
+  },
+  {
+    "name": "interpretation_description",
+    "type": "STRING"
+  },
+  {
+    "name": "submitter_id",
+    "type": "STRING"
+  },
+  {
+    "mode": "REPEATED",
+    "name": "clinical_assertion_observation_ids",
+    "type": "STRING"
+  },
+  {
+    "name": "variation_id",
+    "type": "STRING"
+  },
+  {
+    "name": "submitted_assembly",
+    "type": "STRING"
+  },
+  {
+    "name": "release_date",
+    "type": "DATE"
+  },
+  {
+    "name": "interpretation_date_last_evaluated",
+    "type": "DATE"
+  },
+  {
+    "name": "submission_id",
+    "type": "STRING"
+  },
+  {
+    "name": "clinical_assertion_trait_set_id",
+    "type": "STRING"
+  },
+  {
+    "mode": "REPEATED",
+    "name": "interpretation_comments",
+    "type": "STRING"
+  },
+  {
+    "name": "content",
+    "type": "STRING"
+  },
+  {
+    "name": "local_key",
+    "type": "STRING"
+  },
+  {
+    "name": "id",
+    "type": "STRING"
+  },
+  {
+    "name": "variation_archive_id",
+    "type": "STRING"
+  },
+  {
+    "name": "internal_id",
+    "type": "STRING"
+  },
+  {
+    "name": "version",
+    "type": "INTEGER"
+  },
+  {
+    "name": "title",
+    "type": "STRING"
+  },
+  {
+    "name": "date_last_updated",
+    "type": "DATE"
+  },
+  {
+    "name": "assertion_type",
+    "type": "STRING"
+  },
+  {
+    "name": "trait_set_id",
+    "type": "STRING"
+  },
+  {
+    "name": "review_status",
+    "type": "STRING"
+  },
+  {
+    "mode": "REPEATED",
+    "name": "submission_names",
+    "type": "STRING"
+  }
+]
