@@ -124,10 +124,8 @@ def read_clinvar_xml(
         # ET sends an end event for self-closed tags like e.g. <br/>, so this should work.
         if event == "start":
             unclosed += 1
-            # print(f"xml open tag {elem.tag}, unclosed={unclosed}")
         elif event == "end":
             unclosed -= 1
-            # print(f"xml close tag {elem.tag}, unclosed={unclosed}")
         else:
             raise ValueError(f"Unexpected event: {event}. Element: {ET.tostring(elem)}")
 
