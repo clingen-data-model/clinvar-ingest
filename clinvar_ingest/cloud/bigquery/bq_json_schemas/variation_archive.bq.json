@@ -1,9 +1,5 @@
 [
   {
-    "name": "datarepo_row_id",
-    "type": "STRING"
-  },
-  {
     "name": "interp_content",
     "type": "STRING"
   },

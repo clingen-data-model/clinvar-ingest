@@ -1,9 +1,5 @@
 [
   {
-    "name": "datarepo_row_id",
-    "type": "STRING"
-  },
-  {
     "mode": "REPEATED",
     "name": "clinical_assertion_trait_ids",
     "type": "STRING"

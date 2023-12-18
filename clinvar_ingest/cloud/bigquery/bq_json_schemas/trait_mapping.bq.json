@@ -1,9 +1,5 @@
 [
   {
-    "name": "datarepo_row_id",
-    "type": "STRING"
-  },
-  {
     "name": "trait_type",
     "type": "STRING"
   },
