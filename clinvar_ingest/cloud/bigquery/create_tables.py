@@ -18,21 +18,6 @@ from clinvar_ingest.cloud.gcs import parse_blob_uri
 _logger = logging.getLogger(__name__)
 
 
-def create_sql(
-    project,
-    dataset,
-    bucket,
-    path,
-    filename="clinvar_ingest/cloud/bigquery/table_definitions/create_external_tables.sql",
-):
-    with open(filename, encoding="utf-8") as f:
-        sql = f.read()
-
-    sql = sql.format(project=project, dataset=dataset, bucket=bucket, path=path)
-
-    return sql
-
-
 def ensure_dataset_exists(
     client: bigquery.Client, project: str, dataset_id: str, location: str
 ) -> bigquery.Dataset:
@@ -86,7 +71,9 @@ def create_table(
     return table
 
 
-def run_create(args: CreateExternalTablesRequest) -> dict[str, bigquery.Table]:
+def run_create_external_tables(
+    args: CreateExternalTablesRequest,
+) -> dict[str, bigquery.Table]:
     """
     Creates tables using args parsed by `cli.parse_args`
     """

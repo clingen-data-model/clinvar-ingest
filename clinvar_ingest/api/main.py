@@ -17,7 +17,7 @@ from clinvar_ingest.api.model.requests import (
     ParseResponse,
     TodoRequest,
 )
-from clinvar_ingest.cloud.bigquery.create_tables import run_create
+from clinvar_ingest.cloud.bigquery.create_tables import run_create_external_tables
 from clinvar_ingest.cloud.gcs import http_upload_urllib
 from clinvar_ingest.parse import parse_and_write_files
 
@@ -103,7 +103,7 @@ async def parse(payload: ParseRequest):
 )
 async def create_external_tables(payload: CreateExternalTablesRequest):
     try:
-        tables_created = run_create(payload)
+        tables_created = run_create_external_tables(payload)
 
         for table_name, table in tables_created.items():
             table: bigquery.Table = table
