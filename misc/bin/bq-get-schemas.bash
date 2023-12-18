@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+####
+# This was used to scrape initial bigquery json schemas into clinvar_ingest/cloud/bigquery/bq_json_schemas
+# Tables based on post-process procedures were later removed from bq_json_schemas, along with datarepo_row_ids
+####
+
 
 set -xeuo pipefail
 
