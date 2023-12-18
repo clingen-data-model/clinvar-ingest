@@ -52,41 +52,6 @@ def ensure_dataset_exists(
     return dataset
 
 
-def run_create_old(args: CreateExternalTablesRequest):
-    """
-    Creates tables using args parsed by `cli.parse_args`
-    """
-    client = bigquery.Client()
-    if args.project is None:
-        if client.project is None:
-            raise ValueError(
-                "gcloud client project is None and --project arg not provided"
-            )
-        args.project = client.project
-        _logger.info("Using default project from gcloud environment: %s", args.project)
-
-    if args.path:
-        if not args.path.startswith("/"):
-            args.path = "/" + args.path
-
-    bucket_obj = storage.Client().get_bucket(args.bucket)
-    bucket_location = bucket_obj.location
-
-    # create dataset if not exists
-    dataset_obj = ensure_dataset_exists(
-        client, args.project, dataset_id=args.dataset, location=bucket_location
-    )
-    if not dataset_obj:
-        raise RuntimeError(f"Didn't get a dataset object back. run_create args: {args}")
-
-    sql = create_sql(args.project, args.dataset, args.bucket, args.path)
-
-    create_job = client.query(sql)
-    results = create_job.result()
-    for row in results:
-        print(row)
-
-
 def schema_file_path_for_table(table_name: str) -> dict:
     """
     Loads the schema for the given table name.
@@ -94,9 +59,6 @@ def schema_file_path_for_table(table_name: str) -> dict:
     base_path = Path("clinvar_ingest/cloud/bigquery/bq_json_schemas")
     schema_path = base_path / f"{table_name}.bq.json"
     return schema_path
-    # with open(schema_path, encoding="utf-8") as f:
-    #     schema = json.load(f)
-    # return schema
 
 
 def create_table(
@@ -163,8 +125,6 @@ def run_create(args: CreateExternalTablesRequest):
     if not dataset_obj:
         raise RuntimeError(f"Didn't get a dataset object back. run_create args: {args}")
 
-    # TODO run for reach table_name, path in args.source_paths
-    # sql = create_sql(args.project, args.dataset, args.bucket, args.path)
     outputs = {}
     for table_name, gcs_blob_path in args.source_table_paths.items():
         table = create_table(
