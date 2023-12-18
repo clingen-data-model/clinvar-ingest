@@ -2,10 +2,10 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import PurePosixPath
 
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, Request, status
 from google.cloud.storage import Client as GCSClient
 
-import clinvar_ingest.config as config
+import clinvar_ingest.config
 from clinvar_ingest.api.middleware import LogRequests
 from clinvar_ingest.api.model.requests import (
     ClinvarFTPWatcherRequest,
@@ -19,10 +19,13 @@ from clinvar_ingest.parse import parse_and_write_files
 
 logger = logging.getLogger("api")
 
+env: clinvar_ingest.config.Env = None
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    assert config.bucket_name is not None, "config.bucket_name must be set"
+    global env  # pylint: disable=W0603
+    env = clinvar_ingest.config.get_env()
     logger.info("Server starting up")
     yield
 
@@ -43,15 +46,15 @@ async def health():
 
 
 @app.post("/copy", status_code=status.HTTP_201_CREATED, response_model=CopyResponse)
-async def copy(payload: ClinvarFTPWatcherRequest):
+async def copy(request: Request, payload: ClinvarFTPWatcherRequest):
     # TODO allow source path to be in a bucket or file (for testing)
     ftp_base = str(payload.host).strip("/")
     ftp_dir = PurePosixPath(payload.directory)
     ftp_file = PurePosixPath(payload.name)
     ftp_path = f"{ftp_base}/{ftp_dir.relative_to(ftp_dir.anchor) / ftp_file}"
 
-    gcs_base = f"gs://{config.bucket_name}"
-    gcs_dir = PurePosixPath(config.bucket_staging_prefix)
+    gcs_base = f"gs://{env.bucket_name}"
+    gcs_dir = PurePosixPath(env.bucket_staging_prefix)
     gcs_file = PurePosixPath(payload.name)
     gcs_path = f"{gcs_base}/{gcs_dir.relative_to(gcs_dir.anchor) / gcs_file}"
 
