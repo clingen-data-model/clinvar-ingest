@@ -102,22 +102,30 @@ async def parse(payload: ParseRequest):
     response_model=CreateExternalTablesResponse,
 )
 async def create_external_tables(payload: CreateExternalTablesRequest):
-    tables_created = run_create(payload)
+    try:
+        tables_created = run_create(payload)
 
-    for table_name, table in tables_created.items():
-        table: bigquery.Table = table
-        logger.info(
-            "Created table %s:%s.%s",
-            table.project,
-            table.dataset_id,
-            table.table_id,
-        )
-    entity_type_table_ids = {
-        entity_type: table.full_table_id
-        for entity_type, table in tables_created.items()
-    }
+        for table_name, table in tables_created.items():
+            table: bigquery.Table = table
+            logger.info(
+                "Created table %s:%s.%s",
+                table.project,
+                table.dataset_id,
+                table.table_id,
+            )
+        entity_type_table_ids = {
+            entity_type: table.full_table_id
+            for entity_type, table in tables_created.items()
+        }
 
-    return entity_type_table_ids
+        return entity_type_table_ids
+    except Exception as e:
+        msg = f"Failed to create external tables for {payload.model_dump()}"
+        logger.exception(msg)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=msg,
+        ) from e
 
 
 @app.post("/create_internal_tables", status_code=status.HTTP_201_CREATED)
