@@ -1,9 +1,9 @@
 import logging
 from contextlib import asynccontextmanager
 from pathlib import PurePosixPath
-from types import SimpleNamespace
 
 from fastapi import FastAPI, HTTPException, Request, status
+from google.cloud import bigquery
 from google.cloud.storage import Client as GCSClient
 
 import clinvar_ingest.config
@@ -12,6 +12,7 @@ from clinvar_ingest.api.model.requests import (
     ClinvarFTPWatcherRequest,
     CopyResponse,
     CreateExternalTablesRequest,
+    CreateExternalTablesResponse,
     ParseRequest,
     ParseResponse,
     TodoRequest,
@@ -95,19 +96,28 @@ async def parse(payload: ParseRequest):
         ) from e
 
 
-@app.post("/create_external_tables", status_code=status.HTTP_201_CREATED)
+@app.post(
+    "/create_external_tables",
+    status_code=status.HTTP_201_CREATED,
+    response_model=CreateExternalTablesResponse,
+)
 async def create_external_tables(payload: CreateExternalTablesRequest):
-    create_args = SimpleNamespace()
-    # destination
-    create_args.project = payload.destination_project
-    create_args.dataset = payload.destination_dataset
-    # source
-    create_args.path = str(payload.source_path)
-    create_args.bucket = payload.source_bucket
+    tables_created = run_create(payload)
 
-    run_create(create_args)
+    for table_name, table in tables_created.items():
+        table: bigquery.Table = table
+        logger.info(
+            "Created table %s:%s.%s",
+            table.project,
+            table.dataset_id,
+            table.table_id,
+        )
+    entity_type_table_ids = {
+        entity_type: table.full_table_id
+        for entity_type, table in tables_created.items()
+    }
 
-    return {"msg": "ok"}
+    return entity_type_table_ids
 
 
 @app.post("/create_internal_tables", status_code=status.HTTP_201_CREATED)

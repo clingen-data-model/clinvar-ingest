@@ -8,6 +8,7 @@ from pydantic import (
     ConfigDict,
     Field,
     RootModel,
+    constr,
     field_serializer,
     validator,
 )
@@ -126,7 +127,10 @@ class GcsBucketName(RootModel):
 
 
 class ParseResponse(BaseModel):
-    # Either GCS path (gs:// URLs) or paths to local files
+    """
+    Map of entity type to either GCS path (gs:// URLs) or path to local file
+    """
+
     parsed_files: dict[str, Union[GcsBlobPath, PurePathStr]]
 
     @field_serializer("parsed_files", when_used="always")
@@ -143,8 +147,20 @@ class CreateExternalTablesRequest(BaseModel):
     destination_project: str
     destination_dataset: str
 
-    source_path: PurePathStr
-    source_bucket: str
+    source_table_paths: dict[str, GcsBlobPath]
+
+
+bigquery_full_table_id_constr = constr(
+    pattern=r"^[a-zA-Z0-9-_]+:[a-zA-Z0-9_]+.[a-zA-Z0-9-_]+$"
+)
+
+
+class CreateExternalTablesResponse(RootModel):
+    """
+    Map of entity type to full table id (project:dataset.table)
+    """
+
+    root: dict[str, bigquery_full_table_id_constr]
 
 
 class TodoRequest(BaseModel):  # A shim to get the workflow pieced together

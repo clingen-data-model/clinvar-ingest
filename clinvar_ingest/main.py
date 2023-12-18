@@ -50,6 +50,7 @@ def run_cli(argv):
     elif args.subcommand == "upload":
         return run_upload(args)
     elif args.subcommand == "create-tables":
+        # TODO update to use Pydantic mapped args
         return run_create(args)
     else:
         raise ValueError(f"Unknown subcommand: {args.subcommand}")

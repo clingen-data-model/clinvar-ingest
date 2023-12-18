@@ -6,10 +6,14 @@ files from Google Cloud Storage.
 Usable as a script or programmatic module.
 """
 import logging
+from pathlib import Path
 
 from google.api_core.exceptions import NotFound
 from google.cloud import bigquery, storage
 from google.cloud.bigquery.dataset import Dataset, DatasetReference
+
+from clinvar_ingest.api.model.requests import CreateExternalTablesRequest
+from clinvar_ingest.cloud.gcs import parse_blob_uri
 
 _logger = logging.getLogger(__name__)
 
@@ -48,7 +52,7 @@ def ensure_dataset_exists(
     return dataset
 
 
-def run_create(args):
+def run_create_old(args: CreateExternalTablesRequest):
     """
     Creates tables using args parsed by `cli.parse_args`
     """
@@ -81,3 +85,93 @@ def run_create(args):
     results = create_job.result()
     for row in results:
         print(row)
+
+
+def schema_file_path_for_table(table_name: str) -> dict:
+    """
+    Loads the schema for the given table name.
+    """
+    base_path = Path("clinvar_ingest/cloud/bigquery/bq_json_schemas")
+    schema_path = base_path / f"{table_name}.bq.json"
+    return schema_path
+    # with open(schema_path, encoding="utf-8") as f:
+    #     schema = json.load(f)
+    # return schema
+
+
+def create_table(
+    table_name: str,
+    dataset: bigquery.Dataset,
+    blob_uri: str,
+    client: bigquery.Client,
+) -> bigquery.Table:
+    """
+    Creates a table in the given dataset, using the given bucket and path.
+    """
+    table_ref = dataset.table(table_name)
+    external_config = bigquery.ExternalConfig(
+        bigquery.SourceFormat.NEWLINE_DELIMITED_JSON
+    )
+    external_config.source_uris = [blob_uri]
+    external_config.autodetect = True
+    external_config.schema = client.schema_from_json(
+        schema_file_path_for_table(table_name)
+    )
+
+    table = bigquery.Table(table_ref, schema=None)
+    table.external_data_configuration = external_config
+    table = client.create_table(table, exists_ok=True)
+    return table
+
+
+def run_create(args: CreateExternalTablesRequest):
+    """
+    Creates tables using args parsed by `cli.parse_args`
+    """
+    bq_client = bigquery.Client()
+    gcs_client = storage.Client()
+
+    if args.destination_project is None:
+        if bq_client.project is None:
+            raise ValueError(
+                "gcloud client project is None and --project arg not provided"
+            )
+        args.destination_project = bq_client.project
+        _logger.info("Using default project from gcloud environment: %s", args.project)
+
+    source_buckets = set()
+    for table_name, gcs_blob_path in args.source_table_paths.items():
+        parsed_blob = parse_blob_uri(gcs_blob_path.root, gcs_client)
+        bucket_obj = gcs_client.get_bucket(parsed_blob.bucket.name)
+        bucket_location = bucket_obj.location
+        source_buckets.add(parsed_blob.bucket.name)
+
+    # sanity check that all source paths are in the same bucket
+    if len(source_buckets) > 1:
+        raise ValueError(
+            f"All source paths must be in the same bucket. Got: [{source_buckets}]. "
+            f"source_table_paths: {args.source_table_paths}"
+        )
+
+    # create dataset if not exists
+    dataset_obj = ensure_dataset_exists(
+        bq_client,
+        project=args.destination_project,
+        dataset_id=args.destination_dataset,
+        location=bucket_location,
+    )
+    if not dataset_obj:
+        raise RuntimeError(f"Didn't get a dataset object back. run_create args: {args}")
+
+    # TODO run for reach table_name, path in args.source_paths
+    # sql = create_sql(args.project, args.dataset, args.bucket, args.path)
+    outputs = {}
+    for table_name, gcs_blob_path in args.source_table_paths.items():
+        table = create_table(
+            table_name,
+            dataset=dataset_obj,
+            blob_uri=gcs_blob_path.root,
+            client=bq_client,
+        )
+        outputs[table_name] = table
+    return outputs
