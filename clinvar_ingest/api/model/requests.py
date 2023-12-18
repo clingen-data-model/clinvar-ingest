@@ -93,7 +93,7 @@ class GcsBlobPath(RootModel):
         return v
 
 
-class PurePathModel(RootModel):
+class PurePathStr(RootModel):
     """
     A PurePath, such as /my/file.txt
     Validates path structure, does not check if the file exists.
@@ -127,7 +127,7 @@ class GcsBucketName(RootModel):
 
 class ParseResponse(BaseModel):
     # Either GCS path (gs:// URLs) or paths to local files
-    parsed_files: dict[str, Union[GcsBlobPath, PurePathModel]]
+    parsed_files: dict[str, Union[GcsBlobPath, PurePathStr]]
 
     @field_serializer("parsed_files", when_used="always")
     def _serialize(self, v):
@@ -143,7 +143,7 @@ class CreateExternalTablesRequest(BaseModel):
     destination_project: str
     destination_dataset: str
 
-    source_path: PurePathModel
+    source_path: PurePathStr
     source_bucket: str
 
 
