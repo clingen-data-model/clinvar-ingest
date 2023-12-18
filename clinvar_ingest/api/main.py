@@ -75,13 +75,21 @@ async def copy(request: Request, payload: ClinvarFTPWatcherRequest):
 
 @app.post("/parse", status_code=status.HTTP_201_CREATED, response_model=ParseResponse)
 async def parse(payload: ParseRequest):
-    output_files = parse_and_write_files(
-        payload.input_path,
-        payload.output_path,
-        disassemble=not payload.no_disassemble,
-        jsonify_content=not payload.no_jsonify_content,
-    )
-    return ParseResponse(parsed_files=output_files)
+    try:
+        output_files = parse_and_write_files(
+            payload.input_path,
+            payload.output_path,
+            disassemble=not payload.no_disassemble,
+            jsonify_content=not payload.no_jsonify_content,
+        )
+        return ParseResponse(parsed_files=output_files)
+    except Exception as e:
+        msg = f"Failed to parse {payload.input_path} and write to {payload.output_path}"
+        logger.exception(msg)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=msg,
+        ) from e
 
 
 @app.post("/create_external_tables", status_code=status.HTTP_201_CREATED)
