@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from pathlib import PurePath
-from typing import Any, Callable, Union
+from typing import Annotated, Any, Callable, Union
 
 from pydantic import (
     AnyUrl,
@@ -8,7 +8,7 @@ from pydantic import (
     ConfigDict,
     Field,
     RootModel,
-    constr,
+    StringConstraints,
     field_serializer,
     validator,
 )
@@ -150,9 +150,9 @@ class CreateExternalTablesRequest(BaseModel):
     source_table_paths: dict[str, GcsBlobPath]
 
 
-bigquery_full_table_id_constr = constr(
-    pattern=r"^[a-zA-Z0-9-_]+:[a-zA-Z0-9_]+.[a-zA-Z0-9-_]+$"
-)
+bigquery_full_table_id = Annotated[
+    str, StringConstraints(pattern=r"^[a-zA-Z0-9-_]+:[a-zA-Z0-9_]+.[a-zA-Z0-9-_]+$")
+]
 
 
 class CreateExternalTablesResponse(RootModel):
@@ -160,7 +160,7 @@ class CreateExternalTablesResponse(RootModel):
     Map of entity type to full table id (project:dataset.table)
     """
 
-    root: dict[str, bigquery_full_table_id_constr]
+    root: dict[str, bigquery_full_table_id]
 
 
 class TodoRequest(BaseModel):  # A shim to get the workflow pieced together

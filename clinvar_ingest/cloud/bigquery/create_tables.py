@@ -86,7 +86,7 @@ def create_table(
     return table
 
 
-def run_create(args: CreateExternalTablesRequest):
+def run_create(args: CreateExternalTablesRequest) -> dict[str, bigquery.Table]:
     """
     Creates tables using args parsed by `cli.parse_args`
     """

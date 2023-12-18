@@ -1,4 +1,5 @@
 import argparse
+import json
 
 
 def parse_args(argv):
@@ -48,9 +49,8 @@ def parse_args(argv):
 
     # CREATE TABLES
     create_table_sp = subparsers.add_parser("create-tables")
-    create_table_sp.add_argument("--project", type=str, required=False)
-    create_table_sp.add_argument("--dataset", type=str, required=True)
-    create_table_sp.add_argument("--bucket", type=str, required=True)
-    create_table_sp.add_argument("--path", type=str, default="")
+    create_table_sp.add_argument("--destination-project", type=str, required=False)
+    create_table_sp.add_argument("--destination-dataset", type=str, required=True)
+    create_table_sp.add_argument("--source-table-paths", type=json.loads, required=True)
 
     return parser.parse_args(argv)

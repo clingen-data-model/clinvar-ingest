@@ -3,6 +3,7 @@ import sys
 
 import coloredlogs
 
+from clinvar_ingest.api.model.requests import CreateExternalTablesRequest
 from clinvar_ingest.cli import parse_args
 from clinvar_ingest.cloud.bigquery.create_tables import run_create
 from clinvar_ingest.cloud.gcs import copy_file_to_bucket
@@ -50,8 +51,9 @@ def run_cli(argv):
     elif args.subcommand == "upload":
         return run_upload(args)
     elif args.subcommand == "create-tables":
-        # TODO update to use Pydantic mapped args
-        return run_create(args)
+        req = CreateExternalTablesRequest(**vars(args))
+        resp = run_create(req)
+        return {entity_type: table.full_table_id for entity_type, table in resp.items()}
     else:
         raise ValueError(f"Unknown subcommand: {args.subcommand}")
 
