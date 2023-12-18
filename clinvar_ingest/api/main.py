@@ -19,13 +19,10 @@ from clinvar_ingest.parse import parse_and_write_files
 
 logger = logging.getLogger("api")
 
-env: clinvar_ingest.config.Env = None
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global env  # pylint: disable=W0603
-    env = clinvar_ingest.config.get_env()
+    app.env = clinvar_ingest.config.get_env()
     logger.info("Server starting up")
     yield
 
@@ -47,6 +44,7 @@ async def health():
 
 @app.post("/copy", status_code=status.HTTP_201_CREATED, response_model=CopyResponse)
 async def copy(request: Request, payload: ClinvarFTPWatcherRequest):
+    env: clinvar_ingest.config.Env = request.app.env
     # TODO allow source path to be in a bucket or file (for testing)
     ftp_base = str(payload.host).strip("/")
     ftp_dir = PurePosixPath(payload.directory)
