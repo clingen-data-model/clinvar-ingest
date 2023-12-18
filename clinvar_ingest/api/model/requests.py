@@ -109,23 +109,6 @@ class PurePathStr(RootModel):
         return v
 
 
-class GcsBucketName(RootModel):
-    root: str
-
-    @validator("root")
-    def _validate(cls, v):  # pylint: disable=E0213
-        alpha_lower = "abcdefghijklmnopqrstuvwxyz"
-        alpha_upper = alpha_lower.upper()
-        nums = "0123456789"
-        symbols = "-_."
-        allowed_chars = set(alpha_lower + alpha_upper + nums + symbols)
-
-        for c in v:
-            if c not in allowed_chars:
-                raise ValueError(f"Invalid character in bucket name: {c}")
-        return v
-
-
 class ParseResponse(BaseModel):
     """
     Map of entity type to either GCS path (gs:// URLs) or path to local file
@@ -141,7 +124,7 @@ class ParseResponse(BaseModel):
 class CreateExternalTablesRequest(BaseModel):
     """
     Defines the arguments to the create_external_tables endpoint.
-    Values are used by create_tables.run_create.
+    Values are used by create_tables.run_create_external_tables.
     """
 
     destination_project: str
