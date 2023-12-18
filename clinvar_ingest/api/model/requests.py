@@ -7,6 +7,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    FilePath,
     RootModel,
     field_serializer,
     validator,
@@ -93,24 +94,24 @@ class GCSBlobPath(RootModel):
         return v
 
 
-class PurePathModel(RootModel):
-    """
-    A PurePath, such as /my/file.txt
-    Validates path structure, does not check if the file exists.
-    Keeps the value as a str, so it is JSON serializable without a custom serializer.
-    """
+# class PurePathModel(RootModel):
+#     """
+#     A PurePath, such as /my/file.txt
+#     Validates path structure, does not check if the file exists.
+#     Keeps the value as a str, so it is JSON serializable without a custom serializer.
+#     """
 
-    root: str
+#     root: str
 
-    @validator("root")
-    def _validate(cls, v):  # pylint: disable=E0213
-        PurePath(v)
-        return v
+#     @validator("root")
+#     def _validate(cls, v):  # pylint: disable=E0213
+#         PurePath(v)
+#         return v
 
 
 class ParseResponse(BaseModel):
     # Either GCS path (gs:// URLs) or paths to local files
-    parsed_files: dict[str, Union[GCSBlobPath, PurePathModel]]
+    parsed_files: dict[str, Union[GCSBlobPath, FilePath]]
 
     @field_serializer("parsed_files", when_used="always")
     def _serialize(self, v):
