@@ -83,8 +83,8 @@ async def parse(payload: ParseRequest):
         output_files = parse_and_write_files(
             payload.input_path,
             payload.output_path,
-            disassemble=not payload.no_disassemble,
-            jsonify_content=not payload.no_jsonify_content,
+            disassemble=payload.disassemble,
+            jsonify_content=payload.jsonify_content,
         )
         return ParseResponse(parsed_files=output_files)
     except Exception as e:
