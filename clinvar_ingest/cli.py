@@ -1,5 +1,6 @@
 import argparse
 import json
+from argparse import Action
 
 
 def parse_args(argv):
@@ -13,14 +14,16 @@ def parse_args(argv):
     parse_sp.add_argument("--input-filename", "-i", required=True, type=str)
     parse_sp.add_argument("--output-directory", "-o", required=True, type=str)
     parse_sp.add_argument(
-        "--no-disassemble",
-        action="store_true",
-        help="Disable splitting nested Model objects into separate outputs",
+        "--disassemble",
+        type=bool,
+        default=True,
+        help="Split nested Model objects into separate output files (default: true)",
     )
     parse_sp.add_argument(
-        "--no-jsonify-content",
-        action="store_true",
-        help="Disable JSON encoding of content fields",
+        "--jsonify-content",
+        type=bool,
+        default=True,
+        help="JSON encode content fields (default: true)",
     )
 
     # UPLOAD

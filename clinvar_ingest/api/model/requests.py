@@ -74,8 +74,8 @@ class CopyResponse(BaseModel):
 class ParseRequest(BaseModel):
     input_path: str
     output_path: str
-    no_disassemble: bool = Field(default=True)
-    no_jsonify_content: bool = Field(default=True)
+    disassemble: bool = Field(default=True)
+    jsonify_content: bool = Field(default=True)
 
 
 class GcsBlobPath(RootModel):
