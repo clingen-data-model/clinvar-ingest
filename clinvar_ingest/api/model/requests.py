@@ -113,9 +113,9 @@ class ParseResponse(BaseModel):
     # Either GCS path (gs:// URLs) or paths to local files
     parsed_files: dict[str, Union[GCSBlobPath, FilePath]]
 
-    @field_serializer("parsed_files", when_used="always")
-    def _serialize(self, v):
-        return walk_and_replace(v, _dump_fn)
+    # @field_serializer("parsed_files", when_used="always")
+    # def _serialize(self, v):
+    #     return walk_and_replace(v, _dump_fn)
 
 
 class TodoRequest(BaseModel):  # A shim to get the workflow pieced together
