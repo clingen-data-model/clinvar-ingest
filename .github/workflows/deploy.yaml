@@ -6,6 +6,7 @@ on:
       - completed
     branches:
       - main
+      - 77-parameterize-workflow-action
 
 permissions:
   id-token: write
