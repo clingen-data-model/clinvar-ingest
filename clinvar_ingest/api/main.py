@@ -120,7 +120,7 @@ async def create_external_tables(payload: CreateExternalTablesRequest):
 
         return entity_type_table_ids
     except Exception as e:
-        msg = f"Failed to create external tables for {payload.model_dump()}"
+        msg = f"Failed to create external tables for {payload.model_dump()}: {e}"
         logger.exception(msg)
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
