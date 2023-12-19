@@ -57,6 +57,8 @@ class ClinvarFTPWatcherRequest(BaseModel):
         },
     )
 
+    # Host to connect to and download the file from
+    # e.g. https://ftp.ncbi.nlm.nih.gov or https://raw.githubusercontent.com
     host: AnyUrl
     directory: str
     name: str

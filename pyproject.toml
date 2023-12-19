@@ -39,5 +39,8 @@ clinvar-ingest = "clinvar_ingest.main:main"
 [tool.setuptools.packages.find]
 include = ["clinvar_ingest*"]
 
+[tool.setuptools.package-data]
+"clinvar_ingest" = ["clinvar_ingest/cloud/bigquery/bq_json_schemas/*.json"]
+
 [tool.isort]
 profile = "black"

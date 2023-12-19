@@ -4,12 +4,9 @@
 # Tables based on post-process procedures were later removed from bq_json_schemas, along with datarepo_row_ids
 ####
 
-
 set -xeuo pipefail
 
 out_dir=bq_json_schemas
-
-dataset=clingen-dev:asdf
 dataset=clingen-stage:clinvar_2023_12_09_v1_6_61
 
 mkdir -p $out_dir

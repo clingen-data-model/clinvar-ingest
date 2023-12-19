@@ -8,6 +8,7 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 WORKDIR /app
 COPY ./clinvar_ingest ./clinvar_ingest
 COPY pyproject.toml .
+COPY MANIFEST.in .
 RUN python -m pip install .
 
 # Runtime Image

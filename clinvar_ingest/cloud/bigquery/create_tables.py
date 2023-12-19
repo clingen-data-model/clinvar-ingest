@@ -17,6 +17,9 @@ from clinvar_ingest.cloud.gcs import parse_blob_uri
 
 _logger = logging.getLogger(__name__)
 
+file_dir = Path(__file__).parent.resolve()
+bq_schemas_dir = file_dir / "bq_json_schemas"
+
 
 def ensure_dataset_exists(
     client: bigquery.Client, project: str, dataset_id: str, location: str
@@ -41,8 +44,7 @@ def schema_file_path_for_table(table_name: str) -> dict:
     """
     Loads the schema for the given table name.
     """
-    base_path = Path("clinvar_ingest/cloud/bigquery/bq_json_schemas")
-    schema_path = base_path / f"{table_name}.bq.json"
+    schema_path = bq_schemas_dir / f"{table_name}.bq.json"
     return schema_path
 
 
