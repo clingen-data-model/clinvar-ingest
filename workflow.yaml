@@ -4,7 +4,7 @@ main:
         - copy:
             call: http.post
             args:
-                url: https://clinvar-ingest-qmojsrhb3q-uc.a.run.app/copy
+                url: '${CLOUD_RUN_SERVICE}/copy'
                 body: '${args}'
                 auth:
                     type: OIDC
@@ -12,10 +12,23 @@ main:
         - parse:
             call: http.post
             args:
-                url: https://clinvar-ingest-qmojsrhb3q-uc.a.run.app/parse
-                body: '${copy_result.body}'
+                url: '${CLOUD_RUN_SERVICE}/parse'
+                body:
+                    input_path: '${copy_result.body.gcs_path}'
+                    output_path: '${PARSE_OUTPUT_PREFIX}'
                 auth:
                     type: OIDC
             result: parse_result
+        - create_external_tables:
+            call: http.post
+            args:
+                url: '${CLOUD_RUN_SERVICE}/create_external_tables'
+                body:
+                    destination_project: '${BQ_DEST_PROJECT}'
+                    destination_dataset: '${BQ_DEST_DATASET}'
+                    source_table_paths: '${parse_result.body.parsed_files}'
+                auth:
+                    type: OIDC
+            result: create_external_tables_result
         - result:
-            return: ${parse_result}
+            return: ${create_external_tables_result}

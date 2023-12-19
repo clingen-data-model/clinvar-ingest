@@ -6,6 +6,7 @@ on:
       - completed
     branches:
       - main
+      - 77-parameterize-workflow-action
 
 permissions:
   id-token: write
@@ -38,6 +39,15 @@ jobs:
         run: |-
           gcloud run deploy clinvar-ingest --region us-central1 --image gcr.io/clingen-dev/clinvar-ingest:latest
 
-      - name: Deploy Workflow
+      - name: Get cloud run service url
         run: |-
-          gcloud workflows deploy clinvar-ingest --source=workflow.yaml
+          CLOUD_RUN_SERVICE=$(gcloud run services describe clinvar-ingest-pr-${PR_NUMBER} --region us-central1 --format='value(status.url)')
+          echo "CLOUD_RUN_SERVICE=${CLOUD_RUN_SERVICE}" >> $GITHUB_ENV
+
+      - name: Deploy Workflow
+        # https://cloud.google.com/workflows/docs/use-environment-variables#gcloud
+        run: |-
+          set -u
+          gcloud workflows deploy clinvar-ingest \
+            --set-env-vars=CLOUD_RUN_SERVICE=${CLOUD_RUN_SERVICE},PARSE_OUTPUT_PREFIX=gs://clinvar-ingest/main-release-outputs,BQ_DEST_PROJECT=clingen-dev,BQ_DEST_DATASET=clinvar_ingest_main_deploy  \
+            --source=workflow.yaml
