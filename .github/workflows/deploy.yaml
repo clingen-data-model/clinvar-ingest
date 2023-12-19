@@ -35,15 +35,17 @@ jobs:
         run: |-
           gcloud builds submit --quiet --substitutions="COMMIT_SHA=${{ github.event.workflow_run.head_sha }}" --config .cloudbuild/docker.cloudbuild.yaml --gcs-log-dir=gs://clinvar-ingest/build/logs .
 
+      # TODO fully specify the cloud run service configuration here in the github action, if possible
       - name: Change image on cloud run service
         run: |-
-          gcloud run deploy clinvar-ingest --region us-central1 --image gcr.io/clingen-dev/clinvar-ingest:latest
+          gcloud run deploy clinvar-ingest --region us-central1 --image 'gcr.io/clingen-dev/clinvar-ingest:${{ github.event.workflow_run.head_sha }}'
 
       - name: Get cloud run service url
         run: |-
           CLOUD_RUN_SERVICE=$(gcloud run services describe clinvar-ingest --region us-central1 --format='value(status.url)')
           echo "CLOUD_RUN_SERVICE=${CLOUD_RUN_SERVICE}" >> $GITHUB_ENV
 
+      # TODO fully specify the workflow configuration here in the github action, if possible
       - name: Deploy Workflow
         # https://cloud.google.com/workflows/docs/use-environment-variables#gcloud
         run: |-
