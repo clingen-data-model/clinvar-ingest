@@ -41,7 +41,7 @@ jobs:
 
       - name: Get cloud run service url
         run: |-
-          CLOUD_RUN_SERVICE=$(gcloud run services describe clinvar-ingest-pr-${PR_NUMBER} --region us-central1 --format='value(status.url)')
+          CLOUD_RUN_SERVICE=$(gcloud run services describe clinvar-ingest --region us-central1 --format='value(status.url)')
           echo "CLOUD_RUN_SERVICE=${CLOUD_RUN_SERVICE}" >> $GITHUB_ENV
 
       - name: Deploy Workflow
