@@ -10,8 +10,10 @@ if [[ "$1" == "apply" ]]; then
     pylint --disable=C,R,W clinvar_ingest
 else
     # Check-only mode
-    black --check clinvar_ingest test
-    isort --check-only clinvar_ingest test
-    ruff check clinvar_ingest test
-    pylint --disable=C,R,W clinvar_ingest
+    had_error=0
+    black --check clinvar_ingest test || had_error=1
+    isort --check-only clinvar_ingest test || had_error=1
+    ruff check clinvar_ingest test || had_error=1
+    pylint --disable=C,R,W clinvar_ingest || had_error=1
+    exit $had_error
 fi
