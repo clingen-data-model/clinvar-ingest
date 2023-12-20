@@ -128,9 +128,6 @@ class CreateExternalTablesRequest(BaseModel):
     Values are used by create_tables.run_create_external_tables.
     """
 
-    destination_project: str
-    destination_dataset: str
-
     source_table_paths: dict[str, GcsBlobPath]
 
 
