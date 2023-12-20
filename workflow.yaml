@@ -15,7 +15,6 @@ main:
                 url: '${sys.get_env("CLOUD_RUN_SERVICE")}/parse'
                 body:
                     input_path: '${copy_result.body.gcs_path}'
-                    output_path: '${sys.get_env("PARSE_OUTPUT_PREFIX")}'
                 auth:
                     type: OIDC
             result: parse_result
@@ -24,8 +23,6 @@ main:
             args:
                 url: '${sys.get_env("CLOUD_RUN_SERVICE")}/create_external_tables'
                 body:
-                    destination_project: '${sys.get_env("BQ_DEST_PROJECT")}'
-                    destination_dataset: '${sys.get_env("BQ_DEST_DATASET")}'
                     source_table_paths: '${parse_result.body.parsed_files}'
                 auth:
                     type: OIDC

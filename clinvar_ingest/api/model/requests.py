@@ -75,7 +75,6 @@ class CopyResponse(BaseModel):
 
 class ParseRequest(BaseModel):
     input_path: str
-    output_path: str
     disassemble: bool = Field(default=True)
     jsonify_content: bool = Field(default=True)
 
