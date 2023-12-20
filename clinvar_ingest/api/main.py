@@ -2,7 +2,6 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import PurePosixPath
 
-from dotenv import dotenv_values
 from fastapi import FastAPI, HTTPException, Request, status
 from google.cloud import bigquery
 from google.cloud.storage import Client as GCSClient
@@ -23,6 +22,7 @@ from clinvar_ingest.cloud.gcs import http_upload_urllib
 from clinvar_ingest.parse import parse_and_write_files
 
 logger = logging.getLogger("api")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -78,7 +78,7 @@ async def copy(request: Request, payload: ClinvarFTPWatcherRequest):
 
 
 @app.post("/parse", status_code=status.HTTP_201_CREATED, response_model=ParseResponse)
-async def parse(payload: ParseRequest):
+async def parse(request: Request, payload: ParseRequest):
     env: clinvar_ingest.config.Env = request.app.env
     try:
         output_files = parse_and_write_files(

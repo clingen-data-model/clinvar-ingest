@@ -13,8 +13,8 @@ from google.cloud import bigquery, storage
 from google.cloud.bigquery.dataset import Dataset, DatasetReference
 
 from clinvar_ingest.api.model.requests import CreateExternalTablesRequest
-from clinvar_ingest.config import get_env
 from clinvar_ingest.cloud.gcs import parse_blob_uri
+from clinvar_ingest.config import get_env
 
 _logger = logging.getLogger(__name__)
 
