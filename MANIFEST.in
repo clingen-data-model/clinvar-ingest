@@ -1,1 +1,0 @@
-include clinvar_ingest/cloud/bigquery/bq_json_schemas/*.json

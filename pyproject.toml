@@ -12,6 +12,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 dependencies = [
+    "python-dotenv~=1.0.0",
     "xmltodict==0.13.0",
     "coloredlogs",
     "click~=8.1.7",
@@ -40,7 +41,7 @@ clinvar-ingest = "clinvar_ingest.main:main"
 include = ["clinvar_ingest*"]
 
 [tool.setuptools.package-data]
-"clinvar_ingest" = ["clinvar_ingest/cloud/bigquery/bq_json_schemas/*.json"]
+"clinvar_ingest" = ["*.json", ".*.env"]
 
 [tool.isort]
 profile = "black"
