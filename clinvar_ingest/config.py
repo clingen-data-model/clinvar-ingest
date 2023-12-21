@@ -10,7 +10,7 @@ _clinvar_ftp_base_url = os.environ.get(
     "CLINVAR_FTP_BASE_URL", "https://ftp.ncbi.nlm.nih.gov"
 )
 _dotenv_env = os.environ.get("DOTENV_ENV", "dev")
-_dotenv_values = dotenv_values(f"dotenv/.{_dotenv_env}.env")
+_dotenv_values = dotenv_values(f".{_dotenv_env}.env")
 
 
 class Env(BaseModel):
