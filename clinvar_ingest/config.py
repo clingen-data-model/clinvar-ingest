@@ -29,7 +29,6 @@ def get_env() -> Env:
     Returns an Env object using the default environment
     variables and any default values.
     """
-    print(pathlib.Path(__file__).parent, _dotenv_env, _dotenv_values)
     return Env(
         bq_dest_dataset=_dotenv_values["BQ_DEST_DATASET"],
         bq_dest_project=_dotenv_values["BQ_DEST_PROJECT"],
