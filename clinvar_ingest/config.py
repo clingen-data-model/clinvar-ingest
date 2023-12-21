@@ -1,16 +1,17 @@
 import os
+import pathlib
 
 from dotenv import dotenv_values
 from pydantic import BaseModel
 
-_bucket_name = os.environ.get("CLINVAR_INGEST_BUCKET", None)
+_bucket_name = os.environ.get("CLINVAR_INGEST_BUCKET", "")
 _bucket_staging_prefix = os.environ.get("CLINVAR_INGEST_STAGING_PREFIX", "clinvar_xml")
 _bucket_parsed_prefix = os.environ.get("CLINVAR_INGEST_PARSED_PREFIX", "clinvar_parsed")
 _clinvar_ftp_base_url = os.environ.get(
     "CLINVAR_FTP_BASE_URL", "https://ftp.ncbi.nlm.nih.gov"
 )
 _dotenv_env = os.environ.get("DOTENV_ENV", "dev")
-_dotenv_values = dotenv_values(f".{_dotenv_env}.env")
+_dotenv_values = dotenv_values(pathlib.Path(__file__).parent / f".{_dotenv_env}.env")
 
 
 class Env(BaseModel):
