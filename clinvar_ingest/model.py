@@ -342,13 +342,22 @@ class Variation(Model):
             ]
         elif "Genotype" in inp:
             inp = inp["Genotype"]
-            return [
-                inp["@VariationID"],
-                *[
-                    Variation.descendant_tree({"Haplotype": haplotype})
-                    for haplotype in ensure_list(inp["Haplotype"])
-                ],
-            ]
+            if "SimpleAllele" in inp:
+                return [
+                    inp["@VariationID"],
+                    *[
+                        Variation.descendant_tree({"SimpleAllele": simpleAllele})
+                        for simpleAllele in ensure_list(inp["SimpleAllele"])
+                    ],
+                ]
+            else:
+                return [
+                    inp["@VariationID"],
+                    *[
+                        Variation.descendant_tree({"Haplotype": haplotype})
+                        for haplotype in ensure_list(inp["Haplotype"])
+                    ],
+                ]
         else:
             raise RuntimeError("Unknown variation type: " + json.dumps(inp))
 
@@ -597,9 +606,7 @@ class Trait(Model):
         disease_mechanism_attr = pop_attribute("disease mechanism")
         if disease_mechanism_attr is not None:
             disease_mechanism = get(disease_mechanism_attr, "Attribute", "$")
-            disease_mechanism_id = int(
-                get(disease_mechanism_attr, "Attribute", "@integerValue")
-            )
+            disease_mechanism_id = get(disease_mechanism_attr, "Attribute", "@integerValue")
             disease_mechanism_xref = make_attr_xrefs(
                 disease_mechanism_attr, "disease_mechanism"
             )
