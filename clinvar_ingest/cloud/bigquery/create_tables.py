@@ -14,6 +14,7 @@ from google.cloud.bigquery.dataset import Dataset, DatasetReference
 
 from clinvar_ingest.api.model.requests import CreateExternalTablesRequest
 from clinvar_ingest.cloud.gcs import parse_blob_uri
+from clinvar_ingest.config import get_env
 
 _logger = logging.getLogger(__name__)
 
@@ -81,13 +82,15 @@ def run_create_external_tables(
     """
     bq_client = bigquery.Client()
     gcs_client = storage.Client()
+    env = get_env()
 
-    if args.destination_project is None:
+    destination_project = env.bq_dest_project
+    if env.bq_dest_project is None:
         if bq_client.project is None:
             raise ValueError(
                 "gcloud client project is None and --project arg not provided"
             )
-        args.destination_project = bq_client.project
+        destination_project = bq_client.project
         _logger.info("Using default project from gcloud environment: %s", args.project)
 
     source_buckets = set()
@@ -107,8 +110,8 @@ def run_create_external_tables(
     # create dataset if not exists
     dataset_obj = ensure_dataset_exists(
         bq_client,
-        project=args.destination_project,
-        dataset_id=args.destination_dataset,
+        project=destination_project,
+        dataset_id=env.bq_dest_dataset,
         location=bucket_location,
     )
     if not dataset_obj:

@@ -75,7 +75,6 @@ class CopyResponse(BaseModel):
 
 class ParseRequest(BaseModel):
     input_path: str
-    output_path: str
     disassemble: bool = Field(default=True)
     jsonify_content: bool = Field(default=True)
 
@@ -128,9 +127,6 @@ class CreateExternalTablesRequest(BaseModel):
     Defines the arguments to the create_external_tables endpoint.
     Values are used by create_tables.run_create_external_tables.
     """
-
-    destination_project: str
-    destination_dataset: str
 
     source_table_paths: dict[str, GcsBlobPath]
 

@@ -51,5 +51,5 @@ jobs:
         run: |-
           set -u
           gcloud workflows deploy clinvar-ingest \
-            --set-env-vars=CLOUD_RUN_SERVICE=${CLOUD_RUN_SERVICE},PARSE_OUTPUT_PREFIX=gs://clinvar-ingest/main-release-outputs,BQ_DEST_PROJECT=clingen-dev,BQ_DEST_DATASET=clinvar_ingest_main_deploy  \
+            --set-env-vars=CLOUD_RUN_SERVICE=${CLOUD_RUN_SERVICE}  \
             --source=workflow.yaml
