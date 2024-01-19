@@ -116,6 +116,8 @@ class Submission(Model):
             submission_date=extract(inp, "@SubmissionDate"),
             content=inp,
         )
+        # TODO
+        # jsonify_content
         return obj
 
     def disassemble(self):
@@ -189,6 +191,8 @@ class ClinicalAssertion(Model):
             submission=submission,
             content=inp,
         )
+        # TODO
+        # jsonify_content
         return obj
 
     def disassemble(self):
@@ -606,7 +610,11 @@ class Trait(Model):
         disease_mechanism_attr = pop_attribute("disease mechanism")
         if disease_mechanism_attr is not None:
             disease_mechanism = get(disease_mechanism_attr, "Attribute", "$")
-            disease_mechanism_id = get(disease_mechanism_attr, "Attribute", "@integerValue")
+            disease_mechanism_id = get(
+                disease_mechanism_attr, "Attribute", "@integerValue"
+            )
+            if disease_mechanism_id is not None:
+                disease_mechanism_id = int(disease_mechanism_id)
             disease_mechanism_xref = make_attr_xrefs(
                 disease_mechanism_attr, "disease_mechanism"
             )
