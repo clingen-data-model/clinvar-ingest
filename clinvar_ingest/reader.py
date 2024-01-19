@@ -157,3 +157,4 @@ def read_clinvar_xml(
                         yield subobj
                 else:
                     yield model_obj
+            elem.clear()
