@@ -1,6 +1,7 @@
 import logging
 from contextlib import asynccontextmanager
 from pathlib import PurePosixPath
+from datetime import datetime
 
 from fastapi import FastAPI, HTTPException, Request, status
 from google.cloud import bigquery
@@ -13,6 +14,7 @@ from clinvar_ingest.api.model.requests import (
     CopyResponse,
     CreateExternalTablesRequest,
     CreateExternalTablesResponse,
+    InitializeWorkflowResponse,
     ParseRequest,
     ParseResponse,
     TodoRequest,
@@ -31,7 +33,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=lifespan, openapi_url="/openapi.json", docs_url="/api")
 app.add_middleware(LogRequests)
 
 
@@ -44,6 +46,18 @@ def _get_gcs_client() -> GCSClient:
 @app.get("/health", status_code=status.HTTP_200_OK)
 async def health():
     return {"health": "ok!"}
+
+
+@app.post(
+    "/create_workflow_id/{initial_id}",
+    status_code=status.HTTP_201_CREATED,
+    response_model=InitializeWorkflowResponse,
+)
+async def create_workflow_id(initial_id: str):
+    assert initial_id is not None and len(initial_id) > 0
+    timestamp = datetime.utcnow().isoformat()
+    workflow_id = f"{initial_id}_{timestamp}"
+    return InitializeWorkflowResponse(workflow_id=workflow_id)
 
 
 @app.post("/copy", status_code=status.HTTP_201_CREATED, response_model=CopyResponse)

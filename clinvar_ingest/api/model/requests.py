@@ -131,7 +131,7 @@ class CreateExternalTablesRequest(BaseModel):
     source_table_paths: dict[str, GcsBlobPath]
 
 
-bigquery_full_table_id = Annotated[
+BigqueryFullTableId = Annotated[
     str, StringConstraints(pattern=r"^[a-zA-Z0-9-_]+:[a-zA-Z0-9_]+.[a-zA-Z0-9-_]+$")
 ]
 
@@ -141,7 +141,24 @@ class CreateExternalTablesResponse(RootModel):
     Map of entity type to full table id (project:dataset.table)
     """
 
-    root: dict[str, bigquery_full_table_id]
+    root: dict[str, BigqueryFullTableId]
+
+
+class InitializeWorkflowResponse(BaseModel):
+    """
+    Defines the response from create_workflow_id endpoint.
+    """
+
+    workflow_id: Annotated[
+        str,
+        Field(
+            description=(
+                "The base value to be used to initialize a workflow ID. "
+                "The workflow ID will be a concatenation of this value and a timestamp. "
+                "For example a value of '2024-01-24' will result in a workflow ID of '2024-01-24_<timestamp>'."
+            )
+        ),
+    ]
 
 
 class TodoRequest(BaseModel):  # A shim to get the workflow pieced together
