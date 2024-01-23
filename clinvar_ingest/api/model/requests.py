@@ -13,6 +13,8 @@ from pydantic import (
     validator,
 )
 
+from clinvar_ingest.status import StepName, StepStatus
+
 
 def to_title_case(string: str) -> str:
     return " ".join(word.capitalize() for word in string.split("_"))
@@ -149,16 +151,59 @@ class InitializeWorkflowResponse(BaseModel):
     Defines the response from create_workflow_id endpoint.
     """
 
-    workflow_id: Annotated[
+    workflow_execution_id: Annotated[
         str,
         Field(
             description=(
-                "The base value to be used to initialize a workflow ID. "
-                "The workflow ID will be a concatenation of this value and a timestamp. "
-                "For example a value of '2024-01-24' will result in a workflow ID of '2024-01-24_<timestamp>'."
+                "The base value to be used to initialize a workflow_execution_id. "
+                "The workflow_execution_id will be a concatenation of this value and a timestamp, "
+                "representing a single instance of a workflow run, on a particular seed value."
+                "For example a seed value of '2024-01-24' will result in a workflow ID of '2024-01-24_<timestamp>'."
             )
         ),
     ]
+
+
+class InitializeStepRequest(BaseModel):
+    """
+    Defines the request to the initialize_step endpoint.
+    """
+
+    workflow_execution_id: str
+    step_name: StepName
+    message: str = None
+
+
+class InitializeStepResponse(BaseModel):
+    """
+    Defines the response from the initialize_step endpoint.
+    """
+
+    workflow_execution_id: str
+    step_name: StepName
+    step_status: StepStatus
+    timestamp: datetime
+
+    # @field_validator("timestamp")
+    # @classmethod
+    # def _timestamp_validator(cls, v: datetime):
+    #     if v.tzinfo == "UTC":
+    #         raise ValueError("Timestamp must be timezone aware")
+    #     if v.tzinfo is not None:
+    #         raise ValueError("Timestamp must be timezone aware")
+
+    @field_serializer("timestamp", when_used="always")
+    def _timestamp_serializer(self, v: datetime):
+        return v.isoformat()
+
+
+class GetStepStatusRequest(BaseModel):
+    """
+    Defines the request to the get_step_status endpoint.
+    """
+
+    workflow_execution_id: str
+    step_name: StepName
 
 
 class TodoRequest(BaseModel):  # A shim to get the workflow pieced together

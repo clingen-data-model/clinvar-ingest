@@ -1,7 +1,7 @@
 import logging
 from contextlib import asynccontextmanager
-from pathlib import PurePosixPath
 from datetime import datetime
+from pathlib import PurePosixPath
 
 from fastapi import FastAPI, HTTPException, Request, status
 from google.cloud import bigquery
@@ -14,11 +14,15 @@ from clinvar_ingest.api.model.requests import (
     CopyResponse,
     CreateExternalTablesRequest,
     CreateExternalTablesResponse,
+    GetStepStatusRequest,
+    InitializeStepRequest,
+    InitializeStepResponse,
     InitializeWorkflowResponse,
     ParseRequest,
     ParseResponse,
     TodoRequest,
 )
+from clinvar_ingest.api.status_file import StepStatus, write_status_file
 from clinvar_ingest.cloud.bigquery.create_tables import run_create_external_tables
 from clinvar_ingest.cloud.gcs import http_upload_urllib
 from clinvar_ingest.parse import parse_and_write_files
@@ -49,15 +53,53 @@ async def health():
 
 
 @app.post(
-    "/create_workflow_id/{initial_id}",
+    "/create_workflow_execution_id/{initial_id}",
     status_code=status.HTTP_201_CREATED,
     response_model=InitializeWorkflowResponse,
 )
-async def create_workflow_id(initial_id: str):
+async def create_workflow_execution_id(initial_id: str):
     assert initial_id is not None and len(initial_id) > 0
     timestamp = datetime.utcnow().isoformat()
-    workflow_id = f"{initial_id}_{timestamp}"
-    return InitializeWorkflowResponse(workflow_id=workflow_id)
+    execution_id = f"{initial_id}_{timestamp}"
+    return InitializeWorkflowResponse(workflow_execution_id=execution_id)
+
+
+@app.post(
+    "/initialize_step",
+    status_code=status.HTTP_201_CREATED,
+    response_model=InitializeStepResponse,
+)
+async def initialize_step(request: Request, payload: InitializeStepRequest):
+    env: clinvar_ingest.config.Env = request.app.env
+    workflow_execution_id = payload.workflow_execution_id
+    step_name = payload.step_name
+    step_status = StepStatus.STARTED
+    message = payload.message
+
+    status_value = write_status_file(
+        file_prefix=f"{workflow_execution_id}/{env.job_status_prefix}",
+        step=step_name,
+        status=step_status,
+        message=message,
+        timestamp=datetime.utcnow().isoformat(),
+    )
+
+    return InitializeStepResponse(
+        workflow_execution_id=workflow_execution_id,
+        step_name=step_name,
+        step_status=step_status,
+        timestamp=status_value.timestamp,
+    )
+
+
+@app.get("/get_step_status", status_code=status.HTTP_200_OK)
+async def get_step_status(request: Request, payload: GetStepStatusRequest):
+    env: clinvar_ingest.config.Env = request.app.env
+    execution_status_directory = (
+        f"{payload.workflow_execution_id}/{env.job_status_prefix}"
+    )
+    status_gcs_path = f"gs://{env.bucket_name}/{execution_status_directory}"
+    logger.debug("Reading status from %s", status_gcs_path)
 
 
 @app.post("/copy", status_code=status.HTTP_201_CREATED, response_model=CopyResponse)
