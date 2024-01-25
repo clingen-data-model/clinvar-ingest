@@ -77,11 +77,11 @@ async def initialize_step(request: Request, payload: InitializeStepRequest):
     message = payload.message
 
     status_value = write_status_file(
-        file_prefix=f"{workflow_execution_id}/{env.job_status_prefix}",
+        bucket=env.bucket_name,
+        file_prefix=f"{env.executions_output_prefix}/{workflow_execution_id}",
         step=step_name,
         status=step_status,
         message=message,
-        timestamp=datetime.utcnow().isoformat(),
     )
 
     return InitializeStepResponse(

@@ -184,14 +184,6 @@ class InitializeStepResponse(BaseModel):
     step_status: StepStatus
     timestamp: datetime
 
-    # @field_validator("timestamp")
-    # @classmethod
-    # def _timestamp_validator(cls, v: datetime):
-    #     if v.tzinfo == "UTC":
-    #         raise ValueError("Timestamp must be timezone aware")
-    #     if v.tzinfo is not None:
-    #         raise ValueError("Timestamp must be timezone aware")
-
     @field_serializer("timestamp", when_used="always")
     def _timestamp_serializer(self, v: datetime):
         return v.isoformat()
