@@ -92,7 +92,7 @@ async def initialize_step(request: Request, payload: InitializeStepRequest):
     )
 
 
-@app.get("/get_step_status", status_code=status.HTTP_200_OK)
+@app.get("/step_status", status_code=status.HTTP_200_OK)
 async def get_step_status(request: Request, payload: GetStepStatusRequest):
     env: clinvar_ingest.config.Env = request.app.env
     execution_status_directory = (
@@ -100,6 +100,13 @@ async def get_step_status(request: Request, payload: GetStepStatusRequest):
     )
     status_gcs_path = f"gs://{env.bucket_name}/{execution_status_directory}"
     logger.debug("Reading status from %s", status_gcs_path)
+
+
+# TODO
+# it would be useful to have a /workflow_execution_status endpoint that returns the
+# status of all steps instead of needing to specify a specific step to check. If
+# the status filenames are consistent we can check each one and return a
+# dict of step_name -> {status info}
 
 
 @app.post("/copy", status_code=status.HTTP_201_CREATED, response_model=CopyResponse)
