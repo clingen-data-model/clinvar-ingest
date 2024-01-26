@@ -4,18 +4,31 @@ main:
         - init:
             assign:
                 - ingest_steps:
-                    - copy: ["ftp_path", "gcs_path"]
-                    - parse: ["parsed_files"]
-                    - create_external_tables: ["root"]
+                    copy: ["ftp_path", "gcs_path"]
+                    parse: ["parsed_files"]
+                    create_external_tables: ["root"]
                 - base_url: '${sys.get_env("CLOUD_RUN_SERVICE_URL") + "/"}'
                 - initialize_step_url: '${base_url + "initialize_step"}'
                 - step_status_url: '${base_url + "step_status"}'
+                - workflow_execution_step_url: '${base_url + "create_workflow_execution_id/"}'
                 - clinvar_file: '${args.Name}'
+        - create_workflow_execution:
+            call: http.post
+            args:
+                url: '${workflow_execution_step_url + clinvar_file}'
+                body:
+                auth:
+                    type: OIDC
+            result: workflow_execution_step_result
         - for_in_steps:
             for:
                 value: step
-                in: ${ingest_steps}
+                in: ${keys(ingest_steps)}
                 steps:
+                    - log_step_key:
+                        call: sys.log
+                        args:
+                            data: '${"Step is: " + step}'
                     - init_variables:
                         assign:
                             - step_name: '${text.to_upper(step)}'
