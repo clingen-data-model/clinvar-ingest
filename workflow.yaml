@@ -4,10 +4,9 @@ main:
         - init:
             assign:
                 - ingest_steps:
-                    - copy
-                    - parse
-                    - create_external_tables
-                    - create_internal_tables
+                    - copy: ["ftp_path", "gcs_path"]
+                    - parse: ["parsed_files"]
+                    - create_external_tables: ["root"]
                 - base_url: '${sys.get_env("CLOUD_RUN_SERVICE_URL") + "/"}'
                 - initialize_step_url: '${base_url + "initialize_step"}'
                 - step_status_url: '${base_url + "step_status"}'
@@ -17,9 +16,10 @@ main:
                 value: step
                 in: ${ingest_steps}
                 steps:
-                    - init_vars:
+                    - init_variables:
                         assign:
                             - step_name: '${text.to_upper(step)}'
+                            - result_copy_vars: ingest_steps[step]
                     - log_execute_args:
                         call: sys.log
                         args:
@@ -56,7 +56,7 @@ main:
                             url: '${step_status_url}'
                             body:
                                 step_name: '${step_name}'
-                                file: '${clinvar_file}'
+                                workflow_execution_id: '${clinvar_file}'
                             auth:
                                 type: OIDC
                         result: status_check_result
@@ -66,16 +66,26 @@ main:
                             data: '${status_check_result}'
                     - check_if_complete:
                         switch:
-                            - condition: ${"FAILED"== status_check_result}
+                            - condition: ${"FAILED" == status_check_result}
                               next: step_failed
                             - condition: ${"SUCCEEDED" == status_check_result}
                               next: step_succeeded
                     - wait_for_result:
                         call: sys.sleep
                         args:
-                            seconds: 300
+                            seconds: 120
                         next: status_check
                     - step_succeeded:
-                        return: '${"Step " + step_name + " succeeded for " + clinvar_file + " " + status_check_result.complete}'
+                        steps:
+                            - update_args_with_step_results:
+                                for:
+                                    value: var
+                                    in: ${result_copy_vars}
+                                    steps:
+                                        - assign_vars:
+                                            assign:
+                                                - args[var]: ${status_check_result[var]}
+                            - return_args:
+                                return: args
                     - step_failed:
                         raise: '${"Step " + step_name + " failed for " + clinvar_file + " " + status_check_result.failure}'
