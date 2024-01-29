@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from pathlib import PurePath
-from typing import Annotated, Any, Callable, Union
+from typing import Annotated, Any, Callable, Literal, Optional, Union
 
 from pydantic import (
     AnyUrl,
@@ -171,7 +171,7 @@ class InitializeStepRequest(BaseModel):
 
     workflow_execution_id: str
     step_name: StepName
-    message: str = None
+    message: Optional[str] = None
 
 
 class InitializeStepResponse(BaseModel):
@@ -196,6 +196,39 @@ class GetStepStatusRequest(BaseModel):
 
     workflow_execution_id: str
     step_name: StepName
+
+
+class GetStepStatusResponse(BaseModel):
+    """
+    Defines the response from the get_step_status endpoint.
+    """
+
+    workflow_execution_id: str
+    step_name: StepName
+    step_status: StepStatus
+    timestamp: datetime
+    message: Optional[str] = None
+
+    @field_serializer("timestamp", when_used="always")
+    def _timestamp_serializer(self, v: datetime):
+        return v.isoformat()
+
+
+class StepStartedResponse(BaseModel):
+    """
+    Defines the response from the step_started endpoint.
+    """
+
+    workflow_execution_id: str
+    step_name: StepName
+
+    timestamp: datetime
+    step_status: Literal[StepStatus.STARTED] = StepStatus.STARTED
+    message: Optional[str] = None
+
+    @field_serializer("timestamp", when_used="always")
+    def _timestamp_serializer(self, v: datetime):
+        return v.isoformat()
 
 
 class TodoRequest(BaseModel):  # A shim to get the workflow pieced together

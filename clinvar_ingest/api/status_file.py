@@ -5,6 +5,8 @@ services can monitor the status of the workflow jobs. The status files are writt
 import json
 from datetime import datetime
 
+from google.cloud.storage import Client as GCSClient, Blob
+
 from clinvar_ingest.cloud.gcs import blob_writer
 from clinvar_ingest.status import StatusValue, StepName, StepStatus
 
@@ -36,3 +38,31 @@ def write_status_file(
     with blob_writer(gcs_uri) as writer:
         writer.write(json.dumps(vars(status_value)).encode("utf-8"))
     return status_value
+
+
+def get_status_file(
+    bucket: str,
+    file_prefix: str,
+    step: StepName,
+    status: StepStatus,
+) -> StatusValue:
+    """
+    Retrieve the contents of a status file from a GCS Bucket, as a StatusValue object.
+    Example:
+    execution_id = "2024-01-25_2024-01-25T19:40:49.363883"
+    status_value = get_status_file(
+        "clinvar-ingest",
+        f"executions/{execution_id}",
+        StepName.COPY,
+        StepStatus.STARTED)
+    """
+    # https://cloud.google.com/python/docs/reference/storage/latest/google.cloud.storage.bucket.Bucket#google_cloud_storage_bucket_Bucket_list_blobs
+    client = GCSClient()
+    bucket = client.bucket(bucket)
+    blob: Blob = bucket.get_blob(f"{file_prefix}/{step}-{status}.json")
+    if blob is None:
+        raise ValueError(
+            f"Could not find status file for step {step} with status {status} in bucket {bucket} and file prefix {file_prefix}"
+        )
+    content = blob.download_as_string()
+    return StatusValue(**json.loads(content))

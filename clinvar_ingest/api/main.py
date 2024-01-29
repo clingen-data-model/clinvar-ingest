@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import PurePosixPath
 
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, HTTPException, Request, status, BackgroundTasks
 from google.cloud import bigquery
 from google.cloud.storage import Client as GCSClient
 
@@ -15,17 +15,24 @@ from clinvar_ingest.api.model.requests import (
     CreateExternalTablesRequest,
     CreateExternalTablesResponse,
     GetStepStatusRequest,
+    GetStepStatusResponse,
     InitializeStepRequest,
     InitializeStepResponse,
     InitializeWorkflowResponse,
     ParseRequest,
     ParseResponse,
+    StepStartedResponse,
     TodoRequest,
 )
-from clinvar_ingest.api.status_file import StepStatus, write_status_file
+from clinvar_ingest.api.status_file import (
+    StepStatus,
+    get_status_file,
+    write_status_file,
+)
 from clinvar_ingest.cloud.bigquery.create_tables import run_create_external_tables
 from clinvar_ingest.cloud.gcs import http_upload_urllib
 from clinvar_ingest.parse import parse_and_write_files
+from clinvar_ingest.status import StepName
 
 logger = logging.getLogger("api")
 
@@ -92,21 +99,107 @@ async def initialize_step(request: Request, payload: InitializeStepRequest):
     )
 
 
-@app.get("/step_status", status_code=status.HTTP_200_OK)
-async def get_step_status(request: Request, payload: GetStepStatusRequest):
+@app.get(
+    "/step_status/{workflow_execution_id}/{step_name}", status_code=status.HTTP_200_OK
+)
+async def get_step_status(
+    request: Request,
+    workflow_execution_id: str,
+    step_name: StepName,
+):
     env: clinvar_ingest.config.Env = request.app.env
-    execution_status_directory = (
-        f"{payload.workflow_execution_id}/{env.job_status_prefix}"
+    file_prefix = f"{env.executions_output_prefix}/{workflow_execution_id}"
+    logger.debug("Reading %s status from %s", step_name, file_prefix)
+
+    # Cannot get status of step that has not started. Raise 404.
+    try:
+        status_value = get_status_file(
+            bucket=env.bucket_name,
+            file_prefix=file_prefix,
+            step=step_name,
+            status=StepStatus.STARTED,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+
+    try:
+        status_value = get_status_file(
+            bucket=env.bucket_name,
+            file_prefix=file_prefix,
+            step=step_name,
+            status=StepStatus.SUCCEEDED,
+        )
+    except ValueError as _:
+        logger.info(
+            "Step %s in execution %s started and has not succeeded",
+            step_name,
+            workflow_execution_id,
+        )
+
+    try:
+        status_value = get_status_file(
+            bucket=env.bucket_name,
+            file_prefix=file_prefix,
+            step=step_name,
+            status=StepStatus.FAILED,
+        )
+    except ValueError as _:
+        logger.info(
+            "Step %s in execution %s started and still running",
+            step_name,
+            workflow_execution_id,
+        )
+
+    return GetStepStatusResponse(
+        workflow_execution_id=workflow_execution_id,
+        step_name=step_name,
+        step_status=status_value.status,
+        timestamp=status_value.timestamp,
+        message=status_value.message,
     )
-    status_gcs_path = f"gs://{env.bucket_name}/{execution_status_directory}"
-    logger.debug("Reading status from %s", status_gcs_path)
 
 
-# TODO
-# it would be useful to have a /workflow_execution_status endpoint that returns the
-# status of all steps instead of needing to specify a specific step to check. If
-# the status filenames are consistent we can check each one and return a
-# dict of step_name -> {status info}
+@app.post(
+    "/fake/{workflow_execution_id}/{step_name}",
+    status_code=status.HTTP_201_CREATED,
+    response_model=StepStartedResponse,
+)
+async def fake_step(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    workflow_execution_id: str,
+    step_name: str,
+):
+    env: clinvar_ingest.config.Env = request.app.env
+    start_status = write_status_file(
+        env.bucket_name,
+        f"{env.executions_output_prefix}/{workflow_execution_id}",
+        step_name,
+        StepStatus.STARTED,
+    )
+    logger.info("Fake %s started", step_name)
+
+    def task():
+        # Here's where we do the actual step work, in a callable sent to BackgroundTasks.
+        write_status_file(
+            env.bucket_name,
+            f"{env.executions_output_prefix}/{workflow_execution_id}",
+            step_name,
+            StepStatus.SUCCEEDED,
+        )
+        logger.info(
+            "Fake %s for workflow %s succeeded", step_name, workflow_execution_id
+        )
+
+    background_tasks.add_task(task)
+    logger.info("Fake %s background task added", step_name)
+
+    logger.info("Fake %s returning", step_name)
+    return StepStartedResponse(
+        workflow_execution_id=workflow_execution_id,
+        step_name=step_name,
+        timestamp=start_status.timestamp,
+    )
 
 
 @app.post("/copy", status_code=status.HTTP_201_CREATED, response_model=CopyResponse)
