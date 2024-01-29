@@ -202,35 +202,76 @@ async def fake_step(
     )
 
 
-@app.post("/copy", status_code=status.HTTP_201_CREATED, response_model=CopyResponse)
-async def copy(request: Request, payload: ClinvarFTPWatcherRequest):
+@app.post(
+    "/copy/{workflow_execution_id}",
+    status_code=status.HTTP_201_CREATED,
+    response_model=StepStartedResponse,
+)
+def copy(
+    request: Request,
+    workflow_execution_id: str,
+    payload: ClinvarFTPWatcherRequest,
+    background_tasks: BackgroundTasks,
+):
     env: clinvar_ingest.config.Env = request.app.env
+    step_name = StepName.COPY
     # TODO allow source path to be in a bucket or file (for testing)
     ftp_base = str(payload.host).strip("/")
     ftp_dir = PurePosixPath(payload.directory)
     ftp_file = PurePosixPath(payload.name)
     ftp_path = f"{ftp_base}/{ftp_dir.relative_to(ftp_dir.anchor) / ftp_file}"
 
-    gcs_base = f"gs://{env.bucket_name}"
+    gcs_base = (
+        f"gs://{env.bucket_name}/{env.executions_output_prefix}/{workflow_execution_id}"
+    )
     gcs_dir = PurePosixPath(env.bucket_staging_prefix)
     gcs_file = PurePosixPath(payload.name)
     gcs_path = f"{gcs_base}/{gcs_dir.relative_to(gcs_dir.anchor) / gcs_file}"
 
     logger.info(f"Copying {ftp_path} to {gcs_path}")
 
-    try:
-        http_upload_urllib(ftp_path, gcs_path, client=_get_gcs_client())
-        return CopyResponse(
-            ftp_path=ftp_path,
-            gcs_path=gcs_path,
-        )
-    except Exception as e:
-        msg = f"Failed to copy {ftp_path}"
-        logger.exception(msg)
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=msg,
-        ) from e
+    start_status = write_status_file(
+        env.bucket_name,
+        f"{env.executions_output_prefix}/{workflow_execution_id}",
+        step_name,
+        StepStatus.STARTED,
+    )
+    logger.info("Copy step for workflow %s started", workflow_execution_id)
+
+    def task():
+        try:
+            http_upload_urllib(ftp_path, gcs_path, client=_get_gcs_client())
+            write_status_file(
+                env.bucket_name,
+                f"{env.executions_output_prefix}/{workflow_execution_id}",
+                step_name,
+                StepStatus.SUCCEEDED,
+                message=CopyResponse(
+                    ftp_path=ftp_path,
+                    gcs_path=gcs_path,
+                ).model_dump_json(),
+            )
+
+        except Exception as e:  # pylint: disable=W0718
+            msg = f"Failed to copy {ftp_path}"
+            logger.exception(msg)
+            write_status_file(
+                env.bucket_name,
+                f"{env.executions_output_prefix}/{workflow_execution_id}",
+                step_name,
+                StepStatus.FAILED,
+                message=f"{msg}: {e}",
+            )
+
+    background_tasks.add_task(task)
+    logger.info("Copy step task for workflow %s added", workflow_execution_id)
+
+    logger.info("Copy step task for workflow %s returning", workflow_execution_id)
+    return StepStartedResponse(
+        workflow_execution_id=workflow_execution_id,
+        step_name=StepName.COPY,
+        timestamp=start_status.timestamp,
+    )
 
 
 @app.post("/parse", status_code=status.HTTP_201_CREATED, response_model=ParseResponse)
@@ -293,3 +334,31 @@ async def create_internal_tables(payload: TodoRequest):
 @app.post("/create_cleaned_tables", status_code=status.HTTP_201_CREATED)
 async def create_cleaned_tables(payload: TodoRequest):
     return {"todo": "implement me"}
+
+
+def sleep_1(request: Request):
+    import time
+
+    time.sleep(5)
+    return {}
+
+
+def sleep_2(request: Request):
+    import asyncio
+
+    asyncio.sleep(5)
+    return {}
+
+
+async def sleep_3(request: Request):
+    import time
+
+    time.sleep(5)
+    return {}
+
+
+async def sleep_4(request: Request):
+    import asyncio
+
+    asyncio.sleep(5)
+    return {}

@@ -1,12 +1,13 @@
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
+from typing import Optional, Union
 
 
 class StepName(StrEnum):
-    COPY = "COPY"
-    PARSE = "PARSE"
-    CREATE_EXTERNAL_TABLES = "CREATE_EXTERNAL_TABLES"
+    COPY = "copy"
+    PARSE = "parse"
+    CREATE_EXTERNAL_TABLES = "create_external_tables"
 
 
 class StepStatus(StrEnum):
@@ -21,4 +22,4 @@ class StatusValue(dict):
     status: StepStatus
     step: StepName
     timestamp: datetime
-    message: str = None
+    message: Optional[Union[str, dict]] = None
