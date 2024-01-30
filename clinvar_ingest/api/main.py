@@ -99,7 +99,9 @@ async def initialize_step(request: Request, payload: InitializeStepRequest):
 
 
 @app.get(
-    "/step_status/{workflow_execution_id}/{step_name}", status_code=status.HTTP_200_OK
+    "/step_status/{workflow_execution_id}/{step_name}",
+    status_code=status.HTTP_200_OK,
+    response_model=GetStepStatusResponse,
 )
 async def get_step_status(
     request: Request,
@@ -268,29 +270,67 @@ async def copy(
     logger.info("Copy step task for workflow %s returning", workflow_execution_id)
     return StepStartedResponse(
         workflow_execution_id=workflow_execution_id,
-        step_name=StepName.COPY,
+        step_name=step_name,
         timestamp=start_status.timestamp,
     )
 
 
-@app.post("/parse", status_code=status.HTTP_201_CREATED, response_model=ParseResponse)
-async def parse(request: Request, payload: ParseRequest):
+@app.post(
+    "/parse/{workflow_execution_id}",
+    status_code=status.HTTP_201_CREATED,
+    response_model=StepStartedResponse,
+)
+async def parse(
+    request: Request,
+    workflow_execution_id: str,
+    payload: ParseRequest,
+    background_tasks: BackgroundTasks,
+):
     env: clinvar_ingest.config.Env = request.app.env
-    try:
-        output_files = parse_and_write_files(
-            payload.input_path,
-            env.parse_output_prefix,
-            disassemble=payload.disassemble,
-            jsonify_content=payload.jsonify_content,
-        )
-        return ParseResponse(parsed_files=output_files)
-    except Exception as e:
-        msg = f"Failed to parse {payload.input_path} and write to {env.parse_output_prefix}"
-        logger.exception(msg)
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=msg,
-        ) from e
+    step_name = StepName.PARSE
+    start_status = write_status_file(
+        env.bucket_name,
+        f"{env.executions_output_prefix}/{workflow_execution_id}",
+        step_name,
+        StepStatus.STARTED,
+    )
+    logger.info("Parse step for workflow %s started", workflow_execution_id)
+
+    def task():
+        try:
+            output_files = parse_and_write_files(
+                payload.input_path,
+                env.parse_output_prefix,
+                disassemble=payload.disassemble,
+                jsonify_content=payload.jsonify_content,
+            )
+            write_status_file(
+                env.bucket_name,
+                f"{env.executions_output_prefix}/{workflow_execution_id}",
+                step_name,
+                StepStatus.SUCCEEDED,
+                message=ParseResponse(parsed_files=output_files).model_dump_json(),
+            )
+        except Exception as e:
+            msg = f"Failed to parse {payload.input_path} and write to {env.parse_output_prefix}"
+            logger.exception(msg)
+            write_status_file(
+                env.bucket_name,
+                f"{env.executions_output_prefix}/{workflow_execution_id}",
+                step_name,
+                StepStatus.FAILED,
+                message=f"{msg}: {e}",
+            )
+
+    background_tasks.add_task(task)
+    logger.info("Parse step task for workflow %s added", workflow_execution_id)
+
+    logger.info("Parse step task for workflow %s returning", workflow_execution_id)
+    return StepStartedResponse(
+        workflow_execution_id=workflow_execution_id,
+        step_name=step_name,
+        timestamp=start_status.timestamp,
+    )
 
 
 @app.post(
