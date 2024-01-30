@@ -60,4 +60,4 @@ while True:
         break
     elif status_resp_json["step_status"] == "FAILED":
         raise RuntimeError(f"Step failed: {status_resp_json}")
-    time.sleep(5)
+    time.sleep(1)
