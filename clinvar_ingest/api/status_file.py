@@ -41,6 +41,9 @@ def write_status_file(
     return status_value
 
 
+# TODO an improvement here for performance reasons in the status check endpoint
+# would be to make blob existence knowable without necessarily downloading the blob
+# a finished workflow step would not need to download the started file to know it's finished
 def get_status_file(
     bucket: str,
     file_prefix: str,

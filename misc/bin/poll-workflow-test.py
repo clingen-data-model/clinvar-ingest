@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import time
-
+import json
 import requests
 
 # pylint: disable=W0105
@@ -40,18 +40,49 @@ print(f"Workflow Execution ID: {execution_id}")
 # assert status_resp.status_code == 404
 
 
+################################################################
 # Run /copy step that writes a STARTED file, returns immediately,
 # while running something and writing a SUCCEED file asynchronously
-step1_resp = requests.post(f"{baseurl}/copy/{execution_id}", json=wf_input, timeout=60)
-print(step1_resp.status_code)
-print(step1_resp.json())
-assert step1_resp.status_code == 201
-step1_resp_json = step1_resp.json()
+copy_resp = requests.post(f"{baseurl}/copy/{execution_id}", json=wf_input, timeout=60)
+print(copy_resp.status_code)
+print(copy_resp.json())
+assert copy_resp.status_code == 201
+copy_resp_json = copy_resp.json()
 
-# poll for completion
+# poll for copy completion
 while True:
     print("Sending status check request...")
     status_resp = requests.get(f"{baseurl}/step_status/{execution_id}/copy", timeout=60)
+    assert status_resp.status_code == 200
+    status_resp_json = status_resp.json()
+    print(f"Status Response: {status_resp_json}")
+    if status_resp_json["step_status"] == "SUCCEEDED":
+        print("Step succeeded")
+        break
+    elif status_resp_json["step_status"] == "FAILED":
+        raise RuntimeError(f"Step failed: {status_resp_json}")
+    time.sleep(1)
+
+################################################################
+# Run /parse step that writes a STARTED file, returns immediately,
+copy_output = json.loads(status_resp_json["message"])
+parse_input = {
+    "input_path": copy_output["gcs_path"],
+}
+parse_step_response = requests.post(
+    f"{baseurl}/parse/{execution_id}", json=parse_input, timeout=60
+)
+print(parse_step_response.status_code)
+print(parse_step_response.json())
+assert parse_step_response.status_code == 201
+parse_step_response_json = parse_step_response.json()
+
+# poll for parse completion
+while True:
+    print("Sending status check request...")
+    status_resp = requests.get(
+        f"{baseurl}/step_status/{execution_id}/parse", timeout=60
+    )
     assert status_resp.status_code == 200
     status_resp_json = status_resp.json()
     print(f"Status Response: {status_resp_json}")
