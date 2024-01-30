@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import PurePosixPath
 
-from fastapi import FastAPI, HTTPException, Request, status, BackgroundTasks
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, status
 from google.cloud import bigquery
 from google.cloud.storage import Client as GCSClient
 
@@ -14,7 +14,6 @@ from clinvar_ingest.api.model.requests import (
     CopyResponse,
     CreateExternalTablesRequest,
     CreateExternalTablesResponse,
-    GetStepStatusRequest,
     GetStepStatusResponse,
     InitializeStepRequest,
     InitializeStepResponse,
@@ -207,7 +206,7 @@ async def fake_step(
     status_code=status.HTTP_201_CREATED,
     response_model=StepStartedResponse,
 )
-def copy(
+async def copy(
     request: Request,
     workflow_execution_id: str,
     payload: ClinvarFTPWatcherRequest,
@@ -334,31 +333,3 @@ async def create_internal_tables(payload: TodoRequest):
 @app.post("/create_cleaned_tables", status_code=status.HTTP_201_CREATED)
 async def create_cleaned_tables(payload: TodoRequest):
     return {"todo": "implement me"}
-
-
-def sleep_1(request: Request):
-    import time
-
-    time.sleep(5)
-    return {}
-
-
-def sleep_2(request: Request):
-    import asyncio
-
-    asyncio.sleep(5)
-    return {}
-
-
-async def sleep_3(request: Request):
-    import time
-
-    time.sleep(5)
-    return {}
-
-
-async def sleep_4(request: Request):
-    import asyncio
-
-    asyncio.sleep(5)
-    return {}

@@ -5,7 +5,8 @@ services can monitor the status of the workflow jobs. The status files are writt
 import json
 from datetime import datetime
 
-from google.cloud.storage import Client as GCSClient, Blob
+from google.cloud.storage import Blob
+from google.cloud.storage import Client as GCSClient
 
 from clinvar_ingest.cloud.gcs import blob_writer
 from clinvar_ingest.status import StatusValue, StepName, StepStatus
