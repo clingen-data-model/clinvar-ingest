@@ -3,58 +3,36 @@ main:
     steps:
         - init:
             assign:
-                - ingest_steps:
-                    copy: ["ftp_path", "gcs_path"]
-                    parse: ["parsed_files"]
-                    create_external_tables: ["root"]
+                - ordered_steps: ["copy", "parse", "create_external_tables"]
+                - output_to_input_key_names:
+                    copy: {"gcs_path": "input_path"}
+                    parse: {"parsed_files": "source_table_paths"}
+                    create_external_tables: {"root": "root"}
                 - base_url: '${sys.get_env("CLOUD_RUN_SERVICE_URL") + "/"}'
-                - initialize_step_url: '${base_url + "initialize_step"}'
-                - step_status_url: '${base_url + "step_status"}'
-                - workflow_execution_step_url: '${base_url + "create_workflow_execution_id/"}'
-                - clinvar_file: '${args.Name}'
         - create_workflow_execution:
             call: http.post
             args:
-                url: '${workflow_execution_step_url + clinvar_file}'
+                url: '${base_url + "create_workflow_execution_id/" + args["Release Date"]}'
                 body:
                 auth:
                     type: OIDC
             result: workflow_execution_step_result
+        - init_workflow_execution_id:
+            assign:
+                - workflow_execution_id: ${workflow_execution_step_result.body.workflow_execution_id}
         - for_in_steps:
             for:
                 value: step
-                in: ${keys(ingest_steps)}
+                in: ${ordered_steps}
                 steps:
                     - log_step_key:
                         call: sys.log
                         args:
-                            data: '${"Step is: " + step}'
-                    - init_variables:
-                        assign:
-                            - step_name: '${text.to_upper(step)}'
-                            - result_copy_vars: ingest_steps[step]
-                    - log_execute_args:
-                        call: sys.log
-                        args:
-                            data: '${"executing: " + step_name + " " + base_url + step + " " + clinvar_file}'
-                    - initialize_step:
-                        call: http.post
-                        args:
-                            url: '${initialize_step_url}'
-                            body:
-                                step_name: '${step_name}'
-                                workflow_execution_id: '${clinvar_file}'
-                            auth:
-                                type: OIDC
-                        result: initialize_step_result
-                    - log_initialize_step_result:
-                        call: sys.log
-                        args:
-                            data: '${initialize_step_result}'
+                            data: '${"Step is: " + step + " workflow_execution_id is: " + workflow_execution_id}'
                     - call_step:
                         call: http.post
                         args:
-                            url: '${base_url + step}'
+                            url: '${base_url + step + "/" + workflow_execution_id}'
                             body: '${args}'
                             auth:
                                 type: OIDC
@@ -64,12 +42,9 @@ main:
                         args:
                             data: '${call_step_result}'
                     - status_check:
-                        call: http.post
+                        call: http.get
                         args:
-                            url: '${step_status_url}'
-                            body:
-                                step_name: '${step_name}'
-                                workflow_execution_id: '${clinvar_file}'
+                            url: '${base_url + "step_status/" + workflow_execution_id + "/" + step}'
                             auth:
                                 type: OIDC
                         result: status_check_result
@@ -79,26 +54,31 @@ main:
                             data: '${status_check_result}'
                     - check_if_complete:
                         switch:
-                            - condition: ${"FAILED" == status_check_result}
+                            - condition: ${"FAILED" == status_check_result.body.step_status}
                               next: step_failed
-                            - condition: ${"SUCCEEDED" == status_check_result}
+                            - condition: ${"SUCCEEDED" == status_check_result.body.step_status}
                               next: step_succeeded
                     - wait_for_result:
                         call: sys.sleep
                         args:
-                            seconds: 120
+                            seconds: 60
                         next: status_check
+                    - step_failed:
+                        raise: '${"Step " + step + " failed for " + args.Name + " " + status_check_result.body.message}'
                     - step_succeeded:
                         steps:
                             - update_args_with_step_results:
                                 for:
-                                    value: var
-                                    in: ${result_copy_vars}
+                                    value: output_key
+                                    in: ${keys(output_to_input_key_names[step])}
                                     steps:
+                                        - log_json:
+                                            call: sys.log
+                                            args:
+                                                data: '${json.decode(status_check_result.body.message)}'
                                         - assign_vars:
                                             assign:
-                                                - args[var]: ${status_check_result[var]}
-                            - return_args:
-                                return: args
-                    - step_failed:
-                        raise: '${"Step " + step_name + " failed for " + clinvar_file + " " + status_check_result.failure}'
+                                                - json_message: ${json.decode(status_check_result.body.message)}
+                                                - input_key: ${output_to_input_key_names[step][output_key]}
+                                                - args[input_key]: ${json_message[output_key]}
+
