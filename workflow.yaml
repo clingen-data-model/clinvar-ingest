@@ -8,10 +8,11 @@ main:
                     copy: {"gcs_path": "input_path"}
                     parse: {"parsed_files": "source_table_paths"}
                 - base_url: '${sys.get_env("CLOUD_RUN_SERVICE_URL") + "/"}'
+                - clinvar_release_date: ${text.replace_all(args["Release Date"], "-", "_")}
         - create_workflow_execution:
             call: http.post
             args:
-                url: '${base_url + "create_workflow_execution_id/" + args["Release Date"]}'
+                url: '${base_url + "create_workflow_execution_id/" + clinvar_release_date}'
                 body:
                 auth:
                     type: OIDC
