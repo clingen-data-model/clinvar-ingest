@@ -51,7 +51,6 @@ def parse_args(argv):
 
     # CREATE TABLES
     create_table_sp = subparsers.add_parser("create-tables")
-    create_table_sp.add_argument("--destination-project", type=str, required=False)
     create_table_sp.add_argument("--destination-dataset", type=str, required=True)
     create_table_sp.add_argument("--source-table-paths", type=json.loads, required=True)
 

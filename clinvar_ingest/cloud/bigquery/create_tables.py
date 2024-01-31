@@ -111,13 +111,15 @@ def run_create_external_tables(
     dataset_obj = ensure_dataset_exists(
         bq_client,
         project=destination_project,
-        dataset_id=env.bq_dest_dataset,
+        dataset_id=args.destination_dataset,
         location=bucket_location,
     )
     if not dataset_obj:
         raise RuntimeError(f"Didn't get a dataset object back. run_create args: {args}")
 
     outputs = {}
+    # TODO maybe do something more clever if it fails part way through
+    # but maybe not, it could be useful to see the partial results
     for table_name, gcs_blob_path in args.source_table_paths.items():
         table = create_table(
             table_name,

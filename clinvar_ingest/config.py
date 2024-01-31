@@ -18,7 +18,7 @@ _dotenv_values = dotenv_values(pathlib.Path(__file__).parent / f".{_dotenv_env}.
 
 
 class Env(BaseModel):
-    bq_dest_dataset: str
+    # bq_dest_dataset: str
     bq_dest_project: str
     bucket_name: str
     bucket_staging_prefix: str
@@ -34,7 +34,7 @@ def get_env() -> Env:
     variables and any default values.
     """
     return Env(
-        bq_dest_dataset=_dotenv_values["BQ_DEST_DATASET"],
+        # bq_dest_dataset=_dotenv_values["BQ_DEST_DATASET"],
         bq_dest_project=_dotenv_values["BQ_DEST_PROJECT"],
         bucket_name=_bucket_name,
         bucket_staging_prefix=_bucket_staging_prefix,
