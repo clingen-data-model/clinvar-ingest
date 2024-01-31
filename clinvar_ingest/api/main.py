@@ -237,7 +237,7 @@ async def copy(
         step_name,
         StepStatus.STARTED,
     )
-    logger.info("Copy step for workflow %s started", workflow_execution_id)
+    logger.info("%s step for workflow %s started", step_name, workflow_execution_id)
 
     def task():
         try:
@@ -265,9 +265,11 @@ async def copy(
             )
 
     background_tasks.add_task(task)
-    logger.info("Copy step task for workflow %s added", workflow_execution_id)
+    logger.info("%s step task for workflow %s added", step_name, workflow_execution_id)
 
-    logger.info("Copy step task for workflow %s returning", workflow_execution_id)
+    logger.info(
+        "%s step task for workflow %s returning", step_name, workflow_execution_id
+    )
     return StepStartedResponse(
         workflow_execution_id=workflow_execution_id,
         step_name=step_name,
@@ -294,7 +296,7 @@ async def parse(
         step_name,
         StepStatus.STARTED,
     )
-    logger.info("Parse step for workflow %s started", workflow_execution_id)
+    logger.info("%s step for workflow %s started", step_name, workflow_execution_id)
 
     def task():
         try:
@@ -323,9 +325,11 @@ async def parse(
             )
 
     background_tasks.add_task(task)
-    logger.info("Parse step task for workflow %s added", workflow_execution_id)
+    logger.info("%s step task for workflow %s added", step_name, workflow_execution_id)
 
-    logger.info("Parse step task for workflow %s returning", workflow_execution_id)
+    logger.info(
+        "%s step task for workflow %s returning", step_name, workflow_execution_id
+    )
     return StepStartedResponse(
         workflow_execution_id=workflow_execution_id,
         step_name=step_name,
@@ -334,35 +338,77 @@ async def parse(
 
 
 @app.post(
-    "/create_external_tables",
+    "/create_external_tables/{workflow_execution_id}",
     status_code=status.HTTP_201_CREATED,
-    response_model=CreateExternalTablesResponse,
+    response_model=StepStartedResponse,
 )
-async def create_external_tables(payload: CreateExternalTablesRequest):
-    try:
-        tables_created = run_create_external_tables(payload)
+async def create_external_tables(
+    request: Request,
+    workflow_execution_id: str,
+    payload: CreateExternalTablesRequest,
+    background_tasks: BackgroundTasks,
+):
+    env: clinvar_ingest.config.Env = request.app.env
+    step_name = StepName.CREATE_EXTERNAL_TABLES
+    logger.info(f"Creating external tables {payload.source_table_paths}")
 
-        for table_name, table in tables_created.items():
-            table: bigquery.Table = table
-            logger.info(
-                "Created table %s:%s.%s",
-                table.project,
-                table.dataset_id,
-                table.table_id,
+    start_status = write_status_file(
+        env.bucket_name,
+        f"{env.executions_output_prefix}/{workflow_execution_id}",
+        step_name,
+        StepStatus.STARTED,
+    )
+    logger.info("%s step for workflow %s started", step_name, workflow_execution_id)
+
+    def task():
+        try:
+            tables_created = run_create_external_tables(payload)
+
+            for table_name, table in tables_created.items():
+                table: bigquery.Table = table
+                logger.info(
+                    "Created table %s as %s:%s.%s",
+                    table_name,
+                    table.project,
+                    table.dataset_id,
+                    table.table_id,
+                )
+            entity_type_table_ids = {
+                entity_type: table.full_table_id
+                for entity_type, table in tables_created.items()
+            }
+
+            write_status_file(
+                env.bucket_name,
+                f"{env.executions_output_prefix}/{workflow_execution_id}",
+                step_name,
+                StepStatus.SUCCEEDED,
+                message=CreateExternalTablesResponse(
+                    root=entity_type_table_ids
+                ).model_dump_json(),
             )
-        entity_type_table_ids = {
-            entity_type: table.full_table_id
-            for entity_type, table in tables_created.items()
-        }
+        except Exception as e:
+            msg = f"Failed to create external tables for {payload.model_dump()}: {e}"
+            logger.exception(msg)
+            write_status_file(
+                env.bucket_name,
+                f"{env.executions_output_prefix}/{workflow_execution_id}",
+                step_name,
+                StepStatus.FAILED,
+                message=f"{msg}: {e}",
+            )
 
-        return entity_type_table_ids
-    except Exception as e:
-        msg = f"Failed to create external tables for {payload.model_dump()}: {e}"
-        logger.exception(msg)
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=msg,
-        ) from e
+    background_tasks.add_task(task)
+    logger.info("%s step task for workflow %s added", step_name, workflow_execution_id)
+
+    logger.info(
+        "%s step task for workflow %s returning", step_name, workflow_execution_id
+    )
+    return StepStartedResponse(
+        workflow_execution_id=workflow_execution_id,
+        step_name=step_name,
+        timestamp=start_status.timestamp,
+    )
 
 
 @app.post("/create_internal_tables", status_code=status.HTTP_201_CREATED)

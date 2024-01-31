@@ -92,3 +92,38 @@ while True:
     elif status_resp_json["step_status"] == "FAILED":
         raise RuntimeError(f"Step failed: {status_resp_json}")
     time.sleep(1)
+
+################################################################
+# Run /create_external_tables step that writes a STARTED file, returns immediately,
+cet_input = json.loads(status_resp_json["message"])
+cet_input["source_table_paths"] = cet_input["parsed_files"]
+del cet_input["parsed_files"]
+print(f"{cet_input=}")
+cet_step_response = requests.post(
+    f"{baseurl}/create_external_tables/{execution_id}", json=cet_input, timeout=60
+)
+print(cet_step_response.status_code)
+print(cet_step_response.json())
+assert cet_step_response.status_code == 201
+cet_step_response_json = cet_step_response.json()
+
+# poll for create_external_tables completion
+while True:
+    print("Sending status check request...")
+    status_resp = requests.get(
+        f"{baseurl}/step_status/{execution_id}/create_external_tables", timeout=60
+    )
+    assert status_resp.status_code == 200
+    status_resp_json = status_resp.json()
+    print(f"Status Response: {status_resp_json}")
+    if status_resp_json["step_status"] == "SUCCEEDED":
+        print("Step succeeded")
+        break
+    elif status_resp_json["step_status"] == "FAILED":
+        raise RuntimeError(f"Step failed: {status_resp_json}")
+    time.sleep(1)
+
+cet_final_output = json.loads(status_resp_json["message"])
+
+print("All steps succeeded")
+print("Create tables response:\n" + json.dumps(cet_final_output, indent=2))
