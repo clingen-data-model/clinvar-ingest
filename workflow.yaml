@@ -7,7 +7,6 @@ main:
                 - output_to_input_key_names:
                     copy: {"gcs_path": "input_path"}
                     parse: {"parsed_files": "source_table_paths"}
-                    create_external_tables: {"root": "root"}
                 - base_url: '${sys.get_env("CLOUD_RUN_SERVICE_URL") + "/"}'
         - create_workflow_execution:
             call: http.post
@@ -20,6 +19,7 @@ main:
         - init_workflow_execution_id:
             assign:
                 - workflow_execution_id: ${workflow_execution_step_result.body.workflow_execution_id}
+                - args["destination_dataset"]: ${workflow_execution_id}
         - for_in_steps:
             for:
                 value: step
@@ -67,18 +67,21 @@ main:
                         raise: '${"Step " + step + " failed for " + args.Name + " " + status_check_result.body.message}'
                     - step_succeeded:
                         steps:
-                            - update_args_with_step_results:
-                                for:
-                                    value: output_key
-                                    in: ${keys(output_to_input_key_names[step])}
-                                    steps:
-                                        - log_json:
-                                            call: sys.log
-                                            args:
-                                                data: '${json.decode(status_check_result.body.message)}'
-                                        - assign_vars:
-                                            assign:
-                                                - json_message: ${json.decode(status_check_result.body.message)}
-                                                - input_key: ${output_to_input_key_names[step][output_key]}
-                                                - args[input_key]: ${json_message[output_key]}
-
+                            - conditional_update_args_for_next_step:
+                                  switch:
+                                      - condition: ${step in output_to_input_key_names}
+                                        steps:
+                                            - update_args_with_step_results:
+                                                for:
+                                                    value: output_key
+                                                    in: ${keys(output_to_input_key_names[step])}
+                                                    steps:
+                                                        - log_json:
+                                                            call: sys.log
+                                                            args:
+                                                                data: '${json.decode(status_check_result.body.message)}'
+                                                        - assign_vars:
+                                                            assign:
+                                                                - json_message: ${json.decode(status_check_result.body.message)}
+                                                                - input_key: ${output_to_input_key_names[step][output_key]}
+                                                                - args[input_key]: ${json_message[output_key]}
