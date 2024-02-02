@@ -65,7 +65,7 @@ async def health():
 )
 async def create_workflow_execution_id(initial_id: str):
     assert initial_id is not None and len(initial_id) > 0
-    timestamp = datetime.utcnow().isoformat().replace(":", "").replace(".", "")
+    timestamp = datetime.utcnow().isoformat().replace(":", "").replace(".", "").replace("-", "_")
     execution_id = f"{initial_id}_{timestamp}"
     return InitializeWorkflowResponse(workflow_execution_id=execution_id)
 
