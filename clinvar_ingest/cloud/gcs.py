@@ -57,7 +57,7 @@ def blob_reader(
 
 
 def http_upload_urllib(
-    http_uri: str, blob_uri: str, client: storage.Client = None, chunk_size=1024 * 16
+    http_uri: str, blob_uri: str, file_size: int, client: storage.Client = None, chunk_size=1024 * 16
 ):
     """
     Upload the contents of `http_uri` to `blob_uri` using urllib urlopen and Blob.open
@@ -65,12 +65,17 @@ def http_upload_urllib(
     _logger.info(f"Uploading {http_uri} to {blob_uri}")
     if client is None:
         client = storage.Client()
+    bytes_written = 0
     with urllib.request.urlopen(http_uri) as f:
         with blob_writer(
             blob_uri=blob_uri,
             client=client,
         ) as f_out:
             chunk = f.read(chunk_size)
-            while chunk:
-                f_out.write(chunk)
+            while bytes_written != file_size:
+                if len(chunk):
+                    bytes_written += f_out.write(chunk)
                 chunk = f.read(chunk_size)
+    if bytes_written != file_size:
+        raise Exception(f"Upload of {http_uri} to {blob_uri} failed. Only wrote {bytes_written} of {file_size}.")
+

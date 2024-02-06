@@ -220,6 +220,7 @@ async def copy(
     ftp_base = str(payload.host).strip("/")
     ftp_dir = PurePosixPath(payload.directory)
     ftp_file = PurePosixPath(payload.name)
+    ftp_file_size = payload.size
     ftp_path = f"{ftp_base}/{ftp_dir.relative_to(ftp_dir.anchor) / ftp_file}"
 
     gcs_base = (
@@ -241,7 +242,7 @@ async def copy(
 
     def task():
         try:
-            http_upload_urllib(ftp_path, gcs_path, client=_get_gcs_client())
+            http_upload_urllib(ftp_path, gcs_path, ftp_file_size, client=_get_gcs_client())
             write_status_file(
                 env.bucket_name,
                 f"{env.executions_output_prefix}/{workflow_execution_id}",
