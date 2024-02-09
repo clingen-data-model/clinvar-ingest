@@ -1,3 +1,4 @@
+import re
 from datetime import date, datetime
 from pathlib import PurePath
 from typing import Annotated, Any, Callable, Literal, Optional, Union
@@ -10,10 +11,13 @@ from pydantic import (
     RootModel,
     StringConstraints,
     field_serializer,
+    field_validator,
     validator,
 )
 
 from clinvar_ingest.status import StepName, StepStatus
+
+# Helper functions
 
 
 def to_title_case(string: str) -> str:
@@ -38,6 +42,18 @@ def _dump_fn(val):
     if isinstance(val, BaseModel):
         return val.model_dump()
     return val
+
+
+# Constrained raw string types. For when a value is a string, but has constraints.
+
+BigqueryDatasetId = Annotated[str, StringConstraints(pattern=r"^[a-zA-Z0-9_]+$")]
+
+BigqueryFullTableId = Annotated[
+    str, StringConstraints(pattern=r"^[a-zA-Z0-9-_]+:[a-zA-Z0-9_]+.[a-zA-Z0-9-_]+$")
+]
+
+
+# Request and response models
 
 
 class ClinvarFTPWatcherRequest(BaseModel):
@@ -133,10 +149,16 @@ class CreateExternalTablesRequest(BaseModel):
     destination_dataset: str
     source_table_paths: dict[str, GcsBlobPath]
 
-
-BigqueryFullTableId = Annotated[
-    str, StringConstraints(pattern=r"^[a-zA-Z0-9-_]+:[a-zA-Z0-9_]+.[a-zA-Z0-9-_]+$")
-]
+    @field_validator("destination_dataset")
+    @classmethod
+    def _validate_destination_dataset(cls, v):
+        if not v:
+            raise ValueError("destination_dataset must not be empty")
+        pattern = r"^[a-zA-Z0-9_]+$"
+        if not re.match(pattern, v):
+            raise ValueError(
+                f"destination_dataset must match pattern {pattern}. Got: {v}"
+            )
 
 
 class CreateExternalTablesResponse(RootModel):

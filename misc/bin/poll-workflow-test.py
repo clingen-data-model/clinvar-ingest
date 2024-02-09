@@ -98,6 +98,7 @@ while True:
 cet_input = json.loads(status_resp_json["message"])
 cet_input["source_table_paths"] = cet_input["parsed_files"]
 del cet_input["parsed_files"]
+cet_input["destination_dataset"] = execution_id
 print(f"{cet_input=}")
 cet_step_response = requests.post(
     f"{baseurl}/create_external_tables/{execution_id}", json=cet_input, timeout=60

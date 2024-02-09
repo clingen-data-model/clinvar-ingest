@@ -57,25 +57,47 @@ def blob_reader(
 
 
 def http_upload_urllib(
-    http_uri: str, blob_uri: str, file_size: int, client: storage.Client = None, chunk_size=1024 * 16
+    http_uri: str,
+    blob_uri: str,
+    file_size: int,
+    client: storage.Client = None,
+    chunk_size=8 * 1024 * 1024,
 ):
     """
-    Upload the contents of `http_uri` to `blob_uri` using urllib urlopen and Blob.open
+    Upload the contents of `http_uri` to `blob_uri` using urllib.request.urlopen and Blob.open
     """
     _logger.info(f"Uploading {http_uri} to {blob_uri}")
     if client is None:
         client = storage.Client()
-    bytes_written = 0
-    with urllib.request.urlopen(http_uri) as f:
-        with blob_writer(
-            blob_uri=blob_uri,
-            client=client,
-        ) as f_out:
-            chunk = f.read(chunk_size)
-            while bytes_written != file_size:
-                if len(chunk):
-                    bytes_written += f_out.write(chunk)
-                chunk = f.read(chunk_size)
-    if bytes_written != file_size:
-        raise Exception(f"Upload of {http_uri} to {blob_uri} failed. Only wrote {bytes_written} of {file_size}.")
 
+    bytes_read = 0
+    with urllib.request.urlopen(http_uri) as f:
+        opened_file_size = int(f.headers.get("Content-Length"))
+        if opened_file_size != file_size:
+            raise RuntimeError(
+                f"File size mismatch. Expected {file_size} but got {opened_file_size}."
+            )
+        with blob_writer(blob_uri=blob_uri, client=client) as f_out:
+            while bytes_read < file_size:
+                chunk = f.read(chunk_size)
+                chunk_bytes_read = len(chunk)
+                bytes_read += chunk_bytes_read
+
+                if len(chunk) > 0:
+                    f_out.write(chunk)
+
+                if len(chunk) == 0:
+                    _logger.warning(
+                        f"Received an empty chunk from {http_uri} at byte {bytes_read}."
+                    )
+
+            # Sanity check for bytes read == file_size
+            if bytes_read != file_size:
+                raise RuntimeError(
+                    f"Error uploading {http_uri} to {blob_uri}. Read {bytes_read} of {file_size}."
+                )
+
+    if bytes_read != file_size:
+        raise RuntimeError(
+            f"Upload of {http_uri} to {blob_uri} failed. Read {bytes_read} of {file_size}."
+        )

@@ -10,6 +10,7 @@ from google.cloud.storage import Client as GCSClient
 import clinvar_ingest.config
 from clinvar_ingest.api.middleware import LogRequests
 from clinvar_ingest.api.model.requests import (
+    BigqueryDatasetId,
     ClinvarFTPWatcherRequest,
     CopyResponse,
     CreateExternalTablesRequest,
@@ -63,9 +64,19 @@ async def health():
     status_code=status.HTTP_201_CREATED,
     response_model=InitializeWorkflowResponse,
 )
-async def create_workflow_execution_id(initial_id: str):
+async def create_workflow_execution_id(initial_id: BigqueryDatasetId):
     assert initial_id is not None and len(initial_id) > 0
-    timestamp = datetime.utcnow().isoformat().replace(":", "").replace(".", "").replace("-", "_")
+    # default isoformat has colons, dashes, and periods
+    # e.g. 2024-01-31T19:13:03.185320
+    # we want to remove these to make a valid BigQuery table name
+    timestamp = (
+        datetime.utcnow()
+        .isoformat()
+        .replace(":", "")
+        .replace(".", "")
+        .replace("-", "_")
+    )
+
     execution_id = f"{initial_id}_{timestamp}"
     return InitializeWorkflowResponse(workflow_execution_id=execution_id)
 
@@ -242,7 +253,9 @@ async def copy(
 
     def task():
         try:
-            http_upload_urllib(ftp_path, gcs_path, ftp_file_size, client=_get_gcs_client())
+            http_upload_urllib(
+                ftp_path, gcs_path, ftp_file_size, client=_get_gcs_client()
+            )
             write_status_file(
                 env.bucket_name,
                 f"{env.executions_output_prefix}/{workflow_execution_id}",
