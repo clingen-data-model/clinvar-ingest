@@ -2,7 +2,9 @@
 This module is for creating and writing messages to status files for workflow jobs so that external
 services can monitor the status of the workflow jobs. The status files are written to a GCS bucket.
 """
+
 import json
+import logging
 from datetime import datetime
 
 from google.cloud.storage import Blob
@@ -10,6 +12,8 @@ from google.cloud.storage import Client as GCSClient
 
 from clinvar_ingest.cloud.gcs import blob_writer
 from clinvar_ingest.status import StatusValue, StepName, StepStatus
+
+logger = logging.getLogger(__name__)
 
 
 def write_status_file(
@@ -36,6 +40,7 @@ def write_status_file(
     )
 
     gcs_uri = f"gs://{bucket}/{file_prefix}/{step}-{status}.json"
+    logger.debug(f"Writing status file to {gcs_uri} with content: {status_value}")
     with blob_writer(gcs_uri) as writer:
         writer.write(json.dumps(vars(status_value)).encode("utf-8"))
     return status_value
