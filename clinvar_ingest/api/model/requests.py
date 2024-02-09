@@ -10,6 +10,7 @@ from pydantic import (
     Field,
     RootModel,
     StringConstraints,
+    ValidationInfo,
     field_serializer,
     field_validator,
     validator,
@@ -56,6 +57,22 @@ BigqueryFullTableId = Annotated[
 # Request and response models
 
 
+def strict_datetime_field_validator(cls, v, info: ValidationInfo) -> datetime:
+    print(f"Validating {info.field_name} with value {v}")
+    if not v:
+        raise ValueError(f"{info.field_name} was empty")
+    if isinstance(v, datetime):
+        return v
+    if isinstance(v, str):
+        pattern = re.compile(r"(\d{4})-?(\d{2})-?(\d{2})[\sT](\d{2}):(\d{2}):(\d{2})")
+        if not pattern.match(v):
+            raise ValueError(
+                f"Input should be a valid datetime, str did not match regex format: {v}"
+            )
+        return datetime.fromisoformat(v)
+    raise ValueError(f"Input should be a valid datetime: {v}")
+
+
 class ClinvarFTPWatcherRequest(BaseModel):
     model_config = ConfigDict(
         alias_generator=to_title_case,
@@ -84,6 +101,11 @@ class ClinvarFTPWatcherRequest(BaseModel):
     released: datetime
     last_modified: datetime
     release_date: date
+
+    @field_validator("released", "last_modified", mode="before")
+    @classmethod
+    def _validate_datetime(cls, v, info: ValidationInfo) -> datetime:
+        return strict_datetime_field_validator(cls, v, info)
 
 
 class CopyResponse(BaseModel):
