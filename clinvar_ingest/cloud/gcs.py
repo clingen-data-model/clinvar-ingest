@@ -91,12 +91,7 @@ def http_upload_urllib(
                         f"Received an empty chunk from {http_uri} at byte {bytes_read}."
                     )
 
-            # Sanity check for bytes read == file_size
-            if bytes_read != file_size:
-                raise RuntimeError(
-                    f"Error uploading {http_uri} to {blob_uri}. Read {bytes_read} of {file_size}."
-                )
-
+    # Sanity check for bytes read == file_size
     if bytes_read != file_size:
         raise RuntimeError(
             f"Upload of {http_uri} to {blob_uri} failed. Read {bytes_read} of {file_size}."

@@ -12,7 +12,7 @@ logging.basicConfig(
     format="%(asctime)s.%(msecs)03d - %(levelname)s - %(name)s - %(funcName)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
-logger = logging.getLogger("urlopen.ipynb")
+logger = logging.getLogger("copy_testing.ipynb")
 
 
 # This is the url for a ClinVarVariationRelease xml file:
