@@ -40,6 +40,6 @@ def get_env() -> Env:
         bucket_staging_prefix=_bucket_staging_prefix,
         bucket_parsed_prefix=_bucket_parsed_prefix,
         clinvar_ftp_base_url=_clinvar_ftp_base_url,
-        parse_output_prefix=_dotenv_values["PARSE_OUTPUT_PREFIX"],
+        parse_output_prefix=_bucket_parsed_prefix,
         executions_output_prefix=_bucket_executions_prefix,
     )

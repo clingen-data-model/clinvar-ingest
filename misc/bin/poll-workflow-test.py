@@ -25,8 +25,10 @@ wf_input = {
     "Size": 46719,
 }
 
-wf_exec_id_seed = "poll-test"
+wf_exec_id_seed = "poll_test"
 baseurl = "http://localhost:8000"
+# baseurl =
+
 wf_init_resp = requests.post(
     f"{baseurl}/create_workflow_execution_id/{wf_exec_id_seed}", timeout=60
 )

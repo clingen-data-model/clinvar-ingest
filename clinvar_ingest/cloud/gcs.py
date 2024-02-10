@@ -1,4 +1,5 @@
 import logging
+import time
 import urllib
 
 from google.cloud import storage
@@ -82,14 +83,19 @@ def http_upload_urllib(
                 chunk = f.read(chunk_size)
                 chunk_bytes_read = len(chunk)
                 bytes_read += chunk_bytes_read
+                _logger.info(
+                    f"Read {chunk_bytes_read} bytes from {http_uri}. Total bytes read: {bytes_read}."
+                )
 
                 if len(chunk) > 0:
                     f_out.write(chunk)
 
                 if len(chunk) == 0:
+                    wait_time = 10
                     _logger.warning(
-                        f"Received an empty chunk from {http_uri} at byte {bytes_read}."
+                        f"Received an empty chunk from {http_uri} at byte {bytes_read}. Pausing {wait_time} seconds"
                     )
+                    time.sleep(wait_time)
 
     # Sanity check for bytes read == file_size
     if bytes_read != file_size:

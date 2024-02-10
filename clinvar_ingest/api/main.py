@@ -254,7 +254,10 @@ async def copy(
     def task():
         try:
             http_upload_urllib(
-                ftp_path, gcs_path, ftp_file_size, client=_get_gcs_client()
+                http_uri=ftp_path,
+                blob_uri=gcs_path,
+                file_size=ftp_file_size,
+                client=_get_gcs_client(),
             )
             write_status_file(
                 env.bucket_name,
@@ -304,9 +307,13 @@ async def parse(
 ):
     env: clinvar_ingest.config.Env = request.app.env
     step_name = StepName.PARSE
+    execution_prefix = f"{env.executions_output_prefix}/{workflow_execution_id}"
+    parse_output_path = (
+        f"gs://{env.bucket_name}/{execution_prefix}/{env.parse_output_prefix}"
+    )
     start_status = write_status_file(
         env.bucket_name,
-        f"{env.executions_output_prefix}/{workflow_execution_id}",
+        execution_prefix,
         step_name,
         StepStatus.STARTED,
     )
@@ -316,7 +323,7 @@ async def parse(
         try:
             output_files = parse_and_write_files(
                 payload.input_path,
-                env.parse_output_prefix,
+                parse_output_path,
                 disassemble=payload.disassemble,
                 jsonify_content=payload.jsonify_content,
             )
@@ -328,11 +335,13 @@ async def parse(
                 message=ParseResponse(parsed_files=output_files).model_dump_json(),
             )
         except Exception as e:
-            msg = f"Failed to parse {payload.input_path} and write to {env.parse_output_prefix}"
+            msg = (
+                f"Failed to parse {payload.input_path} and write to {parse_output_path}"
+            )
             logger.exception(msg)
             write_status_file(
                 env.bucket_name,
-                f"{env.executions_output_prefix}/{workflow_execution_id}",
+                execution_prefix,
                 step_name,
                 StepStatus.FAILED,
                 message=f"{msg}: {e}",

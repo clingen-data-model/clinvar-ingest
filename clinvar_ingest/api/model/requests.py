@@ -181,6 +181,7 @@ class CreateExternalTablesRequest(BaseModel):
             raise ValueError(
                 f"destination_dataset must match pattern {pattern}. Got: {v}"
             )
+        return v
 
 
 class CreateExternalTablesResponse(RootModel):

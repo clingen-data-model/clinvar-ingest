@@ -5,6 +5,7 @@ files from Google Cloud Storage.
 
 Usable as a script or programmatic module.
 """
+
 import logging
 from pathlib import Path
 
@@ -96,6 +97,9 @@ def run_create_external_tables(
     source_buckets = set()
     for table_name, gcs_blob_path in args.source_table_paths.items():
         parsed_blob = parse_blob_uri(gcs_blob_path.root, gcs_client)
+        _logger.info(
+            "Parsed blob bucket: %s, path: %s", parsed_blob.bucket, parsed_blob.name
+        )
         bucket_obj = gcs_client.get_bucket(parsed_blob.bucket.name)
         bucket_location = bucket_obj.location
         source_buckets.add(parsed_blob.bucket.name)
