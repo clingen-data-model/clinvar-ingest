@@ -30,7 +30,7 @@ from clinvar_ingest.api.status_file import (
     write_status_file,
 )
 from clinvar_ingest.cloud.bigquery.create_tables import run_create_external_tables
-from clinvar_ingest.cloud.gcs import http_upload_urllib
+from clinvar_ingest.cloud.gcs import copy_file_to_bucket, http_download_curl
 from clinvar_ingest.parse import parse_and_write_files
 from clinvar_ingest.status import StepName
 
@@ -253,12 +253,25 @@ async def copy(
 
     def task():
         try:
-            http_upload_urllib(
-                http_uri=ftp_path,
-                blob_uri=gcs_path,
-                file_size=ftp_file_size,
+            # http_upload(
+            #     http_uri=ftp_path,
+            #     blob_uri=gcs_path,
+            #     file_size=ftp_file_size,
+            #     client=_get_gcs_client(),
+            # )
+
+            # Download to local file
+            http_download_curl(
+                http_uri=ftp_path, local_path=ftp_file, file_size=ftp_file_size
+            )
+
+            # Upload local file to bucket
+            copy_file_to_bucket(
+                local_file_uri=ftp_file,
+                remote_blob_uri=gcs_path,
                 client=_get_gcs_client(),
             )
+
             write_status_file(
                 env.bucket_name,
                 f"{env.executions_output_prefix}/{workflow_execution_id}",

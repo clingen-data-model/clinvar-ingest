@@ -22,7 +22,7 @@ from clinvar_ingest.utils import (
     get,
 )
 
-_logger = logging.getLogger(__name__)
+_logger = logging.getLogger("clinvar_ingest")
 
 
 class Model(object, metaclass=ABCMeta):

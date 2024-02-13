@@ -5,7 +5,12 @@ import requests
 
 from google.cloud import storage
 
-from clinvar_ingest.cloud.gcs import blob_writer, http_upload_urllib
+from clinvar_ingest.cloud.gcs import (
+    blob_writer,
+    http_upload,
+    http_download_curl,
+    http_download_requests,
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -28,10 +33,18 @@ storage_client = storage.Client()
 
 bucket_path = "kyle-test"
 
-http_upload_urllib(
-    http_uri=file_url,
-    blob_uri=f"gs://clinvar-ingest/{bucket_path}/{file_name}",
-    file_size=expected_file_size,
-    client=storage_client,
-    chunk_size=8 * 1024 * 1024,
+# http_upload(
+#     http_uri=file_url,
+#     blob_uri=f"gs://clinvar-ingest/{bucket_path}/{file_name}",
+#     file_size=expected_file_size,
+#     client=storage_client,
+#     chunk_size=8 * 1024 * 1024,
+# )
+
+http_download_curl(
+    http_uri=file_url, local_path=local_file, file_size=expected_file_size
 )
+
+# http_download_requests(
+#     http_uri=file_url, local_path=local_file, file_size=expected_file_size
+# )

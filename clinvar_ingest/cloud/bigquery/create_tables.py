@@ -17,7 +17,7 @@ from clinvar_ingest.api.model.requests import CreateExternalTablesRequest
 from clinvar_ingest.cloud.gcs import parse_blob_uri
 from clinvar_ingest.config import get_env
 
-_logger = logging.getLogger(__name__)
+_logger = logging.getLogger("clinvar_ingest")
 
 file_dir = Path(__file__).parent.resolve()
 bq_schemas_dir = file_dir / "bq_json_schemas"

@@ -58,7 +58,7 @@ BigqueryFullTableId = Annotated[
 
 
 def strict_datetime_field_validator(cls, v, info: ValidationInfo) -> datetime:
-    print(f"Validating {info.field_name} with value {v}")
+    # print(f"Validating {info.field_name} with value {v}")
     if not v:
         raise ValueError(f"{info.field_name} was empty")
     if isinstance(v, datetime):

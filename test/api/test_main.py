@@ -40,7 +40,8 @@ def test_copy_endpoint_success(log_conf, env_config, caplog) -> None:
         StepStatus.SUCCEEDED, StepName.COPY, datetime.utcnow().isoformat()
     )
     with (
-        patch("clinvar_ingest.api.main.http_upload_urllib", return_value=None),
+        patch("clinvar_ingest.api.main.http_download_curl", return_value=None),
+        patch("clinvar_ingest.api.main.copy_file_to_bucket", return_value=None),
         patch("clinvar_ingest.api.main._get_gcs_client", return_value="not a client"),
         patch(
             "clinvar_ingest.api.main.write_status_file",

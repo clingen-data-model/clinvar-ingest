@@ -13,7 +13,7 @@ from google.cloud.storage import Client as GCSClient
 from clinvar_ingest.cloud.gcs import blob_writer
 from clinvar_ingest.status import StatusValue, StepName, StepStatus
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger("clinvar_ingest")
 
 
 def write_status_file(
@@ -40,7 +40,7 @@ def write_status_file(
     )
 
     gcs_uri = f"gs://{bucket}/{file_prefix}/{step}-{status}.json"
-    logger.debug(f"Writing status file to {gcs_uri} with content: {status_value}")
+    _logger.debug(f"Writing status file to {gcs_uri} with content: {status_value}")
     with blob_writer(gcs_uri) as writer:
         writer.write(json.dumps(vars(status_value)).encode("utf-8"))
     return status_value

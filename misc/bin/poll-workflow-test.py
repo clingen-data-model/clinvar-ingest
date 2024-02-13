@@ -3,6 +3,7 @@ import time
 import json
 import requests
 
+
 # pylint: disable=W0105
 """
 Output example:
@@ -15,15 +16,26 @@ Step succeeded
 """
 
 
+# wf_input = {
+#     "Directory": "/clingen-data-model/clinvar-ingest/main/test/data",
+#     "Host": "https://raw.githubusercontent.com",
+#     "Last Modified": "2023-10-07 15:47:16",
+#     "Name": "OriginalTestDataSet.xml.gz",
+#     "Release Date": "2023-10-07",
+#     "Released": "2023-10-07 15:47:16",
+#     "Size": 46719,
+# }
+
 wf_input = {
-    "Directory": "/clingen-data-model/clinvar-ingest/main/test/data",
-    "Host": "https://raw.githubusercontent.com",
-    "Last Modified": "2023-10-07 15:47:16",
-    "Name": "OriginalTestDataSet.xml.gz",
-    "Release Date": "2023-10-07",
-    "Released": "2023-10-07 15:47:16",
-    "Size": 46719,
+    "Directory": "/pub/clinvar/xml/VCV_xml_old_format",
+    "Host": "https://ftp.ncbi.nlm.nih.gov/",
+    "Last Modified": "2024-01-07 15:47:16",
+    "Name": "ClinVarVariationRelease_2024-02.xml.gz",
+    "Release Date": "2024-02-01",
+    "Released": "2024-02-01 15:47:16",
+    "Size": 3298023159,
 }
+
 
 wf_exec_id_seed = "poll_test"
 baseurl = "http://localhost:8000"
