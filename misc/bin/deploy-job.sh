@@ -61,7 +61,7 @@ gcloud builds submit \
 
 gcloud run jobs create $instance_name \
     --cpu=2 \
-    --memory=2Gi \
+    --memory=8Gi \
     --task-timeout=10h \
     --image=$image \
     --region=$region \
