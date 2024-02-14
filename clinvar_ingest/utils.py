@@ -14,7 +14,7 @@ def extract_oneof(d: dict, *keys: List[Any]) -> Any:
     return None
 
 
-def extract_in(d: dict, *keys: List[Any]) -> Any:
+def extract(d: dict, *keys: List[Any]) -> Any:
     """
     For the path of `keys`, get each value in succession. If any key does not exist,
     return None. If all keys exist, return the value of the last key.
@@ -28,14 +28,6 @@ def extract_in(d: dict, *keys: List[Any]) -> Any:
                 d = d[k]
         else:
             return None
-
-
-def extract(d: dict, key: Any) -> Any:
-    """
-    If `key` is in `d`, remove it and return the value.
-    """
-    if d is not None:
-        return d.pop(key, None)
 
 
 def get(d: dict, *keys: List[Any]) -> Any:

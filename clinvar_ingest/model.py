@@ -13,14 +13,7 @@ import logging
 from abc import ABCMeta, abstractmethod
 from typing import List, Union
 
-from clinvar_ingest.utils import (
-    ensure_list,
-    extract,
-    extract_in,
-    extract_oneof,
-    flatten1,
-    get,
-)
+from clinvar_ingest.utils import ensure_list, extract, extract_oneof, flatten1, get
 
 _logger = logging.getLogger("clinvar_ingest")
 
@@ -158,7 +151,7 @@ class ClinicalAssertion(Model):
             map(
                 Submitter.from_xml,
                 ensure_list(
-                    extract_in(
+                    extract(
                         raw_accession, "AdditionalSubmitters", "SubmitterDescription"
                     )
                     or []
@@ -288,10 +281,10 @@ class Variation(Model):
                 extract_oneof(inp, "VariantType", "VariationType")[1], "$"
             ),
             subclass_type=subclass_type,
-            allele_id=extract_in(inp, "@AlleleID"),
-            protein_change=ensure_list(extract_in(inp, "ProteinChange") or []),
-            num_copies=int_or_none(extract_in(inp, "@NumberOfCopies")),
-            num_chromosomes=int_or_none(extract_in(inp, "@NumberOfChromosomes")),
+            allele_id=extract(inp, "@AlleleID"),
+            protein_change=ensure_list(extract(inp, "ProteinChange") or []),
+            num_copies=int_or_none(extract(inp, "@NumberOfCopies")),
+            num_chromosomes=int_or_none(extract(inp, "@NumberOfChromosomes")),
             gene_associations=[],
             child_ids=child_ids,
             descendant_ids=descendant_ids,
@@ -794,8 +787,8 @@ class TraitMapping(Model):
             mapping_type=extract(inp, "@MappingType"),
             mapping_value=extract(inp, "@MappingValue"),
             mapping_ref=extract(inp, "@MappingRef"),
-            medgen_name=extract_in(inp, "MedGen", "@Name"),
-            medgen_id=extract_in(inp, "MedGen", "@CUI"),
+            medgen_name=extract(inp, "MedGen", "@Name"),
+            medgen_id=extract(inp, "MedGen", "@CUI"),
         )
 
     def disassemble(self):
@@ -861,23 +854,19 @@ class VariationArchive(Model):
             record_status=extract(extract(inp, "RecordStatus"), "$"),
             species=extract(extract(inp, "Species"), "$"),
             review_status=extract(extract(interp_record, "ReviewStatus"), "$"),
-            interp_type=extract_in(interpretation, "@Type"),
-            interp_description=extract(extract_in(interpretation, "Description"), "$"),
-            interp_explanation=extract_in(
-                extract_in(interpretation, "Explanation"), "$"
-            ),
+            interp_type=extract(interpretation, "@Type"),
+            interp_description=extract(extract(interpretation, "Description"), "$"),
+            interp_explanation=extract(extract(interpretation, "Explanation"), "$"),
             # num_submitters and num_submissions are at top and interp level
-            num_submitters=int_or_none(
-                extract_in(interpretation, "@NumberOfSubmitters")
-            ),
+            num_submitters=int_or_none(extract(interpretation, "@NumberOfSubmitters")),
             num_submissions=int_or_none(
-                extract_in(interpretation, "@NumberOfSubmissions")
+                extract(interpretation, "@NumberOfSubmissions")
             ),
-            interp_date_last_evaluated=extract_in(interpretation, "@DateLastEvaluated"),
+            interp_date_last_evaluated=extract(interpretation, "@DateLastEvaluated"),
             trait_sets=[
                 TraitSet.from_xml(ts, jsonify_content=jsonify_content)
                 for ts in ensure_list(
-                    extract_in(
+                    extract(
                         interpretation,
                         "ConditionList",
                         "TraitSet",
@@ -889,7 +878,7 @@ class VariationArchive(Model):
                 TraitMapping.from_xml(tm, jsonify_content=jsonify_content)
                 for tm in ensure_list(
                     extract(
-                        extract_in(
+                        extract(
                             interp_record,
                             "TraitMapping",
                         ),
