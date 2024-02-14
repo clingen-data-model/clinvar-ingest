@@ -2,7 +2,7 @@ import os
 import pathlib
 
 from dotenv import dotenv_values
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 _bucket_name = os.environ.get("CLINVAR_INGEST_BUCKET", "")
 _bucket_staging_prefix = os.environ.get("CLINVAR_INGEST_STAGING_PREFIX", "clinvar_xml")
@@ -26,6 +26,13 @@ class Env(BaseModel):
     clinvar_ftp_base_url: str
     parse_output_prefix: str
     executions_output_prefix: str
+
+    @field_validator("bucket_name")
+    @classmethod
+    def _validate_bucket_name(cls, v, info):
+        if not v:
+            raise ValueError("CLINVAR_INGEST_BUCKET must be set")
+        return v
 
 
 def get_env() -> Env:
