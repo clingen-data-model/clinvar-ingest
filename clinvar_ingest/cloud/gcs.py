@@ -11,11 +11,17 @@ from google.cloud import storage
 _logger = logging.getLogger("clinvar_ingest")
 
 
+def _get_gcs_client() -> storage.Client:
+    if getattr(_get_gcs_client, "client", None) is None:
+        setattr(_get_gcs_client, "client", storage.Client())
+    return getattr(_get_gcs_client, "client")
+
+
 def parse_blob_uri(uri: str, client: storage.Client = None) -> storage.Blob:
     if not uri.startswith("gs://"):
         raise ValueError("Must be a fully qualified URI beginning with gs://")
     if client is None:
-        client = storage.Client()
+        client = _get_gcs_client()
     proto, *rest = uri.split("://")
     bucket, *path_segments = rest[0].split("/")
     return storage.Blob(
@@ -31,7 +37,7 @@ def copy_file_to_bucket(
     """
     _logger.info(f"Uploading {local_file_uri} to {remote_blob_uri}")
     if client is None:
-        client = storage.Client()
+        client = _get_gcs_client()
     blob = parse_blob_uri(remote_blob_uri, client=client)
     blob.upload_from_filename(client=client, filename=local_file_uri)
     _logger.info(f"Finished uploading {local_file_uri} to {remote_blob_uri}")
@@ -44,7 +50,7 @@ def blob_writer(
     Returns a file-like object that can be used to write to the blob at `blob_uri`
     """
     if client is None:
-        client = storage.Client()
+        client = _get_gcs_client()
     blob = parse_blob_uri(blob_uri, client=client)
     return blob.open("wb" if binary else "w")
 
@@ -56,9 +62,20 @@ def blob_reader(
     Returns a file-like object that can be used to read from the blob at `blob_uri`
     """
     if client is None:
-        client = storage.Client()
+        client = _get_gcs_client()
     blob = parse_blob_uri(blob_uri, client=client)
     return blob.open("rb" if binary else "r")
+
+
+def blob_size(blob_uri: str, client: storage.Client = None) -> int:
+    """
+    Returns the size of the blob in bytes if it exists. Raises an error if it does not.
+    """
+    if client is None:
+        client = _get_gcs_client()
+    blob = parse_blob_uri(blob_uri, client=client)
+    blob.reload()  # Refreshes local Blob object properties from the remote object
+    return blob.size
 
 
 def http_upload(
@@ -73,7 +90,7 @@ def http_upload(
     """
     _logger.info(f"Uploading {http_uri} to {blob_uri}")
     if client is None:
-        client = storage.Client()
+        client = _get_gcs_client()
 
     bytes_read = 0
     response = requests.get(http_uri, stream=True, timeout=10)

@@ -5,7 +5,6 @@ from pathlib import PurePosixPath
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, status
 from google.cloud import bigquery
-from google.cloud.storage import Client as GCSClient
 
 import clinvar_ingest.config
 from clinvar_ingest.api.middleware import LogRequests
@@ -30,7 +29,11 @@ from clinvar_ingest.api.status_file import (
     write_status_file,
 )
 from clinvar_ingest.cloud.bigquery.create_tables import run_create_external_tables
-from clinvar_ingest.cloud.gcs import copy_file_to_bucket, http_download_curl
+from clinvar_ingest.cloud.gcs import (
+    _get_gcs_client,
+    copy_file_to_bucket,
+    http_download_curl,
+)
 from clinvar_ingest.parse import parse_and_write_files
 from clinvar_ingest.status import StepName
 
@@ -46,12 +49,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan, openapi_url="/openapi.json", docs_url="/api")
 app.add_middleware(LogRequests)
-
-
-def _get_gcs_client() -> GCSClient:
-    if getattr(_get_gcs_client, "client", None) is None:
-        setattr(_get_gcs_client, "client", GCSClient())
-    return getattr(_get_gcs_client, "client")
 
 
 @app.get("/health", status_code=status.HTTP_200_OK)

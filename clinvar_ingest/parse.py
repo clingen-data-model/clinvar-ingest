@@ -1,14 +1,22 @@
 import gzip
 import json
 import logging
+import pathlib
 
-from clinvar_ingest.cloud.gcs import blob_reader, blob_writer
+from clinvar_ingest.cloud.gcs import blob_reader, blob_size, blob_writer
 from clinvar_ingest.fs import BinaryOpenMode
 from clinvar_ingest.fs import _open as _fs_open
 from clinvar_ingest.model import dictify
 from clinvar_ingest.reader import get_clinvar_xml_releaseinfo, read_clinvar_xml
 
 _logger = logging.getLogger("clinvar-ingest")
+
+
+def _st_size(filepath: str):
+    if filepath.startswith("gs://"):
+        return blob_size(filepath)
+    else:
+        return pathlib.Path(filepath).stat().st_size
 
 
 def _open(filepath: str, mode: BinaryOpenMode = BinaryOpenMode.READ):
@@ -67,6 +75,8 @@ def parse_and_write_files(
     # Release directory is within the output directory
     output_release_directory = f"{output_directory}/{release_date}"
 
+    input_file_size = _st_size(input_filename)
+
     try:
         with _open(input_filename) as f_in:
             for obj in read_clinvar_xml(
@@ -82,6 +92,10 @@ def parse_and_write_files(
                 obj_dict["release_date"] = release_date
                 f_out.write(json.dumps(obj_dict).encode("utf-8"))
                 f_out.write("\n".encode("utf-8"))
+
+                # Log file offsets for debugging
+                offset = f_in.tell()
+
     except Exception as e:
         _logger.critical("Exception caught in parse_and_write_files")
         raise e
