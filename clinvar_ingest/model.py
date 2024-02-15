@@ -46,7 +46,6 @@ class Model(object, metaclass=ABCMeta):
 @dataclasses.dataclass
 class Submitter(Model):
     id: str
-    release_date: str
     current_name: str
     current_abbrev: str
     all_names: List[str]
@@ -66,12 +65,13 @@ class Submitter(Model):
             id=extract(inp, "@OrgID"),
             current_name=current_name,
             current_abbrev=current_abbrev,
-            release_date="",  # TODO - Fix
             org_category=extract(inp, "@OrganizationCategory"),
             all_names=[] if not current_name else [current_name],
             all_abbrevs=[] if not current_abbrev else [current_abbrev],
             content=inp,
         )
+        if jsonify_content:
+            obj.content = json.dumps(inp)
         return obj
 
     def disassemble(self):
@@ -82,7 +82,6 @@ class Submitter(Model):
 class Submission(Model):
     id: str
     submitter_id: str
-    release_date: str
     additional_submitter_ids: List[str]
     submission_date: str
     content: dict
@@ -103,14 +102,13 @@ class Submission(Model):
         )
         obj = Submission(
             id=f"{submitter.id}",  # TODO - FIX w/ Date
-            release_date=submitter.release_date,
             submitter_id=submitter.id,
             additional_submitter_ids=list(filter("id", additional_submitters)),
             submission_date=extract(inp, "@SubmissionDate"),
             content=inp,
         )
-        # TODO
-        # jsonify_content
+        if jsonify_content:
+            obj.content = json.dumps(inp)
         return obj
 
     def disassemble(self):
@@ -184,8 +182,8 @@ class ClinicalAssertion(Model):
             submission=submission,
             content=inp,
         )
-        # TODO
-        # jsonify_content
+        if jsonify_content:
+            obj.content = json.dumps(inp)
         return obj
 
     def disassemble(self):
