@@ -77,10 +77,7 @@ def _get_gcs_client() -> GCSClient:
 
 
 ################################################################
-### Main code
-# TODO remove these injections
-# os.environ["WF_INPUT"] = json.dumps(wf_input)
-# os.environ["CLINVAR_INGEST_BUCKET"] = "clinvar-ingest"
+### Initialization code
 
 # Main env for the codebase
 env = get_env()
@@ -96,8 +93,7 @@ _logger.info(f"Workflow Execution ID: {workflow_execution_id}")
 
 
 ################################################################
-# Run /copy step that writes a STARTED file, returns immediately,
-# while running something and writing a SUCCEED file asynchronously
+# Run copy step. Copies a source XML file from an HTTP/FTP server to GCS
 
 
 def copy(payload: ClinvarFTPWatcherRequest) -> CopyResponse:
@@ -139,7 +135,7 @@ _logger.info(f"Copy response: {copy_response.model_dump_json()}")
 
 
 ################################################################
-# Run /parse step that writes a STARTED file, returns immediately
+# Reads an XML file from GCS, parses it, and writes the parsed data to GCS
 
 
 def parse(payload: ParseRequest) -> ParseResponse:
@@ -162,7 +158,7 @@ _logger.info(f"Parse response: {parse_response.model_dump_json}")
 
 
 ################################################################
-# Run /create_external_tables step that writes a STARTED file, returns immediately
+# Creates external tables in BigQuery from the parsed data in GCS
 
 
 def create_external_tables(
@@ -195,4 +191,7 @@ create_external_tables_response = create_external_tables(
 _logger.info(
     f"Create External Tables response: {create_external_tables_response.model_dump_json()}"
 )
+
+
+################################################################
 _logger.info("Workflow succeeded")
