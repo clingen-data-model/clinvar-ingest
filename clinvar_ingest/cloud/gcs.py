@@ -8,6 +8,8 @@ from pathlib import Path, PurePath
 import requests
 from google.cloud import storage
 
+from clinvar_ingest.utils import make_progress_logger
+
 _logger = logging.getLogger("clinvar_ingest")
 
 
@@ -135,22 +137,11 @@ def http_download_requests(
     response.raise_for_status()
     opened_file_size = int(response.headers.get("Content-Length"))
 
-    def log_progress():
-        if getattr(log_progress, "prev_log_time", None) is None:
-            log_progress.prev_log_time = time.time()
-            log_progress.prev_log_bytes = 0
-            return
-        now = time.time()
-        if now - log_progress.prev_log_time > 5:
-            elapsed = now - log_progress.prev_log_time
-            elapsed_bytes = bytes_read - log_progress.prev_log_bytes
-            _logger.info(
-                f"Read {elapsed_bytes} bytes in {elapsed:.2f} seconds. Total bytes read: {bytes_read}/{opened_file_size}."
-            )
-            log_progress.prev_log_time = now
-            log_progress.prev_log_bytes = bytes_read
-
-    log_progress()  # initialize
+    log_progress = make_progress_logger(
+        logger=_logger,
+        fmt="Read {elapsed_value} bytes in {elapsed:.2f} seconds. Total bytes read: {current_value}/{max_value}.",
+        max_value=opened_file_size,
+    )
 
     if opened_file_size != file_size:
         raise RuntimeError(
@@ -161,7 +152,7 @@ def http_download_requests(
             chunk_bytes_read = len(chunk)
             bytes_read += chunk_bytes_read
 
-            log_progress()
+            log_progress(bytes_read)
 
             if len(chunk) > 0:
                 f_out.write(chunk)

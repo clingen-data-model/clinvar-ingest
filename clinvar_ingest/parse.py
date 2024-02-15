@@ -4,12 +4,12 @@ import logging
 import pathlib
 
 from clinvar_ingest.cloud.gcs import blob_reader, blob_size, blob_writer
-from clinvar_ingest.fs import BinaryOpenMode
-from clinvar_ingest.fs import _open as _fs_open
+from clinvar_ingest.fs import BinaryOpenMode, ReadCounter, fs_open
 from clinvar_ingest.model import dictify
 from clinvar_ingest.reader import get_clinvar_xml_releaseinfo, read_clinvar_xml
+from clinvar_ingest.utils import make_progress_logger
 
-_logger = logging.getLogger("clinvar-ingest")
+_logger = logging.getLogger("clinvar_ingest")
 
 
 def _st_size(filepath: str):
@@ -30,11 +30,13 @@ def _open(filepath: str, mode: BinaryOpenMode = BinaryOpenMode.READ):
             raise ValueError(f"Unknown mode: {mode}")
 
         if filepath.endswith(".gz"):
+            # wraps BlobReader in gzip.GzipFile, which implements .tell()
             return gzip.open(f, mode=mode)
         else:
-            return f
+            # Need to wrap in a counter so we can track bytes read
+            return ReadCounter(f)
     else:
-        return _fs_open(filepath, mode=mode, make_parents=True)
+        return fs_open(filepath, mode=mode, make_parents=True)
 
 
 def get_open_file_for_writing(
@@ -75,10 +77,22 @@ def parse_and_write_files(
     # Release directory is within the output directory
     output_release_directory = f"{output_directory}/{release_date}"
 
-    input_file_size = _st_size(input_filename)
+    # input_file_size = _st_size(input_filename)
+    vcv_count = 0
+    byte_log_progress = make_progress_logger(
+        logger=_logger,
+        fmt="Read {elapsed_value} bytes in {elapsed:.2f}s. Total bytes read: {current_value}.",
+    )
+    vcv_log_progress = make_progress_logger(
+        logger=_logger,
+        fmt="Read {elapsed_value} VariationArchives in {elapsed:.2f}s. Total VariationArchives read: {current_value}.",
+    )
 
     try:
         with _open(input_filename) as f_in:
+            byte_log_progress(0)  # initialize
+            vcv_log_progress(0)  # initialize
+
             for obj in read_clinvar_xml(
                 f_in, disassemble=disassemble, jsonify_content=jsonify_content
             ):
@@ -93,8 +107,15 @@ def parse_and_write_files(
                 f_out.write(json.dumps(obj_dict).encode("utf-8"))
                 f_out.write("\n".encode("utf-8"))
 
-                # Log file offsets for debugging
-                offset = f_in.tell()
+                # Log offset and count for monitoring
+                byte_log_progress(f_in.tell())
+                if entity_type == "variation_archive":
+                    vcv_count += 1
+                    vcv_log_progress(vcv_count)
+
+            # Log final status
+            byte_log_progress(f_in.tell(), force=True)
+            vcv_log_progress(vcv_count, force=True)
 
     except Exception as e:
         _logger.critical("Exception caught in parse_and_write_files")
