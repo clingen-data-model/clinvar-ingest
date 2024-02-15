@@ -2,6 +2,8 @@ from clinvar_ingest.model import (
     ClinicalAssertion,
     Gene,
     GeneAssociation,
+    Submission,
+    Submitter,
     Trait,
     TraitSet,
     Variation,
@@ -20,15 +22,19 @@ def test_read_original_clinvar_variation_2():
         objects = list(read_clinvar_xml(f))
 
     # gene, gene_association, variation, variation_archive
-    assert 8 == len(objects)
+    assert 12 == len(objects)
     assert isinstance(objects[0], Gene)
     assert isinstance(objects[1], GeneAssociation)
     assert isinstance(objects[2], Variation)
     assert isinstance(objects[3], Trait)
     assert isinstance(objects[4], TraitSet)
-    assert isinstance(objects[5], ClinicalAssertion)
-    assert isinstance(objects[6], ClinicalAssertion)
-    assert isinstance(objects[7], VariationArchive)
+    assert isinstance(objects[5], Submitter)
+    assert isinstance(objects[6], Submission)
+    assert isinstance(objects[7], ClinicalAssertion)
+    assert isinstance(objects[8], Submitter)
+    assert isinstance(objects[9], Submission)
+    assert isinstance(objects[10], ClinicalAssertion)
+    assert isinstance(objects[11], VariationArchive)
 
     variation = objects[2]
 
@@ -56,21 +62,21 @@ def test_read_original_clinvar_variation_2():
     assert gene_association.variation_id == "2"
 
     # SCVs - TODO build out further
-    scv = objects[5]
+    scv = objects[7]
     assert scv.assertion_id == "20155"
-    submitter = scv.submitter
+    submitter = objects[5]
     assert submitter.id == "3"
     assert submitter.current_name == "OMIM"
-    submission = scv.submission
+    submission = objects[6]
     assert submission.id == "3"
     assert submission.submission_date == "2017-01-26"
 
-    scv = objects[6]
+    scv = objects[10]
     assert scv.assertion_id == "2865972"
-    submitter = scv.submitter
+    submitter = objects[8]
     assert submitter.id == "507826"
     assert submitter.current_name == "Paris Brain Institute, Inserm - ICM"
-    submission = scv.submission
+    submission = objects[9]
     assert submission.id == "507826"
     assert submission.submission_date == "2020-11-14"
 
@@ -84,7 +90,7 @@ def test_read_original_clinvar_variation_634266():
     with open(filename) as f:
         objects = list(read_clinvar_xml(f))
 
-    assert 14 == len(objects)
+    assert 22 == len(objects)
     assert isinstance(objects[0], Variation)
     assert isinstance(objects[1], Trait)
     assert isinstance(objects[2], TraitSet)
@@ -94,11 +100,23 @@ def test_read_original_clinvar_variation_634266():
     assert isinstance(objects[6], TraitSet)
     assert isinstance(objects[7], Trait)
     assert isinstance(objects[8], TraitSet)
-    assert isinstance(objects[9], ClinicalAssertion)
-    assert isinstance(objects[10], ClinicalAssertion)
+
+    assert isinstance(objects[9], Submitter)
+    assert isinstance(objects[10], Submission)
     assert isinstance(objects[11], ClinicalAssertion)
-    assert isinstance(objects[12], ClinicalAssertion)
-    assert isinstance(objects[13], VariationArchive)
+
+    assert isinstance(objects[12], Submitter)
+    assert isinstance(objects[13], Submission)
+    assert isinstance(objects[14], ClinicalAssertion)
+
+    assert isinstance(objects[15], Submitter)
+    assert isinstance(objects[16], Submission)
+    assert isinstance(objects[17], ClinicalAssertion)
+
+    assert isinstance(objects[18], Submitter)
+    assert isinstance(objects[19], Submission)
+    assert isinstance(objects[20], ClinicalAssertion)
+    assert isinstance(objects[21], VariationArchive)
 
     # Verify variation
     variation = objects[0]
@@ -118,7 +136,7 @@ def test_read_original_clinvar_variation_634266():
     ]
 
     # Verify variation archive
-    variation_archive = objects[13]
+    variation_archive = objects[21]
     assert variation_archive.id == "VCV000634266"
     assert variation_archive.name == "CYP2C19*12/*34"
     assert variation_archive.date_created == "2019-06-17"
@@ -141,47 +159,51 @@ def test_read_original_clinvar_variation_634266():
     assert "GeneList" in variation.content
 
     # SCVs - TODO build out further
-    scv = objects[9]
-    assert scv.assertion_id == "1801318"
-    submitter = scv.submitter
-    assert submitter.id == "505961"
-    assert (
-        submitter.current_name == "Clinical Pharmacogenetics Implementation Consortium"
-    )
-    submission = scv.submission
-    assert submission.id == "505961"
-    assert submission.submission_date == "2018-03-01"
-
-    scv = objects[10]
-    assert scv.assertion_id == "1801467"
-    submitter = scv.submitter
-    assert submitter.id == "505961"
-    assert (
-        submitter.current_name == "Clinical Pharmacogenetics Implementation Consortium"
-    )
-    submission = scv.submission
-    assert submission.id == "505961"
-    assert submission.submission_date == "2018-03-01"
-
+    # SCV 1
     scv = objects[11]
-    assert scv.assertion_id == "1802126"
-    submitter = scv.submitter
+    assert scv.assertion_id == "1801318"
+    submitter = objects[9]
     assert submitter.id == "505961"
     assert (
         submitter.current_name == "Clinical Pharmacogenetics Implementation Consortium"
     )
-    submission = scv.submission
+    submission = objects[10]
     assert submission.id == "505961"
     assert submission.submission_date == "2018-03-01"
 
-    scv = objects[12]
-    assert scv.assertion_id == "1802127"
-    submitter = scv.submitter
+    # SCV 2
+    scv = objects[14]
+    assert scv.assertion_id == "1801467"
+    submitter = objects[12]
     assert submitter.id == "505961"
     assert (
         submitter.current_name == "Clinical Pharmacogenetics Implementation Consortium"
     )
-    submission = scv.submission
+    submission = objects[13]
+    assert submission.id == "505961"
+    assert submission.submission_date == "2018-03-01"
+
+    # SCV 3
+    scv = objects[17]
+    assert scv.assertion_id == "1802126"
+    submitter = objects[15]
+    assert submitter.id == "505961"
+    assert (
+        submitter.current_name == "Clinical Pharmacogenetics Implementation Consortium"
+    )
+    submission = objects[16]
+    assert submission.id == "505961"
+    assert submission.submission_date == "2018-03-01"
+
+    # SCV 4
+    scv = objects[20]
+    assert scv.assertion_id == "1802127"
+    submitter = objects[18]
+    assert submitter.id == "505961"
+    assert (
+        submitter.current_name == "Clinical Pharmacogenetics Implementation Consortium"
+    )
+    submission = objects[19]
     assert submission.id == "505961"
     assert submission.submission_date == "2018-03-01"
 
