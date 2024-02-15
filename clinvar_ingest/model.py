@@ -187,7 +187,17 @@ class ClinicalAssertion(Model):
         return obj
 
     def disassemble(self):
-        yield self
+        self_copy = model_copy(self)
+
+        for subobj in self_copy.submitter.disassemble():
+            yield subobj
+        del self_copy.submitter
+
+        for subobj in self_copy.submission.disassemble():
+            yield subobj
+        del self_copy.submission
+
+        yield self_copy
 
 
 @dataclasses.dataclass
