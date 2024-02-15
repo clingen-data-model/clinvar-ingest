@@ -80,47 +80,6 @@ def blob_size(blob_uri: str, client: storage.Client = None) -> int:
     return blob.size
 
 
-def http_upload(
-    http_uri: str,
-    blob_uri: str,
-    file_size: int,
-    client: storage.Client = None,
-    chunk_size=8 * 1024 * 1024,
-):
-    """
-    Upload the contents of `http_uri` to `blob_uri` using requests.get and Blob.open
-    """
-    _logger.info(f"Uploading {http_uri} to {blob_uri}")
-    if client is None:
-        client = _get_gcs_client()
-
-    bytes_read = 0
-    response = requests.get(http_uri, stream=True, timeout=10)
-    response.raise_for_status()
-    opened_file_size = int(response.headers.get("Content-Length"))
-    if opened_file_size != file_size:
-        raise RuntimeError(
-            f"File size mismatch. Expected {file_size} but got {opened_file_size}."
-        )
-    with blob_writer(blob_uri=blob_uri, client=client) as f_out:
-        for chunk in response.iter_content(chunk_size=chunk_size):
-            chunk_bytes_read = len(chunk)
-            bytes_read += chunk_bytes_read
-            _logger.info(
-                f"Read {chunk_bytes_read} bytes from {http_uri}. Total bytes read: {bytes_read}/{opened_file_size}."
-            )
-
-            if len(chunk) > 0:
-                f_out.write(chunk)
-
-            if len(chunk) == 0:
-                wait_time = 10
-                _logger.warning(
-                    f"Received an empty chunk from {http_uri} at byte {bytes_read}. Pausing {wait_time} seconds"
-                )
-                time.sleep(wait_time)
-
-
 def http_download_requests(
     http_uri: str,
     local_path: PurePath,
@@ -128,7 +87,7 @@ def http_download_requests(
     chunk_size=8 * 1024 * 1024,
 ):
     """
-    Upload the contents of `http_uri` to `blob_uri` using requests.get and Blob.open
+    Download the contents of `http_uri` to `local_path` using requests.get
     """
     _logger.info(f"Downloading {http_uri} to {local_path}")
 
@@ -171,9 +130,12 @@ def http_download_curl(
     http_uri: str,
     local_path: PurePath,
     file_size: int,
-    # client: storage.Client = None,
-    # chunk_size=8 * 1024 * 1024,
 ) -> Path:
+    """
+    Download the contents of `http_uri` to `local_path` using a subprocess call to curl.
+
+    NOTE: an executable named `curl` must be available in the system PATH.
+    """
     p = subprocess.Popen(
         ["curl", "-o", local_path, http_uri],
         stdout=subprocess.PIPE,
