@@ -98,7 +98,7 @@ def flatten1(things: List[List[Any]]) -> List[Any]:
     return outputs
 
 
-def make_progress_logger(logger, fmt: str, max_value: int = 0):
+def make_progress_logger(logger, fmt: str, max_value: int = 0, interval: int = 10):
     def log_progress(current_value, force=False):
         if getattr(log_progress, "prev_log_time", None) is None:
             log_progress.prev_log_time = time.time()
@@ -106,7 +106,7 @@ def make_progress_logger(logger, fmt: str, max_value: int = 0):
             log_progress.max_value = max_value
             return
         now = time.time()
-        if force or now - log_progress.prev_log_time > 5:
+        if force or now - log_progress.prev_log_time > interval:
             elapsed = now - log_progress.prev_log_time
             elapsed_value = current_value - log_progress.prev_value
             logger.info(

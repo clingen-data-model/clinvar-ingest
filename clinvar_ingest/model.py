@@ -59,7 +59,7 @@ class Submitter(Model):
 
     @staticmethod
     def from_xml(inp: dict, jsonify_content=True):
-        _logger.info(f"Submitter.from_xml(inp={json.dumps(inp)}, {jsonify_content=})")
+        _logger.debug(f"Submitter.from_xml(inp={json.dumps(inp)}, {jsonify_content=})")
         current_name = extract(inp, "@SubmitterName")
         current_abbrev = extract(inp, "@OrgAbbreviation")
         obj = Submitter(
@@ -97,7 +97,7 @@ class Submission(Model):
         submitter: Submitter = {},
         additional_submitters: list = [Submitter],
     ):
-        _logger.info(
+        _logger.debug(
             f"Submission.from_xml(inp={json.dumps(inp)}, {jsonify_content=}, {submitter=}, "
             f"{additional_submitters=})"
         )
@@ -141,7 +141,7 @@ class ClinicalAssertion(Model):
 
     @staticmethod
     def from_xml(inp: dict, jsonify_content=True):
-        _logger.info(
+        _logger.debug(
             f"ClinicalAssertion.from_xml(inp={json.dumps(inp)}, {jsonify_content=})"
         )
         raw_accession = extract(inp, "ClinVarAccession")
@@ -446,7 +446,7 @@ class Trait(Model):
 
     @staticmethod
     def from_xml(inp: dict, jsonify_content=True) -> Trait:
-        _logger.info(f"Trait.from_xml(inp={json.dumps(inp)})")
+        _logger.debug(f"Trait.from_xml(inp={json.dumps(inp)})")
         id = extract(inp, "@ID")
 
         def make_attr_xrefs(
@@ -742,7 +742,7 @@ class TraitSet(Model):
 
     @staticmethod
     def from_xml(inp: dict, jsonify_content=True):
-        _logger.info(f"TraitSet.from_xml(inp={json.dumps(inp)})")
+        _logger.debug(f"TraitSet.from_xml(inp={json.dumps(inp)})")
         obj = TraitSet(
             id=extract(inp, "@ID"),
             type=extract(inp, "@Type"),
