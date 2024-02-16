@@ -13,16 +13,9 @@ import logging
 from abc import ABCMeta, abstractmethod
 from typing import List, Union
 
-from clinvar_ingest.utils import (
-    ensure_list,
-    extract,
-    extract_in,
-    extract_oneof,
-    flatten1,
-    get,
-)
+from clinvar_ingest.utils import ensure_list, extract, extract_oneof, flatten1, get
 
-_logger = logging.getLogger(__name__)
+_logger = logging.getLogger("clinvar_ingest")
 
 
 class Model(object, metaclass=ABCMeta):
@@ -53,7 +46,6 @@ class Model(object, metaclass=ABCMeta):
 @dataclasses.dataclass
 class Submitter(Model):
     id: str
-    release_date: str
     current_name: str
     current_abbrev: str
     all_names: List[str]
@@ -66,19 +58,20 @@ class Submitter(Model):
 
     @staticmethod
     def from_xml(inp: dict, jsonify_content=True):
-        _logger.info(f"Submitter.from_xml(inp={json.dumps(inp)}, {jsonify_content=})")
+        _logger.debug(f"Submitter.from_xml(inp={json.dumps(inp)}, {jsonify_content=})")
         current_name = extract(inp, "@SubmitterName")
         current_abbrev = extract(inp, "@OrgAbbreviation")
         obj = Submitter(
             id=extract(inp, "@OrgID"),
             current_name=current_name,
             current_abbrev=current_abbrev,
-            release_date="",  # TODO - Fix
             org_category=extract(inp, "@OrganizationCategory"),
             all_names=[] if not current_name else [current_name],
             all_abbrevs=[] if not current_abbrev else [current_abbrev],
             content=inp,
         )
+        if jsonify_content:
+            obj.content = json.dumps(inp)
         return obj
 
     def disassemble(self):
@@ -89,7 +82,6 @@ class Submitter(Model):
 class Submission(Model):
     id: str
     submitter_id: str
-    release_date: str
     additional_submitter_ids: List[str]
     submission_date: str
     content: dict
@@ -104,20 +96,19 @@ class Submission(Model):
         submitter: Submitter = {},
         additional_submitters: list = [Submitter],
     ):
-        _logger.info(
+        _logger.debug(
             f"Submission.from_xml(inp={json.dumps(inp)}, {jsonify_content=}, {submitter=}, "
             f"{additional_submitters=})"
         )
         obj = Submission(
             id=f"{submitter.id}",  # TODO - FIX w/ Date
-            release_date=submitter.release_date,
             submitter_id=submitter.id,
             additional_submitter_ids=list(filter("id", additional_submitters)),
             submission_date=extract(inp, "@SubmissionDate"),
             content=inp,
         )
-        # TODO
-        # jsonify_content
+        if jsonify_content:
+            obj.content = json.dumps(inp)
         return obj
 
     def disassemble(self):
@@ -148,7 +139,7 @@ class ClinicalAssertion(Model):
 
     @staticmethod
     def from_xml(inp: dict, jsonify_content=True):
-        _logger.info(
+        _logger.debug(
             f"ClinicalAssertion.from_xml(inp={json.dumps(inp)}, {jsonify_content=})"
         )
         raw_accession = extract(inp, "ClinVarAccession")
@@ -158,7 +149,7 @@ class ClinicalAssertion(Model):
             map(
                 Submitter.from_xml,
                 ensure_list(
-                    extract_in(
+                    extract(
                         raw_accession, "AdditionalSubmitters", "SubmitterDescription"
                     )
                     or []
@@ -191,12 +182,22 @@ class ClinicalAssertion(Model):
             submission=submission,
             content=inp,
         )
-        # TODO
-        # jsonify_content
+        if jsonify_content:
+            obj.content = json.dumps(inp)
         return obj
 
     def disassemble(self):
-        yield self
+        self_copy = model_copy(self)
+
+        for subobj in self_copy.submitter.disassemble():
+            yield subobj
+        del self_copy.submitter
+
+        for subobj in self_copy.submission.disassemble():
+            yield subobj
+        del self_copy.submission
+
+        yield self_copy
 
 
 @dataclasses.dataclass
@@ -288,10 +289,12 @@ class Variation(Model):
                 extract_oneof(inp, "VariantType", "VariationType")[1], "$"
             ),
             subclass_type=subclass_type,
-            allele_id=extract_in(inp, "@AlleleID"),
-            protein_change=ensure_list(extract_in(inp, "ProteinChange") or []),
-            num_copies=int_or_none(extract_in(inp, "@NumberOfCopies")),
-            num_chromosomes=int_or_none(extract_in(inp, "@NumberOfChromosomes")),
+            allele_id=extract(inp, "@AlleleID"),
+            protein_change=[
+                pc["$"] for pc in ensure_list(extract(inp, "ProteinChange") or [])
+            ],
+            num_copies=int_or_none(extract(inp, "@NumberOfCopies")),
+            num_chromosomes=int_or_none(extract(inp, "@NumberOfChromosomes")),
             gene_associations=[],
             child_ids=child_ids,
             descendant_ids=descendant_ids,
@@ -453,7 +456,7 @@ class Trait(Model):
 
     @staticmethod
     def from_xml(inp: dict, jsonify_content=True) -> Trait:
-        _logger.info(f"Trait.from_xml(inp={json.dumps(inp)})")
+        _logger.debug(f"Trait.from_xml(inp={json.dumps(inp)})")
         id = extract(inp, "@ID")
 
         def make_attr_xrefs(
@@ -749,7 +752,7 @@ class TraitSet(Model):
 
     @staticmethod
     def from_xml(inp: dict, jsonify_content=True):
-        _logger.info(f"TraitSet.from_xml(inp={json.dumps(inp)})")
+        _logger.debug(f"TraitSet.from_xml(inp={json.dumps(inp)})")
         obj = TraitSet(
             id=extract(inp, "@ID"),
             type=extract(inp, "@Type"),
@@ -794,8 +797,8 @@ class TraitMapping(Model):
             mapping_type=extract(inp, "@MappingType"),
             mapping_value=extract(inp, "@MappingValue"),
             mapping_ref=extract(inp, "@MappingRef"),
-            medgen_name=extract_in(inp, "MedGen", "@Name"),
-            medgen_id=extract_in(inp, "MedGen", "@CUI"),
+            medgen_name=extract(inp, "MedGen", "@Name"),
+            medgen_id=extract(inp, "MedGen", "@CUI"),
         )
 
     def disassemble(self):
@@ -861,23 +864,19 @@ class VariationArchive(Model):
             record_status=extract(extract(inp, "RecordStatus"), "$"),
             species=extract(extract(inp, "Species"), "$"),
             review_status=extract(extract(interp_record, "ReviewStatus"), "$"),
-            interp_type=extract_in(interpretation, "@Type"),
-            interp_description=extract(extract_in(interpretation, "Description"), "$"),
-            interp_explanation=extract_in(
-                extract_in(interpretation, "Explanation"), "$"
-            ),
+            interp_type=extract(interpretation, "@Type"),
+            interp_description=extract(extract(interpretation, "Description"), "$"),
+            interp_explanation=extract(extract(interpretation, "Explanation"), "$"),
             # num_submitters and num_submissions are at top and interp level
-            num_submitters=int_or_none(
-                extract_in(interpretation, "@NumberOfSubmitters")
-            ),
+            num_submitters=int_or_none(extract(interpretation, "@NumberOfSubmitters")),
             num_submissions=int_or_none(
-                extract_in(interpretation, "@NumberOfSubmissions")
+                extract(interpretation, "@NumberOfSubmissions")
             ),
-            interp_date_last_evaluated=extract_in(interpretation, "@DateLastEvaluated"),
+            interp_date_last_evaluated=extract(interpretation, "@DateLastEvaluated"),
             trait_sets=[
                 TraitSet.from_xml(ts, jsonify_content=jsonify_content)
                 for ts in ensure_list(
-                    extract_in(
+                    extract(
                         interpretation,
                         "ConditionList",
                         "TraitSet",
@@ -889,7 +888,7 @@ class VariationArchive(Model):
                 TraitMapping.from_xml(tm, jsonify_content=jsonify_content)
                 for tm in ensure_list(
                     extract(
-                        extract_in(
+                        extract(
                             interp_record,
                             "TraitMapping",
                         ),

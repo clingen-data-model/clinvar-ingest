@@ -49,7 +49,27 @@ def find_files(root_directory: str) -> List[str]:
     return outputs
 
 
-def _open(filename: str, make_parents=True, mode: BinaryOpenMode = BinaryOpenMode.READ):
+class ReadCounter:
+    def __init__(self, f):
+        self.f = f
+        self.bytes_read = 0
+
+    def __getattr__(self, name):
+        return getattr(self.f, name)
+
+    def read(self, size=-1):
+        result = self.f.read(size)
+        assert isinstance(result, bytes), "ReadCounter only works with binary files."
+        self.bytes_read += len(result)
+        return result
+
+    def tell(self):
+        return self.bytes_read
+
+
+def fs_open(
+    filename: str, make_parents=True, mode: BinaryOpenMode = BinaryOpenMode.READ
+):
     """
     Opens a file with path `filename`. If `filename` ends in .gz, opens as gzip.
 

@@ -2,6 +2,7 @@
 Module for iterating over XML files and calling Model constructors
 on appropriate elements.
 """
+
 import logging
 import xml.etree.ElementTree as ET
 from enum import StrEnum
@@ -11,7 +12,7 @@ import xmltodict
 
 import clinvar_ingest.model as model
 
-_logger = logging.getLogger(__name__)
+_logger = logging.getLogger("clinvar_ingest")
 
 QUEUE_STOP_VALUE = -1
 

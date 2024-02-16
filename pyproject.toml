@@ -20,6 +20,7 @@ dependencies = [
     "google-cloud-storage~=2.13.0",
     "fastapi~=0.104.1",
     "uvicorn~=0.24.0",
+    "requests~=2.31.0"
 ]
 dynamic = ["version"]
 
@@ -42,6 +43,7 @@ include = ["clinvar_ingest*"]
 
 [tool.setuptools.package-data]
 "clinvar_ingest" = ["*.json", ".*.env"]
+"clinvar_ingest.cloud.bigquery.bq_json_schemas" = ["*.json"]
 
 [tool.isort]
 profile = "black"

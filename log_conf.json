@@ -21,6 +21,16 @@
             "handlers": ["default"],
             "propagate": true
         },
+        "clinvar_ingest": {
+            "level": "INFO",
+            "handlers": ["default"],
+            "propagate": true
+        },
+        "clinvar-ingest-workflow": {
+            "level": "INFO",
+            "handlers": ["default"],
+            "propagate": true
+        },
         "uvicorn": {
             "level": "ERROR",
             "handlers": ["default"]

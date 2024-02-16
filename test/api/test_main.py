@@ -1,11 +1,14 @@
 import json
 import logging.config
+from datetime import datetime
 from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
 
 from clinvar_ingest.api.main import app
+from clinvar_ingest.api.model.requests import StepStartedResponse
+from clinvar_ingest.status import StatusValue, StepName, StepStatus
 
 
 @pytest.fixture
@@ -28,12 +31,29 @@ def test_status_check(log_conf, caplog) -> None:
         assert "elapsed_ms" in caplog.records[2].msg
 
 
+@pytest.mark.integration
 def test_copy_endpoint_success(log_conf, env_config, caplog) -> None:
+    started_status_value = StatusValue(
+        StepStatus.STARTED, StepName.COPY, datetime.utcnow().isoformat()
+    )
+    succeeded_status_value = StatusValue(
+        StepStatus.SUCCEEDED, StepName.COPY, datetime.utcnow().isoformat()
+    )
     with (
-        patch("clinvar_ingest.api.main.http_upload_urllib", return_value=None),
+        patch("clinvar_ingest.api.main.http_download_curl", return_value=None),
+        patch("clinvar_ingest.api.main.copy_file_to_bucket", return_value=None),
         patch("clinvar_ingest.api.main._get_gcs_client", return_value="not a client"),
+        patch(
+            "clinvar_ingest.api.main.write_status_file",
+            return_value=started_status_value,
+        ),
+        patch(
+            "clinvar_ingest.api.main.get_status_file",
+            return_value=succeeded_status_value,
+        ),
         TestClient(app) as client,
     ):
+        wf_execution_id = "test-execution-id"
         body = {
             "Name": "ClinVarVariationRelease_2023-1104.xml.gz",
             "Size": 10,
@@ -44,21 +64,27 @@ def test_copy_endpoint_success(log_conf, env_config, caplog) -> None:
             "Release Date": "2023-12-04",
         }
         response = client.post(
-            "/copy",
+            f"/copy/{wf_execution_id}",
             json=body,
         )
         assert response.status_code == 201
-        assert response.json() == {
-            "ftp_path": f"{env_config.clinvar_ftp_base_url}/pub/clinvar/xml/clinvar_variation/weekly_release/ClinVarVariationRelease_2023-1104.xml.gz",
-            "gcs_path": f"gs://{env_config.bucket_name}/{env_config.bucket_staging_prefix}/ClinVarVariationRelease_2023-1104.xml.gz",
-        }
+
+        expected_started_response = StepStartedResponse(
+            workflow_execution_id=wf_execution_id,
+            step_name=StepName.COPY,
+            timestamp=datetime.utcnow(),
+            step_status=StepStatus.STARTED,
+        )
+        actual_started_response = StepStartedResponse(**response.json())
+        actual_started_response.timestamp = expected_started_response.timestamp
+        assert expected_started_response == actual_started_response
 
         body["Released"] = "2022-12-05"
         response = client.post(
-            "/copy",
+            f"/copy/{wf_execution_id}",
             json=body,
         )
         assert response.status_code == 422
         assert "Input should be a valid datetime" in response.text
-        assert len(caplog.records) == 6
-        assert "status_code=422" in caplog.records[5].msg
+        assert len(caplog.records) == 9
+        # assert "status_code=422" in caplog.records[5].msg

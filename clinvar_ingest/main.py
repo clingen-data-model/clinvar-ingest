@@ -10,7 +10,7 @@ from clinvar_ingest.cloud.gcs import copy_file_to_bucket
 from clinvar_ingest.fs import find_files
 from clinvar_ingest.parse import parse_and_write_files
 
-_logger = logging.getLogger("clinvar-ingest")
+_logger = logging.getLogger("clinvar_ingest")
 
 
 def run_parse(args):

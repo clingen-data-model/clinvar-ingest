@@ -1,56 +1,88 @@
 main:
     params: [args]
     steps:
-        - log_args:
-            call: sys.log
-            args:
-                data: ${args}
-        - copy:
+        - init:
+            assign:
+                - ordered_steps: ["copy", "parse", "create_external_tables"]
+                - output_to_input_key_names:
+                    copy: {"gcs_path": "input_path"}
+                    parse: {"parsed_files": "source_table_paths"}
+                - base_url: '${sys.get_env("CLOUD_RUN_SERVICE_URL") + "/"}'
+                - clinvar_release_date: ${text.replace_all(args["Release Date"], "-", "_")}
+        - create_workflow_execution:
             call: http.post
             args:
-                url: https://clinvar-ingest-kyle-dev-qmojsrhb3q-uc.a.run.app/copy
-                #url: '${sys.get_env("CLOUD_RUN_SERVICE")}/copy'
-                body: '${args}'
-                auth:
-                    type: OIDC
-            result: copy_result
-        - log_copy_result:
-            call: sys.log
-            args:
-                data: ${copy_result}
-        - parse:
-            try:
-                call: http.post
-                args:
-                    url: https://clinvar-ingest-kyle-dev-qmojsrhb3q-uc.a.run.app/parse
-                    #url: '${sys.get_env("CLOUD_RUN_SERVICE")}/parse'
-                    # body: '${copy_result.body}'
-                    body:
-                        input_path: '${copy_result.body.gcs_path}'
-                        output_path: 'gs://clinvar-ingest/wf-outputs'
-                    auth:
-                        type: OIDC
-                result: parse_result
-            except:
-                as: e
-                steps:
-                    - unhandled_exception:
-                        raise: ${e}
-        - log_parse_result:
-            call: sys.log
-            args:
-                data: ${parse_result}
-        - create_external_tables:
-            call: http.post
-            args:
-                url: https://clinvar-ingest-kyle-dev-qmojsrhb3q-uc.a.run.app/create_external_tables
-                #url: '${sys.get_env("CLOUD_RUN_SERVICE")}/create_external_tables'
+                url: '${base_url + "create_workflow_execution_id/" + clinvar_release_date}'
                 body:
-                    destination_project: clingen-dev
-                    destination_dataset: clinvar_ingest_new_wf_kyle_dev
-                    source_table_paths: '${parse_result.body.parsed_files}'
                 auth:
                     type: OIDC
-            result: create_external_tables_result
-        - result:
-            return: ${create_external_tables_result}
+            result: workflow_execution_step_result
+        - init_workflow_execution_id:
+            assign:
+                - workflow_execution_id: ${workflow_execution_step_result.body.workflow_execution_id}
+                - args["destination_dataset"]: ${workflow_execution_id}
+        - for_in_steps:
+            for:
+                value: step
+                in: ${ordered_steps}
+                steps:
+                    - log_step_key:
+                        call: sys.log
+                        args:
+                            data: '${"Step is: " + step + " workflow_execution_id is: " + workflow_execution_id}'
+                    - call_step:
+                        call: http.post
+                        args:
+                            url: '${base_url + step + "/" + workflow_execution_id}'
+                            body: '${args}'
+                            auth:
+                                type: OIDC
+                        result: call_step_result
+                    - log_call_step_result:
+                        call: sys.log
+                        args:
+                            data: '${call_step_result}'
+                    - status_check:
+                        call: http.get
+                        args:
+                            url: '${base_url + "step_status/" + workflow_execution_id + "/" + step}'
+                            auth:
+                                type: OIDC
+                        result: status_check_result
+                    - log_status_check_result:
+                        call: sys.log
+                        args:
+                            data: '${status_check_result}'
+                    - check_if_complete:
+                        switch:
+                            - condition: ${"FAILED" == status_check_result.body.step_status}
+                              next: step_failed
+                            - condition: ${"SUCCEEDED" == status_check_result.body.step_status}
+                              next: step_succeeded
+                    - wait_for_result:
+                        call: sys.sleep
+                        args:
+                            seconds: 60
+                        next: status_check
+                    - step_failed:
+                        raise: '${"Step " + step + " failed for " + args.Name + " " + status_check_result.body.message}'
+                    - step_succeeded:
+                        steps:
+                            - conditional_update_args_for_next_step:
+                                  switch:
+                                      - condition: ${step in output_to_input_key_names}
+                                        steps:
+                                            - update_args_with_step_results:
+                                                for:
+                                                    value: output_key
+                                                    in: ${keys(output_to_input_key_names[step])}
+                                                    steps:
+                                                        - log_json:
+                                                            call: sys.log
+                                                            args:
+                                                                data: '${json.decode(status_check_result.body.message)}'
+                                                        - assign_vars:
+                                                            assign:
+                                                                - json_message: ${json.decode(status_check_result.body.message)}
+                                                                - input_key: ${output_to_input_key_names[step][output_key]}
+                                                                - args[input_key]: ${json_message[output_key]}

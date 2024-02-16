@@ -5,6 +5,7 @@ files from Google Cloud Storage.
 
 Usable as a script or programmatic module.
 """
+
 import logging
 from pathlib import Path
 
@@ -16,7 +17,7 @@ from clinvar_ingest.api.model.requests import CreateExternalTablesRequest
 from clinvar_ingest.cloud.gcs import parse_blob_uri
 from clinvar_ingest.config import get_env
 
-_logger = logging.getLogger(__name__)
+_logger = logging.getLogger("clinvar_ingest")
 
 file_dir = Path(__file__).parent.resolve()
 bq_schemas_dir = file_dir / "bq_json_schemas"
@@ -96,6 +97,9 @@ def run_create_external_tables(
     source_buckets = set()
     for table_name, gcs_blob_path in args.source_table_paths.items():
         parsed_blob = parse_blob_uri(gcs_blob_path.root, gcs_client)
+        _logger.info(
+            "Parsed blob bucket: %s, path: %s", parsed_blob.bucket, parsed_blob.name
+        )
         bucket_obj = gcs_client.get_bucket(parsed_blob.bucket.name)
         bucket_location = bucket_obj.location
         source_buckets.add(parsed_blob.bucket.name)
@@ -111,13 +115,15 @@ def run_create_external_tables(
     dataset_obj = ensure_dataset_exists(
         bq_client,
         project=destination_project,
-        dataset_id=env.bq_dest_dataset,
+        dataset_id=args.destination_dataset,
         location=bucket_location,
     )
     if not dataset_obj:
         raise RuntimeError(f"Didn't get a dataset object back. run_create args: {args}")
 
     outputs = {}
+    # TODO maybe do something more clever if it fails part way through
+    # but maybe not, it could be useful to see the partial results
     for table_name, gcs_blob_path in args.source_table_paths.items():
         table = create_table(
             table_name,
