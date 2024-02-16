@@ -10,6 +10,7 @@ from __future__ import annotations
 import dataclasses
 import json
 import logging
+import re
 from abc import ABCMeta, abstractmethod
 from typing import List, Union
 
@@ -104,7 +105,7 @@ class Submission(Model):
             id=f"{submitter.id}",  # TODO - FIX w/ Date
             submitter_id=submitter.id,
             additional_submitter_ids=list(filter("id", additional_submitters)),
-            submission_date=extract(inp, "@SubmissionDate"),
+            submission_date=sanitize_date(extract(inp, "@SubmissionDate")),
             content=inp,
         )
         if jsonify_content:
@@ -167,13 +168,13 @@ class ClinicalAssertion(Model):
             assertion_accession=extract(raw_accession, "@Accession"),
             version=extract(raw_accession, "@Version"),
             assertion_type=extract(extract(inp, "Assertion"), "$"),
-            date_created=extract(inp, "@DateCreated"),
-            date_last_updated=extract(inp, "@DateLastUpdated"),
+            date_created=sanitize_date(extract(inp, "@DateCreated")),
+            date_last_updated=sanitize_date(extract(inp, "@DateLastUpdated")),
             submitted_assembly=extract(clinvar_submission, "@submittedAssembly"),
             record_status=extract(extract(inp, "RecordStatus"), "$"),
             review_status=extract(extract(inp, "ReviewStatus"), "$"),
-            interpretation_date_last_evaluated=extract(
-                interpretation, "@DateLastEvaluated"
+            interpretation_date_last_evaluated=sanitize_date(
+                extract(interpretation, "@DateLastEvaluated")
             ),
             interpretation_description=extract(
                 extract(interpretation, "Description"), "$"
@@ -860,8 +861,8 @@ class VariationArchive(Model):
                     ),
                 )
             ),
-            date_created=extract(inp, "@DateCreated"),
-            date_last_updated=extract(inp, "@DateLastUpdated"),
+            date_created=sanitize_date(extract(inp, "@DateCreated")),
+            date_last_updated=sanitize_date(extract(inp, "@DateLastUpdated")),
             record_status=extract(extract(inp, "RecordStatus"), "$"),
             species=extract(extract(inp, "Species"), "$"),
             review_status=extract(extract(interp_record, "ReviewStatus"), "$"),
@@ -873,7 +874,9 @@ class VariationArchive(Model):
             num_submissions=int_or_none(
                 extract(interpretation, "@NumberOfSubmissions")
             ),
-            interp_date_last_evaluated=extract(interpretation, "@DateLastEvaluated"),
+            interp_date_last_evaluated=sanitize_date(
+                extract(interpretation, "@DateLastEvaluated")
+            ),
             trait_sets=[
                 TraitSet.from_xml(ts, jsonify_content=jsonify_content)
                 for ts in ensure_list(
@@ -959,6 +962,31 @@ def int_or_none(s: Union[str, None]) -> Union[int, None]:
     if s is None:
         return None
     return int(s)
+
+
+def sanitize_date(s: str) -> str:
+    """
+    Parse a string which starts with a valid date in format YYYY-MM-DD.
+
+    This function is permissive and discards trailing input because ClinVar has
+    some dates like '2018-06-21-05:00'
+
+    See: https://github.com/clingen-data-model/clinvar-ingest/issues/99
+    """
+    if not s:
+        return s
+    pattern_str = r"^(\d{4}-\d{2}-\d{2})"
+    date_pattern = re.compile(pattern_str)
+    match = date_pattern.match(s)
+    if match:
+        if match.span()[1] != len(s):
+            _logger.warning(
+                f"Trailing content trimmed from date."
+                f" Date {match.group(1)} was followed by {s[match.span()[1]:]}"
+            )
+        return match.group(1)
+    else:
+        raise ValueError(f"Invalid date: {s}, must match {pattern_str}")
 
 
 def dictify(obj):

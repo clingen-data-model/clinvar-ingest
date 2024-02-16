@@ -56,80 +56,80 @@ def test_trait_from_xml_32():
     assert trait.attribute_content == []
     assert trait.content is not None
 
+    expected_trait_xrefs = [
+        {
+            "db": "MONDO",
+            "id": "MONDO:0013327",
+            "type": None,
+            "ref_field": "name",
+            "ref_field_element": "Primary hyperoxaluria type 3",
+        },
+        {
+            "db": "Genetic Alliance",
+            "id": "Primary+Hyperoxaluria+Type+3/8596",
+            "type": None,
+            "ref_field": "alternate_names",
+            "ref_field_element": "Primary hyperoxaluria, type III",
+        },
+        {
+            "db": "OMIM",
+            "id": "613616",
+            "type": "MIM",
+            "ref_field": "alternate_symbols",
+            "ref_field_element": "HP3",
+        },
+        {
+            "db": "Office of Rare Diseases",
+            "id": "10738",
+            "type": None,
+            "ref_field": "gard_id",
+            "ref_field_element": None,
+        },
+        {
+            "db": "Genetic Testing Registry (GTR)",
+            "id": "GTR000561373",
+            "type": None,
+            "ref_field": "disease_mechanism",
+            "ref_field_element": None,
+        },
+        {
+            "db": "Orphanet",
+            "id": "416",
+            "type": None,
+            "ref_field": None,
+            "ref_field_element": None,
+        },
+        {
+            "db": "Orphanet",
+            "id": "93600",
+            "type": None,
+            "ref_field": None,
+            "ref_field_element": None,
+        },
+        {
+            "db": "MedGen",
+            "id": "C3150878",
+            "type": None,
+            "ref_field": None,
+            "ref_field_element": None,
+        },
+        {
+            "db": "MONDO",
+            "id": "MONDO:0013327",
+            "type": None,
+            "ref_field": None,
+            "ref_field_element": None,
+        },
+        {
+            "db": "OMIM",
+            "id": "613616",
+            "type": "MIM",
+            "ref_field": None,
+            "ref_field_element": None,
+        },
+    ]
     assert unordered_dict_list_equal(
-        dictify(trait.xrefs),
-        [
-            {
-                "db": "MONDO",
-                "id": "MONDO:0013327",
-                "type": None,
-                "ref_field": "name",
-                "ref_field_element": "Primary hyperoxaluria type 3",
-            },
-            {
-                "db": "Genetic Alliance",
-                "id": "Primary+Hyperoxaluria+Type+3/8596",
-                "type": None,
-                "ref_field": "alternate_names",
-                "ref_field_element": "Primary hyperoxaluria, type III",
-            },
-            {
-                "db": "OMIM",
-                "id": "613616",
-                "type": "MIM",
-                "ref_field": "alternate_symbols",
-                "ref_field_element": "HP3",
-            },
-            {
-                "db": "Office of Rare Diseases",
-                "id": "10738",
-                "type": None,
-                "ref_field": "gard_id",
-                "ref_field_element": None,
-            },
-            {
-                "db": "Genetic Testing Registry (GTR)",
-                "id": "GTR000561373",
-                "type": None,
-                "ref_field": "disease_mechanism",
-                "ref_field_element": None,
-            },
-            {
-                "db": "Orphanet",
-                "id": "416",
-                "type": None,
-                "ref_field": None,
-                "ref_field_element": None,
-            },
-            {
-                "db": "Orphanet",
-                "id": "93600",
-                "type": None,
-                "ref_field": None,
-                "ref_field_element": None,
-            },
-            {
-                "db": "MedGen",
-                "id": "C3150878",
-                "type": None,
-                "ref_field": None,
-                "ref_field_element": None,
-            },
-            {
-                "db": "MONDO",
-                "id": "MONDO:0013327",
-                "type": None,
-                "ref_field": None,
-                "ref_field_element": None,
-            },
-            {
-                "db": "OMIM",
-                "id": "613616",
-                "type": "MIM",
-                "ref_field": None,
-                "ref_field_element": None,
-            },
-        ],
+        expected_trait_xrefs, dictify([json.loads(x) for x in trait.xrefs])
     )
 
 
@@ -151,7 +151,7 @@ def test_trait_from_xml_6619():
     assert trait.symbol == "ARVD"
 
     # This trait has multiple XRefs on Name(Preffered) and Name(Alternate)
-    trait_xrefs = dictify(trait.xrefs)
+    trait_xrefs = dictify([json.loads(x) for x in trait.xrefs])
     ## Name(Preffered)
     assert {
         "db": "Genetic Alliance",
@@ -268,7 +268,7 @@ def test_trait_from_xml_406155():
         "type": None,
         "ref_field": "public_definition",
         "ref_field_element": None,
-    } in dictify(trait.xrefs)
+    } in dictify([json.loads(x) for x in trait.xrefs])
 
 
 def test_trait_set_from_xml_10():
