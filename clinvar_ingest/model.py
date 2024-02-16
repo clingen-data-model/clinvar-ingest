@@ -973,6 +973,8 @@ def sanitize_date(s: str) -> str:
 
     See: https://github.com/clingen-data-model/clinvar-ingest/issues/99
     """
+    if not s:
+        return s
     pattern_str = r"^(\d{4}-\d{2}-\d{2})"
     date_pattern = re.compile(pattern_str)
     match = date_pattern.match(s)
