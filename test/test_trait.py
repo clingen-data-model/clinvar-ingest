@@ -151,7 +151,7 @@ def test_trait_from_xml_6619():
     assert trait.symbol == "ARVD"
 
     # This trait has multiple XRefs on Name(Preffered) and Name(Alternate)
-    trait_xrefs = dictify(trait.xrefs)
+    trait_xrefs = dictify([json.loads(x) for x in trait.xrefs])
     ## Name(Preffered)
     assert {
         "db": "Genetic Alliance",
@@ -268,7 +268,7 @@ def test_trait_from_xml_406155():
         "type": None,
         "ref_field": "public_definition",
         "ref_field_element": None,
-    } in dictify(trait.xrefs)
+    } in dictify([json.loads(x) for x in trait.xrefs])
 
 
 def test_trait_set_from_xml_10():
