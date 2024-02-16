@@ -732,6 +732,7 @@ class Trait(Model):
         if jsonify_content:
             obj.content = json.dumps(inp)
             obj.attribute_content = [json.dumps(a) for a in attribute_set]
+            obj.xrefs = [json.dumps(dictify(x)) for x in all_xrefs]
         return obj
 
     def disassemble(self):

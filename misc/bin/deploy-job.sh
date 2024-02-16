@@ -16,11 +16,11 @@ image_tag=workflow-py-$commit
 image=gcr.io/clingen-dev/clinvar-ingest:$image_tag
 pipeline_service_account=clinvar-ingest-pipeline@clingen-dev.iam.gserviceaccount.com
 deployment_service_account=clinvar-ingest-deployment@clingen-dev.iam.gserviceaccount.com
-clinvar_ftp_url="https://raw.githubusercontent.com"
+
 
 if gcloud run jobs list --region us-central1 | awk '{print $2}' | grep "^$instance_name$"  ; then
     echo "Cloud Run Job $instance_name already exists"
-    echo "Deleting Cloud Run Service"
+    echo "Deleting Cloud Run Job"
     gcloud run jobs delete $instance_name --region $region
 fi
 
