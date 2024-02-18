@@ -50,7 +50,7 @@ def _dump_fn(val):
 BigqueryDatasetId = Annotated[str, StringConstraints(pattern=r"^[a-zA-Z0-9_]+$")]
 
 BigqueryFullTableId = Annotated[
-    str, StringConstraints(pattern=r"^[a-zA-Z0-9-_]+:[a-zA-Z0-9_]+.[a-zA-Z0-9-_]+$")
+    str, StringConstraints(pattern=r"^[a-zA-Z0-9-_]+:[a-zA-Z0-9_]+\.[a-zA-Z0-9-_]+$")
 ]
 
 
