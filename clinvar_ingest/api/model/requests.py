@@ -49,8 +49,10 @@ def _dump_fn(val):
 
 BigqueryDatasetId = Annotated[str, StringConstraints(pattern=r"^[a-zA-Z0-9_]+$")]
 
+
+BigqueryFullTableId_pattern = r"^[a-zA-Z0-9-_]+.[a-zA-Z0-9_]+\.[a-zA-Z0-9-_]+$"
 BigqueryFullTableId = Annotated[
-    str, StringConstraints(pattern=r"^[a-zA-Z0-9-_]+:[a-zA-Z0-9_]+\.[a-zA-Z0-9-_]+$")
+    str, StringConstraints(pattern=BigqueryFullTableId_pattern)
 ]
 
 
@@ -190,6 +192,19 @@ class CreateExternalTablesResponse(RootModel):
     """
 
     root: dict[str, BigqueryFullTableId]
+
+
+class CreateInternalTablesRequest(BaseModel):
+    """
+    Defines the arguments to the create_internal_tables endpoint.
+    Values are used by create_tables.run_create_internal_tables.
+    """
+
+    source_dest_table_map: Annotated[
+        dict[BigqueryFullTableId, Union[BigqueryFullTableId, BigqueryFullTableId]],
+        "A map of source table IDs to destination table IDs."
+        "Destinations can also be table names, and project+dataset will be inferred from the source table.",
+    ]
 
 
 class InitializeWorkflowResponse(BaseModel):

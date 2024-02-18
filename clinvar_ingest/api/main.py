@@ -407,7 +407,7 @@ async def create_external_tables(
                     table.table_id,
                 )
             entity_type_table_ids = {
-                entity_type: table.full_table_id
+                entity_type: f"{table.project}.{table.dataset_id}.{table.table_id}"
                 for entity_type, table in tables_created.items()
             }
 
