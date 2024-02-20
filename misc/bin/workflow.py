@@ -7,13 +7,17 @@ import logging
 from google.cloud.storage import Client as GCSClient
 from google.cloud import bigquery
 
-from clinvar_ingest.cloud.bigquery.create_tables import run_create_external_tables
+from clinvar_ingest.cloud.bigquery.create_tables import (
+    run_create_external_tables,
+    create_internal_tables,
+)
 from clinvar_ingest.config import get_env
 from clinvar_ingest.api.model.requests import (
     ClinvarFTPWatcherRequest,
     CopyResponse,
     CreateExternalTablesRequest,
     CreateExternalTablesResponse,
+    CreateInternalTablesRequest,
     ParseRequest,
     ParseResponse,
 )
@@ -191,6 +195,25 @@ create_external_tables_response = create_external_tables(
 )
 _logger.info(
     f"Create External Tables response: {create_external_tables_response.model_dump_json()}"
+)
+
+################################################################
+# Create internal tables
+
+create_internal_tables_request = CreateInternalTablesRequest(
+    source_dest_table_map={
+        # source -> destination
+        external: f"{external}_internal"
+        for external in create_external_tables_response.root.values()
+    }
+)
+_logger.info(
+    f"Create Internal Tables request: {create_internal_tables_request.model_dump_json(indent=2)}"
+)
+
+create_internal_tables_response = create_internal_tables(create_internal_tables_request)
+_logger.info(
+    f"Create Internal Tables response: {create_internal_tables_response.model_dump_json(indent=2)}"
 )
 
 
