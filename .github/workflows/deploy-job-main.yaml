@@ -1,0 +1,45 @@
+name: Deploy Job
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
+    branches:
+      - main
+      - issue-104-job-auto-deploy
+
+permissions:
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+
+      - name: authenticate to google cloud
+        id: "auth"
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/522856288592/locations/global/workloadIdentityPools/clingen-actions-pool/providers/clingen-github-actions
+          service_account: clinvar-ingest-deployment@clingen-dev.iam.gserviceaccount.com
+
+      - name: setup gcloud sdk
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: build and deploy
+        run: |
+          export branch=${{ github.event.workflow_run.head_branch }}
+          export commit=${{ github.event.workflow_run.head_commit }}
+          echo "branch=$branch" >> $GITHUB_ENV
+          echo "commit=$commit" >> $GITHUB_ENV
+          bash misc/bin/deploy-job.sh
+
+      - name: run test pipeline
+        run: |
+          bash misc/bin/execute-job.sh
