@@ -32,7 +32,7 @@ deployment_service_account=clinvar-ingest-deployment@clingen-dev.iam.gserviceacc
 if gcloud run jobs list --region us-central1 | awk '{print $2}' | grep "^$instance_name$"  ; then
     echo "Cloud Run Job $instance_name already exists"
     echo "Deleting Cloud Run Job"
-    gcloud run jobs delete $instance_name --region $region
+    gcloud run jobs delete $instance_name --region $region --quiet
 fi
 
 ################################################################
