@@ -852,12 +852,13 @@ class VariationArchive(Model):
             ),
             clinical_assertions=list(
                 map(
-                    ClinicalAssertion.from_xml,
+                    lambda ca: ClinicalAssertion.from_xml(ca, jsonify_content),
                     ensure_list(
                         extract(
                             extract(interp_record, "ClinicalAssertionList"),
                             "ClinicalAssertion",
                         )
+                        or []
                     ),
                 )
             ),
