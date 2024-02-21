@@ -16,10 +16,7 @@ fi
 
 set -u
 
-branch=$(git rev-parse --abbrev-ref HEAD)
-commit=$(git rev-parse HEAD)
 echo "Branch: $branch"
-echo "Commit: $commit"
 
 job_name="clinvar-ingest-${branch}"
 region="us-central1"

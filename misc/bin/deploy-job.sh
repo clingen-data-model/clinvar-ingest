@@ -1,11 +1,22 @@
 #!/usr/bin/env bash
 
-set -xeuo pipefail
+set -xeo pipefail
 
-branch=$(git rev-parse --abbrev-ref HEAD)
-commit=$(git rev-parse HEAD)
+if [ -z "$branch" ]; then
+    branch=$(git rev-parse --abbrev-ref HEAD)
+else
+    echo "branch set in environment"
+fi
+if [ -z "$commit" ]; then
+    commit=$(git rev-parse HEAD)
+else
+    echo "commit set in environment"
+fi
+
 echo "Branch: $branch"
 echo "Commit: $commit"
+
+set -u
 
 instance_name="clinvar-ingest-${branch}"
 clinvar_ingest_bucket="clinvar-ingest"
@@ -24,7 +35,7 @@ if gcloud run jobs list --region us-central1 | awk '{print $2}' | grep "^$instan
     gcloud run jobs delete $instance_name --region $region
 fi
 
-
+################################################################
 # Build the image
 cloudbuild=.cloudbuild/workflow-py.docker.cloudbuild.yaml
 
@@ -45,19 +56,8 @@ gcloud builds submit \
     --gcs-log-dir=gs://${clinvar_ingest_bucket}/build/logs \
     archive.tar.gz
 
-# gcloud run jobs create [JOB] --image=IMAGE [--args=[ARG,...]]
-#     [--binary-authorization=POLICY] [--breakglass=JUSTIFICATION]
-#     [--command=[COMMAND,...]] [--cpu=CPU] [--key=KEY]
-#     [--labels=[KEY=VALUE,...]] [--max-retries=MAX_RETRIES]
-#     [--memory=MEMORY] [--parallelism=PARALLELISM] [--region=REGION]
-#     [--service-account=SERVICE_ACCOUNT]
-#     [--set-cloudsql-instances=[CLOUDSQL-INSTANCES,...]]
-#     [--set-secrets=[KEY=SECRET_NAME:SECRET_VERSION,...]]
-#     [--task-timeout=TASK_TIMEOUT] [--tasks=TASKS; default=1]
-#     [--vpc-connector=VPC_CONNECTOR] [--vpc-egress=VPC_EGRESS]
-#     [--async | --execute-now --wait]
-#     [--env-vars-file=FILE_PATH | --set-env-vars=[KEY=VALUE,...]]
-#     [GCLOUD_WIDE_FLAG ...]
+################################################################
+# Deploy job
 
 gcloud run jobs create $instance_name \
     --cpu=2 \
