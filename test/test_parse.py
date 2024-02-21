@@ -217,6 +217,12 @@ def test_read_original_clinvar_variation_1264328():
         objects = list(read_clinvar_xml(f))
 
     assert 6 == len(objects)
+    assert isinstance(objects[0], Gene)
+    assert isinstance(objects[1], GeneAssociation)
+    assert isinstance(objects[2], Gene)
+    assert isinstance(objects[3], GeneAssociation)
+    assert isinstance(objects[4], Variation)
+    assert isinstance(objects[5], VariationArchive)
     clinical_assertions = [obj for obj in objects if isinstance(obj, ClinicalAssertion)]
     assert 0 == len(clinical_assertions)
 
