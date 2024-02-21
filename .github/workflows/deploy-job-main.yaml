@@ -42,4 +42,6 @@ jobs:
 
       - name: run test pipeline
         run: |
+          export JOB_WAIT=1
+          echo "JOB_WAIT=$JOB_WAIT" >> $GITHUB_ENV
           bash misc/bin/execute-job.sh
