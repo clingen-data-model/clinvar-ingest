@@ -1,4 +1,5 @@
 name: Deploy Job
+run-name: Deploy ${{ github.event.workflow_run.head_branch }} by @${{ github.actor }}
 
 on:
   workflow_run:
