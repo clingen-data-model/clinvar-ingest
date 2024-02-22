@@ -45,18 +45,6 @@ jobs:
         run: |
           bash misc/bin/deploy-job.sh
 
-  run_test_pipeline:
-    runs-on: ubuntu-latest
-    needs: release
-    steps:
-      - name: set env vars
-        run: |
-          export branch=${{ github.event.workflow_run.head_branch }}
-          export commit=${{ github.event.workflow_run.head_commit }}
-          echo "branch=$branch" >> $GITHUB_ENV
-          echo "commit=$commit" >> $GITHUB_ENV
-          echo "instance_name=clinvar-ingest-$branch" >> $GITHUB_ENV
-
       - name: run test pipeline
         run: |
           export JOB_WAIT=1
@@ -67,7 +55,7 @@ jobs:
     runs-on: ubuntu-latest
     # If the workflow run was triggered by a pull request, comment on the PR with the results
     if: ${{ github.event.workflow_run.event == 'pull_request' }}
-    needs: run_test_pipeline
+    needs: release
     steps:
       - name: add comment to pr
         uses: actions/github-script@v7
