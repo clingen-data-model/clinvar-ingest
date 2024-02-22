@@ -36,7 +36,7 @@ jobs:
       - name: set env vars
         run: |
           export branch=${{ github.event.workflow_run.head_branch }}
-          export commit=${{ github.event.workflow_run.head_commit }}
+          export commit=${{ github.event.workflow_run.head_sha }}
           echo "branch=$branch" >> $GITHUB_ENV
           echo "commit=$commit" >> $GITHUB_ENV
           echo "instance_name=clinvar-ingest-$branch" >> $GITHUB_ENV
