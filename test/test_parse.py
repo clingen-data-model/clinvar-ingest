@@ -86,7 +86,6 @@ def test_read_original_clinvar_variation_634266():
     Test a Genotype record
     """
     filename = "test/data/original-clinvar-variation-634266.xml"
-    # filename = "data/original-clinvar-variation-634266.xml"
     with open(filename) as f:
         objects = list(read_clinvar_xml(f))
 
@@ -206,6 +205,26 @@ def test_read_original_clinvar_variation_634266():
     submission = objects[19]
     assert submission.id == "505961"
     assert submission.submission_date == "2018-03-01"
+
+
+def test_read_original_clinvar_variation_1264328():
+    """
+    This tests an IncludedRecord with no ClinicalAssertions.
+    Exercises this bug fix: https://github.com/clingen-data-model/clinvar-ingest/issues/101
+    """
+    filename = "test/data/original-clinvar-variation-1264328.xml"
+    with open(filename) as f:
+        objects = list(read_clinvar_xml(f))
+
+    assert 6 == len(objects)
+    assert isinstance(objects[0], Gene)
+    assert isinstance(objects[1], GeneAssociation)
+    assert isinstance(objects[2], Gene)
+    assert isinstance(objects[3], GeneAssociation)
+    assert isinstance(objects[4], Variation)
+    assert isinstance(objects[5], VariationArchive)
+    clinical_assertions = [obj for obj in objects if isinstance(obj, ClinicalAssertion)]
+    assert 0 == len(clinical_assertions)
 
 
 if __name__ == "__main__":
