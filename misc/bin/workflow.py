@@ -208,12 +208,12 @@ create_internal_tables_request = CreateInternalTablesRequest(
     }
 )
 _logger.info(
-    f"Create Internal Tables request: {create_internal_tables_request.model_dump_json(indent=2)}"
+    f"Create Internal Tables request: {create_internal_tables_request.model_dump_json()}"
 )
 
 create_internal_tables_response = create_internal_tables(create_internal_tables_request)
 _logger.info(
-    f"Create Internal Tables response: {create_internal_tables_response.model_dump_json(indent=2)}"
+    f"Create Internal Tables response: {create_internal_tables_response.model_dump_json()}"
 )
 
 
