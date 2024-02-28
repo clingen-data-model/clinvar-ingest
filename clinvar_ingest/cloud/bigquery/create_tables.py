@@ -13,7 +13,10 @@ from google.api_core.exceptions import NotFound
 from google.cloud import bigquery, storage
 from google.cloud.bigquery.dataset import Dataset, DatasetReference
 
-from clinvar_ingest.api.model.requests import CreateExternalTablesRequest
+from clinvar_ingest.api.model.requests import (
+    CreateExternalTablesRequest,
+    CreateInternalTablesRequest,
+)
 from clinvar_ingest.cloud.gcs import parse_blob_uri
 from clinvar_ingest.config import get_env
 
@@ -42,9 +45,9 @@ def ensure_dataset_exists(
     return dataset
 
 
-def schema_file_path_for_table(table_name: str) -> dict:
+def schema_file_path_for_table(table_name: str) -> str:
     """
-    Loads the schema for the given table name.
+    Returns the path to the BigQuery schema file for the given table name.
     """
     schema_path = bq_schemas_dir / f"{table_name}.bq.json"
     return schema_path
@@ -133,3 +136,68 @@ def run_create_external_tables(
         )
         outputs[table_name] = table
     return outputs
+
+
+def create_internal_tables(
+    args: CreateInternalTablesRequest,
+) -> CreateInternalTablesRequest:
+    """
+    -- clingen-dev.2023_10_07_2024_02_19T172113657352.variation_archive
+    CREATE TABLE `clingen-dev.2023_10_07_2024_02_19T172113657352.variation_archive_internal`
+    AS SELECT * from `clingen-dev.2023_10_07_2024_02_19T172113657352.variation_archive`
+
+    """
+    env = get_env()
+    table_map = args.source_dest_table_map
+    # Initial validation
+    for source_table, dest_table in table_map.items():
+        dest_table = bigquery.TableReference.from_string(dest_table)
+        if dest_table.project != env.bq_dest_project:
+            raise ValueError(
+                f"Cross-project table copies not currently supported. "
+                f"Destination table project must be {env.bq_dest_project}. Got: {dest_table.project}"
+            )
+
+    def ctas_copy(
+        source_table_ref: bigquery.TableReference,
+        dest_table_ref: bigquery.TableReference,
+        bq_client: bigquery.Client,
+    ) -> bigquery.QueryJob:
+        query = (
+            f"CREATE TABLE `{dest_table_ref}` " f"AS SELECT * from `{source_table_ref}`"
+        )
+        _logger.info(
+            f"Creating table {dest_table_ref} as select * from {source_table_ref}"
+        )
+        _logger.info(f"Query:\n{query}")
+        query_job = bq_client.query(query)
+        return query_job
+
+    bq_client = bigquery.Client()
+    # Copy each
+    for source_table, dest_table in table_map.items():
+        source_table_ref = bigquery.TableReference.from_string(source_table)
+        dest_table_ref = bigquery.TableReference.from_string(dest_table)
+
+        # Verify source table exists
+        try:
+            _ = bq_client.get_table(source_table_ref)
+        except NotFound as e:
+            raise ValueError(f"Source table {source_table_ref} not found") from e
+
+        _logger.info(
+            "Copying table %s to %s",
+            source_table_ref,
+            dest_table_ref,
+        )
+        create_job = ctas_copy(
+            source_table_ref=source_table_ref,
+            dest_table_ref=dest_table_ref,
+            bq_client=bq_client,
+        )
+
+        # Wait for job to complete
+        job_result = create_job.result()
+        _logger.info("Job %s completed: %s", create_job.job_id, job_result)
+
+    return args
