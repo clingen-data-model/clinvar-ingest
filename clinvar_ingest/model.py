@@ -117,6 +117,24 @@ class Submission(Model):
 
 
 @dataclasses.dataclass
+class ClinicalAssertionObservation(Model):
+    id: str
+    # This is redudant information, so don't inclue the whole TraitSet here, just the id
+    clinical_assertion_trait_set_id: str
+    content: dict
+
+    def __post_init__(self):
+        self.entity_type = "clinical_assertion_observation"
+
+    @staticmethod
+    def from_xml(inp: dict, jsonify_content=True):
+        raise NotImplementedError()
+
+    def disassemble(self):
+        yield self
+
+
+@dataclasses.dataclass
 class ClinicalAssertion(Model):
     assertion_id: str
     title: str
@@ -135,6 +153,8 @@ class ClinicalAssertion(Model):
     submission: Submission
     content: dict
 
+    clinical_assertion_observations: List[ClinicalAssertionObservation]
+
     def __post_init__(self):
         self.entity_type = "clinical_assertion"
 
@@ -143,7 +163,9 @@ class ClinicalAssertion(Model):
         _logger.debug(
             f"ClinicalAssertion.from_xml(inp={json.dumps(inp)}, {jsonify_content=})"
         )
+        obj_id = extract(inp, "@ID")
         raw_accession = extract(inp, "ClinVarAccession")
+        scv_accession = extract(raw_accession, "@Accession")
         clinvar_submission = extract(inp, "ClinVarSubmissionID")
         interpretation = extract(inp, "Interpretation")
         additional_submitters = list(
@@ -161,11 +183,36 @@ class ClinicalAssertion(Model):
         submission = Submission.from_xml(
             inp, jsonify_content, submitter, additional_submitters
         )
+
+        assertion_trait_set = extract(inp, "TraitSet")
+        assertion_trait_set = TraitSet.from_xml(
+            assertion_trait_set, jsonify_content=jsonify_content
+        )
+        # The ClinicalAssertion TraitSet and Traits have synthetic ids.
+        # Replace them with just the accession.<index>
+        assertion_trait_set.id = f"{scv_accession}.0"
+        for i, t in enumerate(assertion_trait_set.traits):
+            t.id = f"{scv_accession}.{i + 1}"
+
+        # _logger.info("assertion_trait_set: %s", assertion_trait_set)
+        # for t in assertion_trait_set.traits:
+        #     _logger.info("assertion_trait_set_trait: %s", t)
+
+        observed_ins = ensure_list(extract(inp, "ObservedInList", "ObservedIn") or [])
+        observations = [
+            ClinicalAssertionObservation(
+                id=f"{scv_accession}.{i}",
+                clinical_assertion_trait_set_id=assertion_trait_set.id,
+                content=o,
+            )
+            for i, o in enumerate(observed_ins)
+        ]
+
         obj = ClinicalAssertion(
-            assertion_id=extract(inp, "@ID"),
+            assertion_id=obj_id,
             title=extract(clinvar_submission, "@title"),
             local_key=extract(clinvar_submission, "@localKey"),
-            assertion_accession=extract(raw_accession, "@Accession"),
+            assertion_accession=scv_accession,
             version=extract(raw_accession, "@Version"),
             assertion_type=extract(extract(inp, "Assertion"), "$"),
             date_created=sanitize_date(extract(inp, "@DateCreated")),
@@ -181,10 +228,13 @@ class ClinicalAssertion(Model):
             ),
             submitter=submitter,
             submission=submission,
+            clinical_assertion_observations=observations,
             content=inp,
         )
         if jsonify_content:
             obj.content = json.dumps(inp)
+            for observation in obj.clinical_assertion_observations:
+                observation.content = json.dumps(observation.content)
         return obj
 
     def disassemble(self):
@@ -197,6 +247,11 @@ class ClinicalAssertion(Model):
         for subobj in self_copy.submission.disassemble():
             yield subobj
         del self_copy.submission
+
+        for obs in self_copy.clinical_assertion_observations:
+            for subobj in obs.disassemble():
+                yield subobj
+        del self_copy.clinical_assertion_observations
 
         yield self_copy
 
