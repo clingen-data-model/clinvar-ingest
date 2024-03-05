@@ -508,6 +508,58 @@ class ClinicalAssertionObservation(Model):
         yield self
 
 
+class TraitMetadata(Model):
+    """
+    This class is used to parse the shared fields between Trait and ClinicalAssertionTrait
+    """
+
+    id: str
+    type: str
+    name: str
+    medgen_id: str
+    trait_id: str
+    alternate_names: List[str]
+    xrefs: List[Trait.XRef]
+
+    # content: dict
+
+    @staticmethod
+    def from_xml(inp: dict, jsonify_content=True):
+        _logger.info(f"TraitMetadata.from_xml(inp={json.dumps(inp)})")
+
+        id = extract(inp, "@ID")
+        # Preferred Name (Name type=Preferred)
+        names = ensure_list(extract(inp, "Name") or [])
+        preferred_names = [
+            n for n in names if get(n, "ElementValue", "@Type") == "Preferred"
+        ]
+        if len(preferred_names) > 1:
+            raise RuntimeError(f"Trait {id} has multiple preferred names")
+        preferred_name = None
+        if len(preferred_names) == 1:
+            preferred_name = preferred_names[0]["ElementValue"]["$"]
+
+        # preferred_name_xrefs = [
+        #     make_attr_xrefs(n, "name", n["ElementValue"]["$"]) for n in preferred_names
+        # ]
+        _logger.debug("preferred_name: %s", preferred_name)
+
+        # Alternate Names (Name type=Alternate)
+        alternate_names = [
+            n for n in names if get(n, "ElementValue", "@Type") == "Alternate"
+        ]
+        alternate_name_strs = [get(n, "ElementValue", "$") for n in alternate_names]
+
+        # alternate_name_xrefs = [
+        #     make_attr_xrefs(n, "alternate_names", n["ElementValue"]["$"])
+        #     for n in alternate_names
+        # ]
+        _logger.debug("alternate_names: %s", json.dumps(alternate_name_strs))
+
+    def disassemble(self):
+        raise NotImplementedError()
+
+
 @dataclasses.dataclass
 class ClinicalAssertionTrait(Model):
     id: str
