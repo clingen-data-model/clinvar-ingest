@@ -399,11 +399,15 @@ class Variation(Model):
 
     def disassemble(self):
         self_copy = model_copy(self)
-        for ga in self_copy.gene_associations:
-            for gaobj in ga.disassemble():
-                yield gaobj
+
+        # Yield self before gene associations since they refer to the variation
+        gene_associations = self_copy.gene_associations
         del self_copy.gene_associations
         yield self_copy
+
+        for ga in gene_associations:
+            for gaobj in ga.disassemble():
+                yield gaobj
 
 
 @dataclasses.dataclass

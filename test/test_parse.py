@@ -23,9 +23,9 @@ def test_read_original_clinvar_variation_2():
 
     # gene, gene_association, variation, variation_archive
     assert 12 == len(objects)
-    assert isinstance(objects[0], Gene)
-    assert isinstance(objects[1], GeneAssociation)
-    assert isinstance(objects[2], Variation)
+    assert isinstance(objects[0], Variation)
+    assert isinstance(objects[1], Gene)
+    assert isinstance(objects[2], GeneAssociation)
     assert isinstance(objects[3], Trait)
     assert isinstance(objects[4], TraitSet)
     assert isinstance(objects[5], Submitter)
@@ -36,7 +36,7 @@ def test_read_original_clinvar_variation_2():
     assert isinstance(objects[10], ClinicalAssertion)
     assert isinstance(objects[11], VariationArchive)
 
-    variation = objects[2]
+    variation = objects[0]
 
     # Test that extracted fields were there
     assert variation.id == "2"
@@ -49,8 +49,8 @@ def test_read_original_clinvar_variation_2():
     assert "SequenceLocation" in variation.content
 
     # Verify gene association
-    gene = objects[0]
-    gene_association = objects[1]
+    gene = objects[1]
+    gene_association = objects[2]
     assert gene.id == "9907"
     assert gene.hgnc_id == "HGNC:22197"
     assert gene.symbol == "AP5Z1"
@@ -217,11 +217,11 @@ def test_read_original_clinvar_variation_1264328():
         objects = list(read_clinvar_xml(f))
 
     assert 6 == len(objects)
-    assert isinstance(objects[0], Gene)
-    assert isinstance(objects[1], GeneAssociation)
-    assert isinstance(objects[2], Gene)
-    assert isinstance(objects[3], GeneAssociation)
-    assert isinstance(objects[4], Variation)
+    assert isinstance(objects[0], Variation)
+    assert isinstance(objects[1], Gene)
+    assert isinstance(objects[2], GeneAssociation)
+    assert isinstance(objects[3], Gene)
+    assert isinstance(objects[4], GeneAssociation)
     assert isinstance(objects[5], VariationArchive)
     clinical_assertions = [obj for obj in objects if isinstance(obj, ClinicalAssertion)]
     assert 0 == len(clinical_assertions)
