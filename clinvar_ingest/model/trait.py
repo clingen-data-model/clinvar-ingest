@@ -11,9 +11,30 @@ from clinvar_ingest.utils import ensure_list, extract, flatten1, get
 _logger = logging.getLogger("clinvar_ingest")
 
 
+def extract_element_xrefs(attr, ref_field, ref_field_element=None) -> List[Trait.XRef]:
+    """
+    Extract XRefs from an element, with the option to specify a ref_field and ref_field_element
+    where it came from (used to differentiate xrefs within different parent elements).
+    """
+    outputs = []
+    for x in ensure_list(attr.get("XRef", [])):
+        outputs.append(
+            Trait.XRef(
+                db=x["@DB"],
+                id=x["@ID"],
+                type=get(x, "@Type"),
+                ref_field=ref_field,
+                ref_field_element=ref_field_element,
+            )
+        )
+    return outputs
+
+
 class TraitMetadata(Model):
     """
-    This class is used to parse the shared fields between Trait and ClinicalAssertionTrait
+    This class is used to parse the shared fields between Trait and ClinicalAssertionTrait.
+
+    Top-level xrefs are included, plus xrefs which appear within the Name elements.
     """
 
     id: str
@@ -43,7 +64,7 @@ class TraitMetadata(Model):
             preferred_name = preferred_names[0]["ElementValue"]["$"]
 
         # preferred_name_xrefs = [
-        #     make_attr_xrefs(n, "name", n["ElementValue"]["$"]) for n in preferred_names
+        #     extract_element_xrefs(n, "name", n["ElementValue"]["$"]) for n in preferred_names
         # ]
         _logger.debug("preferred_name: %s", preferred_name)
 
@@ -54,10 +75,14 @@ class TraitMetadata(Model):
         alternate_name_strs = [get(n, "ElementValue", "$") for n in alternate_names]
 
         # alternate_name_xrefs = [
-        #     make_attr_xrefs(n, "alternate_names", n["ElementValue"]["$"])
+        #     extract_element_xrefs(n, "alternate_names", n["ElementValue"]["$"])
         #     for n in alternate_names
         # ]
         _logger.debug("alternate_names: %s", json.dumps(alternate_name_strs))
+
+        # TODO type
+        # TODO medgen_id
+        # TODO top level xrefs
 
     def disassemble(self):
         raise NotImplementedError()
@@ -117,22 +142,6 @@ class Trait(Model):
         _logger.debug(f"Trait.from_xml(inp={json.dumps(inp)})")
         id = extract(inp, "@ID")
 
-        def make_attr_xrefs(
-            attr, ref_field, ref_field_element=None
-        ) -> List[Trait.XRef]:
-            outputs = []
-            for x in ensure_list(attr.get("XRef", [])):
-                outputs.append(
-                    Trait.XRef(
-                        db=x["@DB"],
-                        id=x["@ID"],
-                        type=get(x, "@Type"),
-                        ref_field=ref_field,
-                        ref_field_element=ref_field_element,
-                    )
-                )
-            return outputs
-
         # Preferred Name (Name type=Preferred)
         names = ensure_list(extract(inp, "Name") or [])
         preferred_names = [
@@ -145,7 +154,8 @@ class Trait(Model):
             preferred_name = preferred_names[0]["ElementValue"]["$"]
 
         preferred_name_xrefs = [
-            make_attr_xrefs(n, "name", n["ElementValue"]["$"]) for n in preferred_names
+            extract_element_xrefs(n, "name", n["ElementValue"]["$"])
+            for n in preferred_names
         ]
         _logger.debug(
             "preferred_name: %s, preferred_name_xrefs: %s",
@@ -160,7 +170,7 @@ class Trait(Model):
         alternate_name_strs = [get(n, "ElementValue", "$") for n in alternate_names]
 
         alternate_name_xrefs = [
-            make_attr_xrefs(n, "alternate_names", n["ElementValue"]["$"])
+            extract_element_xrefs(n, "alternate_names", n["ElementValue"]["$"])
             for n in alternate_names
         ]
         _logger.debug(
@@ -182,7 +192,7 @@ class Trait(Model):
             preferred_symbol = preferred_symbols[0]["ElementValue"]["$"]
 
         preferred_symbol_xrefs = [
-            make_attr_xrefs(s, "symbol", s["ElementValue"]["$"])
+            extract_element_xrefs(s, "symbol", s["ElementValue"]["$"])
             for s in preferred_symbols
         ]
         _logger.debug(
@@ -198,7 +208,7 @@ class Trait(Model):
         alternate_symbol_strs = [get(s, "ElementValue", "$") for s in alternate_symbols]
 
         alternate_symbol_xrefs = [
-            make_attr_xrefs(s, "alternate_symbols", s["ElementValue"]["$"])
+            extract_element_xrefs(s, "alternate_symbols", s["ElementValue"]["$"])
             for s in alternate_symbols
         ]
         _logger.debug(
@@ -239,7 +249,7 @@ class Trait(Model):
         public_definition_attr = pop_attribute("public definition")
         if public_definition_attr is not None:
             public_definition = get(public_definition_attr, "Attribute", "$")
-            public_definition_xref = make_attr_xrefs(
+            public_definition_xref = extract_element_xrefs(
                 public_definition_attr, "public_definition"
             )
         else:
@@ -250,7 +260,7 @@ class Trait(Model):
         gard_id_attr = pop_attribute("GARD id")
         if gard_id_attr is not None:
             gard_id = int(get(gard_id_attr, "Attribute", "@integerValue"))
-            gard_id_xref = make_attr_xrefs(gard_id_attr, "gard_id")
+            gard_id_xref = extract_element_xrefs(gard_id_attr, "gard_id")
         else:
             gard_id = None
             gard_id_xref = None
@@ -260,7 +270,7 @@ class Trait(Model):
         if len(keyword_attrs) > 0:
             keywords = [get(a, "Attribute", "$") for a in keyword_attrs]
             keyword_xrefs = [
-                make_attr_xrefs(a, "keywords", get(a, "Attribute", "$"))
+                extract_element_xrefs(a, "keywords", get(a, "Attribute", "$"))
                 for a in keyword_attrs
             ]
         else:
@@ -276,7 +286,7 @@ class Trait(Model):
             )
             if disease_mechanism_id is not None:
                 disease_mechanism_id = int(disease_mechanism_id)
-            disease_mechanism_xref = make_attr_xrefs(
+            disease_mechanism_xref = extract_element_xrefs(
                 disease_mechanism_attr, "disease_mechanism"
             )
         else:
@@ -288,7 +298,7 @@ class Trait(Model):
         mode_of_inheritance_attr = pop_attribute("mode of inheritance")
         if mode_of_inheritance_attr is not None:
             mode_of_inheritance = get(mode_of_inheritance_attr, "Attribute", "$")
-            mode_of_inheritance_xref = make_attr_xrefs(
+            mode_of_inheritance_xref = extract_element_xrefs(
                 mode_of_inheritance_attr, "mode_of_inheritance"
             )
         else:
@@ -299,7 +309,7 @@ class Trait(Model):
         gene_reviews_short_attr = pop_attribute("GeneReviews short")
         if gene_reviews_short_attr is not None:
             gene_reviews_short = get(gene_reviews_short_attr, "Attribute", "$")
-            gene_reviews_short_xref = make_attr_xrefs(
+            gene_reviews_short_xref = extract_element_xrefs(
                 gene_reviews_short_attr, "gene_reviews_short"
             )
         else:
@@ -310,7 +320,7 @@ class Trait(Model):
         ghr_links_attr = pop_attribute("Genetics Home Reference (GHR) links")
         if ghr_links_attr is not None:
             ghr_links = get(ghr_links_attr, "Attribute", "$")
-            ghr_links_xref = make_attr_xrefs(ghr_links_attr, "ghr_links")
+            ghr_links_xref = extract_element_xrefs(ghr_links_attr, "ghr_links")
         else:
             ghr_links = None
             ghr_links_xref = None
