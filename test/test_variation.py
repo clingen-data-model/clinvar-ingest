@@ -1,6 +1,6 @@
 import xmltodict
 
-from clinvar_ingest.model import Variation
+from clinvar_ingest.model.variation_archive import Variation
 
 
 def test_variation_descendant_tree():

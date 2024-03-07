@@ -518,7 +518,7 @@ class ClinicalAssertionTraitSet(Model):
         trait_ids = [t.id for t in self_copy.traits]
         del self_copy.traits
         setattr(self_copy, "clinical_assertion_trait_ids", trait_ids)
-        yield self
+        yield self_copy
 
 
 @dataclasses.dataclass

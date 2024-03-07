@@ -14,7 +14,7 @@ from typing import List
 
 from clinvar_ingest.model.common import Model, int_or_none, model_copy, sanitize_date
 from clinvar_ingest.model.trait import ClinicalAssertionTraitSet, TraitMapping, TraitSet
-from clinvar_ingest.utils import ensure_list, extract, extract_oneof
+from clinvar_ingest.utils import ensure_list, extract, extract_oneof, make_counter
 
 _logger = logging.getLogger("clinvar_ingest")
 
@@ -97,7 +97,7 @@ class ClinicalAssertionObservation(Model):
     # This is redudant information, so don't inclue the whole TraitSet here, just the id
     # TODO this is actually referring to a TraitSet which can be nested under the ObservedIn element
     # That TraitSet should come out as a ClinicalAssertionTraitSet, and the id should go here
-    clinical_assertion_trait_set: str
+    clinical_assertion_trait_set: ClinicalAssertionTraitSet
     content: dict
 
     def __post_init__(self):
@@ -111,8 +111,11 @@ class ClinicalAssertionObservation(Model):
         self_copy = model_copy(self)
         trait_set = self_copy.clinical_assertion_trait_set
         del self_copy.clinical_assertion_trait_set
-        setattr(self_copy, "clinical_assertion_trait_set_id", trait_set.id)
-        yield trait_set
+        if trait_set is not None:
+            setattr(self_copy, "clinical_assertion_trait_set_id", trait_set.id)
+            yield trait_set
+        else:
+            setattr(self_copy, "clinical_assertion_trait_set_id", None)
         yield self
 
 
@@ -136,6 +139,7 @@ class ClinicalAssertion(Model):
     content: dict
 
     clinical_assertion_observations: List[ClinicalAssertionObservation]
+    clinical_assertion_trait_set: ClinicalAssertionTraitSet
 
     def __post_init__(self):
         self.entity_type = "clinical_assertion"
@@ -166,25 +170,45 @@ class ClinicalAssertion(Model):
             inp, jsonify_content, submitter, additional_submitters
         )
 
+        trait_set_counter = make_counter()
         assertion_trait_set = extract(inp, "TraitSet")
-        assertion_trait_set = ClinicalAssertionTraitSet.from_xml(
-            assertion_trait_set, jsonify_content=jsonify_content
-        )
-        # The ClinicalAssertion TraitSet and Traits have synthetic ids.
-        # Replace them with just the accession.<index>
-        assertion_trait_set.id = f"{scv_accession}.0"
-        for i, t in enumerate(assertion_trait_set.traits):
-            t.id = f"{scv_accession}.{i + 1}"
+        if assertion_trait_set is not None:
+            assertion_trait_set = ClinicalAssertionTraitSet.from_xml(
+                assertion_trait_set, jsonify_content=jsonify_content
+            )
+            # The ClinicalAssertion TraitSet and Traits have synthetic ids.
+            # Replace them with just the accession.<index>
+            assertion_trait_set.id = f"{scv_accession}.{next(trait_set_counter)}"
+            for i, t in enumerate(assertion_trait_set.traits):
+                t.id = f"{scv_accession}.{i + 1}"
 
         observed_ins = ensure_list(extract(inp, "ObservedInList", "ObservedIn") or [])
         observations = [
             ClinicalAssertionObservation(
                 id=f"{scv_accession}.{i}",
-                clinical_assertion_trait_set=assertion_trait_set,
+                clinical_assertion_trait_set=(
+                    ClinicalAssertionTraitSet.from_xml(
+                        extract(o, "TraitSet"), jsonify_content=jsonify_content
+                    )
+                    if "TraitSet" in o
+                    else None
+                ),
                 content=o,
             )
             for i, o in enumerate(observed_ins)
         ]
+        # The ClinicalAssertion TraitSet and Traits have synthetic ids.
+        # Go back and replace them with the accession.<index> for TraitSet,
+        # and <TraitSet.id>.<index> for Traits
+        # e.g. SCV000000001 has 2 ClinicalAssertion TraitSets, each with 2 Traits:
+        # TraitSets: SCV000000001.0, SCV000000001.1
+        # Traits: SCV000000001.0.0, SCV000000001.0.1, SCV000000001.1.0, SCV000000001.1.1
+        for i, observation in enumerate(observations):
+            obs_trait_set = observation.clinical_assertion_trait_set
+            if obs_trait_set is not None:
+                obs_trait_set.id = f"{scv_accession}.{next(trait_set_counter)}"
+                for j, t in enumerate(obs_trait_set.traits):
+                    t.id = f"{obs_trait_set.id}.{j}"
 
         obj = ClinicalAssertion(
             assertion_id=obj_id,
@@ -207,6 +231,7 @@ class ClinicalAssertion(Model):
             submitter=submitter,
             submission=submission,
             clinical_assertion_observations=observations,
+            clinical_assertion_trait_set=assertion_trait_set,
             content=inp,
         )
         if jsonify_content:
@@ -230,6 +255,16 @@ class ClinicalAssertion(Model):
             for subobj in obs.disassemble():
                 yield subobj
         del self_copy.clinical_assertion_observations
+
+        if self_copy.clinical_assertion_trait_set is not None:
+            for subobj in self_copy.clinical_assertion_trait_set.disassemble():
+                yield subobj
+            setattr(
+                self_copy,
+                "clinical_assertion_trait_set_id",
+                self_copy.clinical_assertion_trait_set.id,
+            )
+        del self_copy.clinical_assertion_trait_set
 
         yield self_copy
 

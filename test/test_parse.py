@@ -1,11 +1,16 @@
-from clinvar_ingest.model import (
+from clinvar_ingest.model.trait import (
+    ClinicalAssertionTrait,
+    ClinicalAssertionTraitSet,
+    Trait,
+    TraitSet,
+)
+from clinvar_ingest.model.variation_archive import (
     ClinicalAssertion,
+    ClinicalAssertionObservation,
     Gene,
     GeneAssociation,
     Submission,
     Submitter,
-    Trait,
-    TraitSet,
     Variation,
     VariationArchive,
 )
@@ -17,26 +22,37 @@ def test_read_original_clinvar_variation_2():
     Test a SimpleAllele record
     """
     filename = "test/data/original-clinvar-variation-2.xml"
-    # filename = "data/original-clinvar-variation-2.xml"
     with open(filename) as f:
         objects = list(read_clinvar_xml(f))
 
-    # gene, gene_association, variation, variation_archive
-    assert 12 == len(objects)
-    assert isinstance(objects[0], Variation)
-    assert isinstance(objects[1], Gene)
-    assert isinstance(objects[2], GeneAssociation)
-    assert isinstance(objects[3], Trait)
-    assert isinstance(objects[4], TraitSet)
-    assert isinstance(objects[5], Submitter)
-    assert isinstance(objects[6], Submission)
-    assert isinstance(objects[7], ClinicalAssertion)
-    assert isinstance(objects[8], Submitter)
-    assert isinstance(objects[9], Submission)
-    assert isinstance(objects[10], ClinicalAssertion)
-    assert isinstance(objects[11], VariationArchive)
+    # print("\n".join([str(dictify(o)) for o in objects]))
+    assert 18 == len(objects)
+    expected_types = [
+        Variation,
+        Gene,
+        GeneAssociation,
+        Trait,
+        TraitSet,
+        Submitter,
+        Submission,
+        ClinicalAssertionObservation,
+        ClinicalAssertionTrait,
+        ClinicalAssertionTraitSet,
+        ClinicalAssertion,
+        Submitter,
+        Submission,
+        ClinicalAssertionObservation,
+        ClinicalAssertionTrait,
+        ClinicalAssertionTraitSet,
+        ClinicalAssertion,
+        VariationArchive,
+    ]
+    for i, obj in enumerate(objects):
+        assert isinstance(
+            obj, expected_types[i]
+        ), f"Expected {expected_types[i]} at index {i}, got {type(obj)}"
 
-    variation = objects[0]
+    variation = list(filter(lambda o: isinstance(o, Variation), objects))[0]
 
     # Test that extracted fields were there
     assert variation.id == "2"
@@ -49,8 +65,10 @@ def test_read_original_clinvar_variation_2():
     assert "SequenceLocation" in variation.content
 
     # Verify gene association
-    gene = objects[1]
-    gene_association = objects[2]
+    gene = list(filter(lambda o: isinstance(o, Gene), objects))[0]
+    gene_association = list(filter(lambda o: isinstance(o, GeneAssociation), objects))[
+        0
+    ]
     assert gene.id == "9907"
     assert gene.hgnc_id == "HGNC:22197"
     assert gene.symbol == "AP5Z1"
@@ -62,21 +80,21 @@ def test_read_original_clinvar_variation_2():
     assert gene_association.variation_id == "2"
 
     # SCVs - TODO build out further
-    scv = objects[7]
+    scv = list(filter(lambda o: isinstance(o, ClinicalAssertion), objects))[0]
     assert scv.assertion_id == "20155"
-    submitter = objects[5]
+    submitter = list(filter(lambda o: isinstance(o, Submitter), objects))[0]
     assert submitter.id == "3"
     assert submitter.current_name == "OMIM"
-    submission = objects[6]
+    submission = list(filter(lambda o: isinstance(o, Submission), objects))[0]
     assert submission.id == "3"
     assert submission.submission_date == "2017-01-26"
 
-    scv = objects[10]
+    scv = list(filter(lambda o: isinstance(o, ClinicalAssertion), objects))[1]
     assert scv.assertion_id == "2865972"
-    submitter = objects[8]
+    submitter = list(filter(lambda o: isinstance(o, Submitter), objects))[1]
     assert submitter.id == "507826"
     assert submitter.current_name == "Paris Brain Institute, Inserm - ICM"
-    submission = objects[9]
+    submission = list(filter(lambda o: isinstance(o, Submission), objects))[1]
     assert submission.id == "507826"
     assert submission.submission_date == "2020-11-14"
 
@@ -89,33 +107,48 @@ def test_read_original_clinvar_variation_634266():
     with open(filename) as f:
         objects = list(read_clinvar_xml(f))
 
-    assert 22 == len(objects)
-    assert isinstance(objects[0], Variation)
-    assert isinstance(objects[1], Trait)
-    assert isinstance(objects[2], TraitSet)
-    assert isinstance(objects[3], Trait)
-    assert isinstance(objects[4], TraitSet)
-    assert isinstance(objects[5], Trait)
-    assert isinstance(objects[6], TraitSet)
-    assert isinstance(objects[7], Trait)
-    assert isinstance(objects[8], TraitSet)
+    assert 34 == len(objects)
+    expected_types = [
+        Variation,
+        Trait,
+        TraitSet,
+        Trait,
+        TraitSet,
+        Trait,
+        TraitSet,
+        Trait,
+        TraitSet,
+        Submitter,
+        Submission,
+        ClinicalAssertionObservation,
+        ClinicalAssertionTrait,
+        ClinicalAssertionTraitSet,
+        ClinicalAssertion,
+        Submitter,
+        Submission,
+        ClinicalAssertionObservation,
+        ClinicalAssertionTrait,
+        ClinicalAssertionTraitSet,
+        ClinicalAssertion,
+        Submitter,
+        Submission,
+        ClinicalAssertionObservation,
+        ClinicalAssertionTrait,
+        ClinicalAssertionTraitSet,
+        ClinicalAssertion,
+        Submitter,
+        Submission,
+        ClinicalAssertionObservation,
+        ClinicalAssertionTrait,  # 30
+        ClinicalAssertionTraitSet,
+        ClinicalAssertion,
+        VariationArchive,
+    ]
 
-    assert isinstance(objects[9], Submitter)
-    assert isinstance(objects[10], Submission)
-    assert isinstance(objects[11], ClinicalAssertion)
-
-    assert isinstance(objects[12], Submitter)
-    assert isinstance(objects[13], Submission)
-    assert isinstance(objects[14], ClinicalAssertion)
-
-    assert isinstance(objects[15], Submitter)
-    assert isinstance(objects[16], Submission)
-    assert isinstance(objects[17], ClinicalAssertion)
-
-    assert isinstance(objects[18], Submitter)
-    assert isinstance(objects[19], Submission)
-    assert isinstance(objects[20], ClinicalAssertion)
-    assert isinstance(objects[21], VariationArchive)
+    for i, obj in enumerate(objects):
+        assert isinstance(
+            obj, expected_types[i]
+        ), f"Expected {expected_types[i]} at index {i}, got {type(obj)}"
 
     # Verify variation
     variation = objects[0]
@@ -135,7 +168,9 @@ def test_read_original_clinvar_variation_634266():
     ]
 
     # Verify variation archive
-    variation_archive = objects[21]
+    variation_archive = list(
+        filter(lambda o: isinstance(o, VariationArchive), objects)
+    )[0]
     assert variation_archive.id == "VCV000634266"
     assert variation_archive.name == "CYP2C19*12/*34"
     assert variation_archive.date_created == "2019-06-17"
@@ -159,50 +194,50 @@ def test_read_original_clinvar_variation_634266():
 
     # SCVs - TODO build out further
     # SCV 1
-    scv = objects[11]
+    scv = list(filter(lambda o: isinstance(o, ClinicalAssertion), objects))[0]
     assert scv.assertion_id == "1801318"
-    submitter = objects[9]
+    submitter = list(filter(lambda o: isinstance(o, Submitter), objects))[0]
     assert submitter.id == "505961"
     assert (
         submitter.current_name == "Clinical Pharmacogenetics Implementation Consortium"
     )
-    submission = objects[10]
+    submission = list(filter(lambda o: isinstance(o, Submission), objects))[0]
     assert submission.id == "505961"
     assert submission.submission_date == "2018-03-01"
 
     # SCV 2
-    scv = objects[14]
+    scv = list(filter(lambda o: isinstance(o, ClinicalAssertion), objects))[1]
     assert scv.assertion_id == "1801467"
-    submitter = objects[12]
+    submitter = list(filter(lambda o: isinstance(o, Submitter), objects))[1]
     assert submitter.id == "505961"
     assert (
         submitter.current_name == "Clinical Pharmacogenetics Implementation Consortium"
     )
-    submission = objects[13]
+    submission = list(filter(lambda o: isinstance(o, Submission), objects))[1]
     assert submission.id == "505961"
     assert submission.submission_date == "2018-03-01"
 
     # SCV 3
-    scv = objects[17]
+    scv = list(filter(lambda o: isinstance(o, ClinicalAssertion), objects))[2]
     assert scv.assertion_id == "1802126"
-    submitter = objects[15]
+    submitter = list(filter(lambda o: isinstance(o, Submitter), objects))[2]
     assert submitter.id == "505961"
     assert (
         submitter.current_name == "Clinical Pharmacogenetics Implementation Consortium"
     )
-    submission = objects[16]
+    submission = list(filter(lambda o: isinstance(o, Submission), objects))[2]
     assert submission.id == "505961"
     assert submission.submission_date == "2018-03-01"
 
     # SCV 4
-    scv = objects[20]
+    scv = list(filter(lambda o: isinstance(o, ClinicalAssertion), objects))[3]
     assert scv.assertion_id == "1802127"
-    submitter = objects[18]
+    submitter = list(filter(lambda o: isinstance(o, Submitter), objects))[3]
     assert submitter.id == "505961"
     assert (
         submitter.current_name == "Clinical Pharmacogenetics Implementation Consortium"
     )
-    submission = objects[19]
+    submission = list(filter(lambda o: isinstance(o, Submission), objects))[3]
     assert submission.id == "505961"
     assert submission.submission_date == "2018-03-01"
 
