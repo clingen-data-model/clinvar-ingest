@@ -176,10 +176,6 @@ class ClinicalAssertion(Model):
         for i, t in enumerate(assertion_trait_set.traits):
             t.id = f"{scv_accession}.{i + 1}"
 
-        # _logger.info("assertion_trait_set: %s", assertion_trait_set)
-        # for t in assertion_trait_set.traits:
-        #     _logger.info("assertion_trait_set_trait: %s", t)
-
         observed_ins = ensure_list(extract(inp, "ObservedInList", "ObservedIn") or [])
         observations = [
             ClinicalAssertionObservation(
