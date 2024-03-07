@@ -8,7 +8,7 @@ on:
       - completed
     branches:
       - main
-      - issue-104-job-auto-deploy
+      - epic-112
 
 permissions:
   id-token: write
