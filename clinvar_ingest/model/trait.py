@@ -491,16 +491,23 @@ class ClinicalAssertionTraitSet(Model):
 
     def __post_init__(self):
         self.entity_type = "clinical_assertion_trait_set"
-        # self.clinical_assertion_trait_ids = self.trait_ids
 
     @staticmethod
     def from_xml(inp: dict, jsonify_content=True):
         _logger.debug(
             f"ClinicalAssertionTraitSet.from_xml(inp={json.dumps(dictify(inp))})"
         )
-        obj = TraitSet.from_xml(inp, jsonify_content)
-
-        obj.entity_type = "clinical_assertion_trait_set"
+        obj = ClinicalAssertionTraitSet(
+            id=extract(inp, "@ID"),
+            type=extract(inp, "@Type"),
+            traits=[
+                ClinicalAssertionTrait.from_xml(t, jsonify_content=jsonify_content)
+                for t in ensure_list(extract(inp, "Trait"))
+            ],
+            content=inp,
+        )
+        if jsonify_content:
+            obj.content = json.dumps(obj.content)
         return obj
 
     def disassemble(self):
