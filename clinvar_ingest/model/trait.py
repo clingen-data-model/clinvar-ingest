@@ -11,7 +11,9 @@ from clinvar_ingest.utils import ensure_list, extract, flatten1, get
 _logger = logging.getLogger("clinvar_ingest")
 
 
-def extract_element_xrefs(attr, ref_field, ref_field_element=None) -> List[Trait.XRef]:
+def extract_element_xrefs(
+    attr: dict, ref_field: str, ref_field_element: str = None
+) -> List[Trait.XRef]:
     """
     Extract XRefs from an element, with the option to specify a ref_field and ref_field_element
     where it came from (used to differentiate xrefs within different parent elements).
@@ -41,7 +43,6 @@ class TraitMetadata(Model):
     type: str
     name: str
     medgen_id: str
-    trait_id: str
     alternate_names: List[str]
     xrefs: List[Trait.XRef]
 
@@ -52,6 +53,7 @@ class TraitMetadata(Model):
         _logger.info(f"TraitMetadata.from_xml(inp={json.dumps(inp)})")
 
         id = extract(inp, "@ID")
+        trait_type = extract(inp, "@Type")
         # Preferred Name (Name type=Preferred)
         names = ensure_list(extract(inp, "Name") or [])
         preferred_names = [
@@ -63,9 +65,10 @@ class TraitMetadata(Model):
         if len(preferred_names) == 1:
             preferred_name = preferred_names[0]["ElementValue"]["$"]
 
-        # preferred_name_xrefs = [
-        #     extract_element_xrefs(n, "name", n["ElementValue"]["$"]) for n in preferred_names
-        # ]
+        preferred_name_xrefs = [
+            extract_element_xrefs(n, "name", n["ElementValue"]["$"])
+            for n in preferred_names
+        ]
         _logger.debug("preferred_name: %s", preferred_name)
 
         # Alternate Names (Name type=Alternate)
@@ -74,15 +77,35 @@ class TraitMetadata(Model):
         ]
         alternate_name_strs = [get(n, "ElementValue", "$") for n in alternate_names]
 
-        # alternate_name_xrefs = [
-        #     extract_element_xrefs(n, "alternate_names", n["ElementValue"]["$"])
-        #     for n in alternate_names
-        # ]
+        alternate_name_xrefs = [
+            extract_element_xrefs(n, "alternate_names", n["ElementValue"]["$"])
+            for n in alternate_names
+        ]
         _logger.debug("alternate_names: %s", json.dumps(alternate_name_strs))
 
-        # TODO type
-        # TODO medgen_id
-        # TODO top level xrefs
+        # XRefs which are at the top level of Trait objects in the XML
+        top_xrefs = extract_element_xrefs(inp, ref_field=None, ref_field_element=None)
+        _logger.debug("top_xrefs: %s", json.dumps(dictify(top_xrefs)))
+
+        # Try to get a MedGen ID from the only the top level XRefs
+        medgen_id = None
+        _medgen_xrefs = [x for x in top_xrefs if x.db == "MedGen"]
+        if len(_medgen_xrefs) > 1:
+            raise RuntimeError(
+                f"Trait {id} has multiple MedGen XRefs: {[m.id for m in _medgen_xrefs]}"
+            )
+        if len(_medgen_xrefs) == 1:
+            medgen_id = _medgen_xrefs[0].id
+
+        obj = TraitMetadata(
+            id=id,
+            type=trait_type,
+            name=preferred_name,
+            medgen_id=medgen_id,
+            alternate_names=alternate_name_strs,
+            xrefs=top_xrefs + preferred_name_xrefs + alternate_name_xrefs,
+        )
+        return obj
 
     def disassemble(self):
         raise NotImplementedError()
