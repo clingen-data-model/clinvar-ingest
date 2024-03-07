@@ -162,7 +162,7 @@ class ClinicalAssertion(Model):
         )
 
         assertion_trait_set = extract(inp, "TraitSet")
-        assertion_trait_set = TraitSet.from_xml(
+        assertion_trait_set = ClinicalAssertionTraitSet.from_xml(
             assertion_trait_set, jsonify_content=jsonify_content
         )
         # The ClinicalAssertion TraitSet and Traits have synthetic ids.
@@ -184,10 +184,6 @@ class ClinicalAssertion(Model):
             )
             for i, o in enumerate(observed_ins)
         ]
-
-        assertion_trait_set = ClinicalAssertionTraitSet.from_xml(
-            assertion_trait_set, jsonify_content=jsonify_content
-        )
 
         obj = ClinicalAssertion(
             assertion_id=obj_id,

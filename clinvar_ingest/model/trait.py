@@ -32,6 +32,7 @@ def extract_element_xrefs(
     return outputs
 
 
+@dataclasses.dataclass
 class TraitMetadata(Model):
     """
     This class is used to parse the shared fields between Trait and ClinicalAssertionTrait.
@@ -163,44 +164,8 @@ class Trait(Model):
     @staticmethod
     def from_xml(inp: dict, jsonify_content=True) -> Trait:
         _logger.debug(f"Trait.from_xml(inp={json.dumps(inp)})")
-        id = extract(inp, "@ID")
 
-        # Preferred Name (Name type=Preferred)
-        names = ensure_list(extract(inp, "Name") or [])
-        preferred_names = [
-            n for n in names if get(n, "ElementValue", "@Type") == "Preferred"
-        ]
-        if len(preferred_names) > 1:
-            raise RuntimeError(f"Trait {id} has multiple preferred names")
-        preferred_name = None
-        if len(preferred_names) == 1:
-            preferred_name = preferred_names[0]["ElementValue"]["$"]
-
-        preferred_name_xrefs = [
-            extract_element_xrefs(n, "name", n["ElementValue"]["$"])
-            for n in preferred_names
-        ]
-        _logger.debug(
-            "preferred_name: %s, preferred_name_xrefs: %s",
-            preferred_name,
-            json.dumps(dictify(preferred_name_xrefs)),
-        )
-
-        # Alternate Names (Name type=Alternate)
-        alternate_names = [
-            n for n in names if get(n, "ElementValue", "@Type") == "Alternate"
-        ]
-        alternate_name_strs = [get(n, "ElementValue", "$") for n in alternate_names]
-
-        alternate_name_xrefs = [
-            extract_element_xrefs(n, "alternate_names", n["ElementValue"]["$"])
-            for n in alternate_names
-        ]
-        _logger.debug(
-            "alternate_names: %s, alternate_name_xrefs: %s",
-            json.dumps(alternate_name_strs),
-            json.dumps(dictify(alternate_name_xrefs)),
-        )
+        trait_metadata = TraitMetadata.from_xml(inp, jsonify_content=jsonify_content)
 
         # TODO the logic here is the same as Preferred and Alternate Name
         # Preferred Symbol (Symbol type=Preferred)
@@ -209,7 +174,9 @@ class Trait(Model):
             s for s in symbols if get(s, "ElementValue", "@Type") == "Preferred"
         ]
         if len(preferred_symbols) > 1:
-            raise RuntimeError(f"Trait {id} has multiple preferred symbols")
+            raise RuntimeError(
+                f"Trait {trait_metadata.id} has multiple preferred symbols"
+            )
         preferred_symbol = None
         if len(preferred_symbols) == 1:
             preferred_symbol = preferred_symbols[0]["ElementValue"]["$"]
@@ -363,36 +330,11 @@ class Trait(Model):
         # Overwrite inp AttributeSet to reflect those popped above
         inp["AttributeSet"] = attribute_set
 
-        # XRefs which are at the top level of Trait objects
-        top_xrefs = [
-            Trait.XRef(
-                db=x["@DB"],
-                id=x["@ID"],
-                type=get(x, "@Type"),
-                ref_field=None,
-                ref_field_element=None,
-            )
-            for x in ensure_list(inp.get("XRef", None) or [])
-        ]
-        _logger.debug("top_xrefs: %s", json.dumps(dictify(top_xrefs)))
-
-        # Try to get a MedGen ID from the only the top level XRefs
-        medgen_id = None
-        _medgen_xrefs = [x for x in top_xrefs if x.db == "MedGen"]
-        if len(_medgen_xrefs) > 1:
-            raise RuntimeError(
-                f"Trait {id} has multiple MedGen XRefs: {[m.id for m in _medgen_xrefs]}"
-            )
-        if len(_medgen_xrefs) == 1:
-            medgen_id = _medgen_xrefs[0].id
-
         all_xrefs = [
-            *preferred_name_xrefs,
-            *alternate_name_xrefs,
+            *trait_metadata.xrefs,
             *preferred_symbol_xrefs,
             *alternate_symbol_xrefs,
             *attribute_set_xrefs,
-            *top_xrefs,
         ]
 
         # Flatten XRefs
@@ -401,17 +343,17 @@ class Trait(Model):
         all_xrefs = [x for x in all_xrefs if x is not None]
 
         obj = Trait(
-            id=id,
-            type=extract(inp, "@Type"),
-            name=preferred_name,
-            alternate_names=alternate_name_strs,
+            id=trait_metadata.id,
+            type=trait_metadata.type,
+            name=trait_metadata.name,
+            alternate_names=trait_metadata.alternate_names,
             symbol=preferred_symbol,
             alternate_symbols=alternate_symbol_strs,
             mode_of_inheritance=mode_of_inheritance,
             ghr_links=ghr_links,
             keywords=keywords,
             gard_id=gard_id,
-            medgen_id=medgen_id,
+            medgen_id=trait_metadata.medgen_id,
             public_definition=public_definition,
             disease_mechanism=disease_mechanism,
             disease_mechanism_id=disease_mechanism_id,
@@ -444,7 +386,7 @@ class TraitSet(Model):
 
     @staticmethod
     def from_xml(inp: dict, jsonify_content=True):
-        _logger.debug(f"TraitSet.from_xml(inp={json.dumps(inp)})")
+        _logger.debug(f"TraitSet.from_xml(inp={json.dumps(dictify(inp))})")
         obj = TraitSet(
             id=extract(inp, "@ID"),
             type=extract(inp, "@Type"),
@@ -503,36 +445,26 @@ class ClinicalAssertionTrait(Model):
 
     @staticmethod
     def from_xml(inp: dict, jsonify_content=True, normalized_traits: List[Trait] = []):
-        _logger.debug(f"ClinicalAssertionTrait.from_xml(inp={json.dumps(inp)})")
+        _logger.debug(
+            f"ClinicalAssertionTrait.from_xml(inp={json.dumps(dictify(inp))})"
+        )
 
-        # TODO verify how tied are we are to the existing clinical_assertion_trait.content structure
-        # It is significantly simpler to parse clinical_assertion_trait as a trait,
-        # pull out the relevant fields, and dump the rest into `content`
-        # In the DSP version, they have a separate TraitMetadata class to parse
-        # these shared fields, and then an Interpretation Trait class to parse those
-        # specific to normalized traits, like trait AttributeSet entries.
-        # Parse it as a normal Trait, and pull out the relevant fields
-        t = Trait.from_xml(inp, jsonify_content=jsonify_content)
+        trait_metadata = TraitMetadata.from_xml(inp, jsonify_content=jsonify_content)
 
-        t_dict = vars(t)
-        del t_dict["type"]
-        id = extract(inp, "id")
-        name = extract(inp, "name")
-        medgen_id = extract(inp, "medgen_id")
-        alternate_names = extract(inp, "alternate_names")
-        xrefs = extract(inp, "xrefs")
-        # Map trait to normalized trait
-        trait_id = ClinicalAssertionTrait.match_to_trait(t, normalized_traits)
+        # Map submitted trait to normalized trait
+        trait_id = ClinicalAssertionTrait.match_to_trait(
+            trait_metadata, normalized_traits
+        )
 
         obj = ClinicalAssertionTrait(
-            id=id,
-            type=extract(inp, "@Type"),
-            name=name,
-            medgen_id=medgen_id,
+            id=trait_metadata.id,
+            type=trait_metadata.type,
+            name=trait_metadata.name,
+            medgen_id=trait_metadata.medgen_id,
             trait_id=trait_id,
-            alternate_names=alternate_names,
-            xrefs=xrefs,
-            content=t,
+            alternate_names=trait_metadata.alternate_names,
+            xrefs=trait_metadata.xrefs,
+            content=inp,
         )
         if jsonify_content:
             obj.content = json.dumps(obj.content)
@@ -563,7 +495,9 @@ class ClinicalAssertionTraitSet(Model):
 
     @staticmethod
     def from_xml(inp: dict, jsonify_content=True):
-        _logger.debug(f"ClinicalAssertionTraitSet.from_xml(inp={json.dumps(inp)})")
+        _logger.debug(
+            f"ClinicalAssertionTraitSet.from_xml(inp={json.dumps(dictify(inp))})"
+        )
         obj = TraitSet.from_xml(inp, jsonify_content)
 
         obj.entity_type = "clinical_assertion_trait_set"
