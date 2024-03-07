@@ -97,7 +97,7 @@ class ClinicalAssertionObservation(Model):
     # This is redudant information, so don't inclue the whole TraitSet here, just the id
     # TODO this is actually referring to a TraitSet which can be nested under the ObservedIn element
     # That TraitSet should come out as a ClinicalAssertionTraitSet, and the id should go here
-    clinical_assertion_trait_set_id: str
+    clinical_assertion_trait_set: str
     content: dict
 
     def __post_init__(self):
@@ -108,6 +108,11 @@ class ClinicalAssertionObservation(Model):
         raise NotImplementedError()
 
     def disassemble(self):
+        self_copy = model_copy(self)
+        trait_set = self_copy.clinical_assertion_trait_set
+        del self_copy.clinical_assertion_trait_set
+        setattr(self_copy, "clinical_assertion_trait_set_id", trait_set.id)
+        yield trait_set
         yield self
 
 
@@ -179,7 +184,7 @@ class ClinicalAssertion(Model):
         observations = [
             ClinicalAssertionObservation(
                 id=f"{scv_accession}.{i}",
-                clinical_assertion_trait_set_id=assertion_trait_set.id,
+                clinical_assertion_trait_set=assertion_trait_set,
                 content=o,
             )
             for i, o in enumerate(observed_ins)
