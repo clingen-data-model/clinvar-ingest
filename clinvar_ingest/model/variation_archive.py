@@ -351,7 +351,8 @@ class Variation(Model):
         else:
             raise RuntimeError("Unknown variation type: " + json.dumps(inp))
         obj = Variation(
-            # VariationID is at the VariationArchive and the SimpleAllele/Haplotype/Genotype level
+            # VariationID is at the VariationArchive and the
+            # SimpleAllele/Haplotype/Genotype level
             id=extract(inp, "@VariationID"),
             name=extract(extract(inp, "Name"), "$"),
             variation_type=extract(
@@ -479,6 +480,70 @@ class Variation(Model):
 
 
 @dataclasses.dataclass
+class RcvAccession(Model):
+    independent_observations: int
+    variation_id: int
+    id: str
+    variation_archive_id: int
+    date_last_evaluated: str
+    version: int
+    title: str
+    trait_set_id: str
+    review_status: str
+    interpretation: str
+
+    content: dict
+
+    def __post_init__(self):
+        self.entity_type = "rcv_accession"
+
+    @staticmethod
+    def from_xml(
+        inp: dict,
+        jsonify_content=True,
+        variation_id: int = None,
+        variation_archive_id=None,
+    ) -> RcvAccession:
+        """
+        <RCVAccession
+            Title="CYP2C19*12/*34 AND Sertraline response"
+            ReviewStatus="practice guideline"
+            Interpretation="drug response"
+            SubmissionCount="1"
+            Accession="RCV000783230"
+            Version="8">
+        <InterpretedConditionList TraitSetID="20745">
+            <InterpretedCondition DB="MedGen" ID="CN221265">
+                Sertraline response
+            </InterpretedCondition>
+        </InterpretedConditionList>
+        </RCVAccession>
+        """
+        # org.broadinstitute.monster.clinvar.parsers.VCV.scala : 259 : parseRawRcv
+
+        # TODO independentObservations always null?
+        obj = RcvAccession(
+            independent_observations=extract(inp, "@independentObservations"),
+            variation_id=variation_id,
+            id=extract(inp, "@Accession"),
+            variation_archive_id=variation_archive_id,
+            date_last_evaluated=extract(inp, "@DateLastEvaluated"),
+            version=int_or_none(extract(inp, "@Version")),
+            title=extract(inp, "@Title"),
+            trait_set_id=None,  # TODO
+            review_status=extract(inp, "@ReviewStatus"),
+            interpretation=extract(inp, "@Interpretation"),
+            content=inp,
+        )
+        if jsonify_content:
+            obj.content = json.dumps(obj.content)
+        return obj
+
+    def disassemble(self):
+        yield self
+
+
+@dataclasses.dataclass
 class VariationArchive(Model):
     id: str
     name: str
@@ -502,6 +567,8 @@ class VariationArchive(Model):
     trait_sets: List[TraitSet]
     trait_mappings: List[TraitMapping]
 
+    rcv_accessions: List[RcvAccession]
+
     def __post_init__(self):
         self.variation_id = self.variation.id
         self.entity_type = "variation_archive"
@@ -514,25 +581,23 @@ class VariationArchive(Model):
         interp_record = inp.get("InterpretedRecord", inp.get("IncludedRecord"))
         interpretations = extract(interp_record, "Interpretations")
         interpretation = interpretations["Interpretation"]
+        variation = Variation.from_xml(interp_record, jsonify_content=jsonify_content)
+        _id = extract(inp, "@Accession")
         obj = VariationArchive(
-            id=extract(inp, "@Accession"),
+            id=_id,
             name=extract(inp, "@VariationName"),
             version=extract(inp, "@Version"),
-            variation=Variation.from_xml(
-                interp_record, jsonify_content=jsonify_content
-            ),
-            clinical_assertions=list(
-                map(
-                    lambda ca: ClinicalAssertion.from_xml(ca, jsonify_content),
-                    ensure_list(
-                        extract(
-                            extract(interp_record, "ClinicalAssertionList"),
-                            "ClinicalAssertion",
-                        )
-                        or []
-                    ),
+            variation=variation,
+            clinical_assertions=[
+                ClinicalAssertion.from_xml(ca, jsonify_content)
+                for ca in ensure_list(
+                    extract(
+                        extract(interp_record, "ClinicalAssertionList"),
+                        "ClinicalAssertion",
+                    )
+                    or []
                 )
-            ),
+            ],
             date_created=sanitize_date(extract(inp, "@DateCreated")),
             date_last_updated=sanitize_date(extract(inp, "@DateLastUpdated")),
             record_status=extract(extract(inp, "RecordStatus"), "$"),
@@ -573,6 +638,17 @@ class VariationArchive(Model):
                     or []
                 )
             ],
+            rcv_accessions=[
+                RcvAccession.from_xml(
+                    r,
+                    jsonify_content=jsonify_content,
+                    variation_id=variation.id,
+                    variation_archive_id=_id,
+                )
+                for r in ensure_list(
+                    extract(interp_record, "RCVList", "RCVAccession") or []
+                )
+            ],
             interp_content=interpretation,
             content=inp,
         )
@@ -594,4 +670,10 @@ class VariationArchive(Model):
             for sub_obj in clinical_assertion.disassemble():
                 yield sub_obj
         del self_copy.clinical_assertions
+
+        for rcv in self_copy.rcv_accessions:
+            for sub_obj in rcv.disassemble():
+                yield sub_obj
+        del self_copy.rcv_accessions
+
         yield self_copy
