@@ -9,6 +9,7 @@ from clinvar_ingest.model.variation_archive import (
     ClinicalAssertionObservation,
     Gene,
     GeneAssociation,
+    RcvAccession,
     Submission,
     Submitter,
     Variation,
@@ -26,7 +27,7 @@ def test_read_original_clinvar_variation_2():
         objects = list(read_clinvar_xml(f))
 
     # print("\n".join([str(dictify(o)) for o in objects]))
-    assert 18 == len(objects)
+    assert 19 == len(objects)
     expected_types = [
         Variation,
         Gene,
@@ -45,6 +46,7 @@ def test_read_original_clinvar_variation_2():
         ClinicalAssertionTrait,
         ClinicalAssertionTraitSet,
         ClinicalAssertion,
+        RcvAccession,
         VariationArchive,
     ]
     for i, obj in enumerate(objects):
@@ -98,6 +100,21 @@ def test_read_original_clinvar_variation_2():
     assert submission.id == "507826"
     assert submission.submission_date == "2020-11-14"
 
+    # Rcv
+    rcv: RcvAccession = list(filter(lambda o: isinstance(o, RcvAccession), objects))[0]
+    assert rcv.id == "RCV000000012"
+    assert rcv.variation_archive_id == "VCV000000002"
+    assert rcv.variation_id == "2"
+    assert rcv.date_last_evaluated is None
+    assert rcv.version == 5
+    assert (
+        rcv.title
+        == "NM_014855.3(AP5Z1):c.80_83delinsTGCTGTAAACTGTAACTGTAAA (p.Arg27_Ile28delinsLeuLeuTer) AND Hereditary spastic paraplegia 48"
+    )
+    assert rcv.trait_set_id is None
+    assert rcv.review_status == "criteria provided, single submitter"
+    assert rcv.interpretation == "Pathogenic"
+
 
 def test_read_original_clinvar_variation_634266():
     """
@@ -107,7 +124,7 @@ def test_read_original_clinvar_variation_634266():
     with open(filename) as f:
         objects = list(read_clinvar_xml(f))
 
-    assert 34 == len(objects)
+    assert 38 == len(objects)
     expected_types = [
         Variation,
         Trait,
@@ -142,6 +159,10 @@ def test_read_original_clinvar_variation_634266():
         ClinicalAssertionTrait,  # 30
         ClinicalAssertionTraitSet,
         ClinicalAssertion,
+        RcvAccession,
+        RcvAccession,
+        RcvAccession,
+        RcvAccession,
         VariationArchive,
     ]
 
