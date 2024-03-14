@@ -111,7 +111,7 @@ def test_read_original_clinvar_variation_2():
         rcv.title
         == "NM_014855.3(AP5Z1):c.80_83delinsTGCTGTAAACTGTAACTGTAAA (p.Arg27_Ile28delinsLeuLeuTer) AND Hereditary spastic paraplegia 48"
     )
-    assert rcv.trait_set_id is None
+    assert rcv.trait_set_id == "2"
     assert rcv.review_status == "criteria provided, single submitter"
     assert rcv.interpretation == "Pathogenic"
 

@@ -14,7 +14,7 @@ from typing import List
 
 from clinvar_ingest.model.common import Model, int_or_none, model_copy, sanitize_date
 from clinvar_ingest.model.trait import ClinicalAssertionTraitSet, TraitMapping, TraitSet
-from clinvar_ingest.utils import ensure_list, extract, extract_oneof, make_counter
+from clinvar_ingest.utils import ensure_list, extract, extract_oneof, get, make_counter
 
 _logger = logging.getLogger("clinvar_ingest")
 
@@ -521,6 +521,10 @@ class RcvAccession(Model):
         """
         # org.broadinstitute.monster.clinvar.parsers.VCV.scala : 259 : parseRawRcv
 
+        # TODO take the TraitSetID as given in the XML. If missing, ignore it, don't
+        # try to find the matching one in the ClinicalAssertion Traits
+        trait_set_id = get(inp, "InterpretedConditionList", "@TraitSetID")
+
         # TODO independentObservations always null?
         obj = RcvAccession(
             independent_observations=extract(inp, "@independentObservations"),
@@ -530,7 +534,7 @@ class RcvAccession(Model):
             date_last_evaluated=extract(inp, "@DateLastEvaluated"),
             version=int_or_none(extract(inp, "@Version")),
             title=extract(inp, "@Title"),
-            trait_set_id=None,  # TODO
+            trait_set_id=trait_set_id,
             review_status=extract(inp, "@ReviewStatus"),
             interpretation=extract(inp, "@Interpretation"),
             content=inp,
