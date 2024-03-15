@@ -505,12 +505,14 @@ class ClinicalAssertionTrait(Model):
             # Return a reference trait with the same medgen id
             for t in reference_traits:
                 if t.medgen_id == matching_mapping.medgen_id:
+                    _logger.info("Matched by medgen_id: %s", t)
                     return t
 
             # If no match on the matching medgen id, return one with a medgen name match
             # TODO will this ever happen? medgen_name matches but not medgen_id?
             for t in reference_traits:
                 if t.name == matching_mapping.medgen_name:
+                    _logger.info("Matched by name: %s", t)
                     return t
 
         return None
@@ -539,7 +541,7 @@ class ClinicalAssertionTrait(Model):
             id=trait_metadata.id,
             type=trait_metadata.type,
             name=trait_metadata.name,
-            medgen_id=trait_metadata.medgen_id,
+            medgen_id=trait_metadata.medgen_id or matching_trait.medgen_id,
             trait_id=matching_trait.id if matching_trait is not None else None,
             alternate_names=trait_metadata.alternate_names,
             xrefs=trait_metadata.xrefs,

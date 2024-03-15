@@ -128,7 +128,7 @@ def test_read_original_clinvar_variation_2():
     assert rcv.interpretation == "Pathogenic"
 
 
-def test_read_original_clinvar_variation_634266():
+def test_read_original_clinvar_variation_634266(log_conf):
     """
     Test a Genotype record
     """
@@ -231,8 +231,10 @@ def test_read_original_clinvar_variation_634266():
 
     # SCVs - TODO build out further
     # SCV 1
-    scv = list(filter(lambda o: isinstance(o, ClinicalAssertion), objects))[0]
-    assert scv.assertion_id == "1801318"
+    scv0: ClinicalAssertion = list(
+        filter(lambda o: isinstance(o, ClinicalAssertion), objects)
+    )[0]
+    assert scv0.assertion_id == "1801318"
     submitter = list(filter(lambda o: isinstance(o, Submitter), objects))[0]
     assert submitter.id == "505961"
     assert (
@@ -277,6 +279,33 @@ def test_read_original_clinvar_variation_634266():
     submission = list(filter(lambda o: isinstance(o, Submission), objects))[3]
     assert submission.id == "505961"
     assert submission.submission_date == "2018-03-01"
+
+    # Test a clinical_assertion_trait linked to a trait via medgen id
+
+    # ClinicalAssertion ID="1801318"
+    # Trait should be linked to 32268 via Preferred name
+    assert isinstance(scv0, ClinicalAssertion)
+    print(vars(scv0))
+    # scv0_traits = scv0.clinical_assertion_trait_set.traits
+    scv0_trait_set_id = scv0.clinical_assertion_trait_set_id
+    scv0_trait_set = list(
+        filter(
+            lambda o: isinstance(o, ClinicalAssertionTraitSet)
+            and o.id == scv0_trait_set_id,
+            objects,
+        )
+    )[0]
+    scv0_trait_ids = scv0_trait_set.clinical_assertion_trait_ids
+    assert len(scv0_trait_ids) == 1
+    scv0_traits: list[ClinicalAssertionTrait] = list(
+        filter(
+            lambda o: isinstance(o, ClinicalAssertionTrait) and o.id in scv0_trait_ids,
+            objects,
+        )
+    )
+    assert len(scv0_traits) == 1
+    assert scv0_traits[0].trait_id == "32268"
+    assert scv0_traits[0].medgen_id == "CN221265"
 
 
 def test_read_original_clinvar_variation_1264328():
