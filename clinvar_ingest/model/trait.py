@@ -66,10 +66,12 @@ class TraitMetadata(Model):
         if len(preferred_names) == 1:
             preferred_name = preferred_names[0]["ElementValue"]["$"]
 
-        preferred_name_xrefs = [
-            extract_element_xrefs(n, "name", n["ElementValue"]["$"])
-            for n in preferred_names
-        ]
+        preferred_name_xrefs = flatten1(
+            [
+                extract_element_xrefs(n, "name", n["ElementValue"]["$"])
+                for n in preferred_names
+            ]
+        )
         _logger.debug("preferred_name: %s", preferred_name)
 
         # Alternate Names (Name type=Alternate)
@@ -78,10 +80,12 @@ class TraitMetadata(Model):
         ]
         alternate_name_strs = [get(n, "ElementValue", "$") for n in alternate_names]
 
-        alternate_name_xrefs = [
-            extract_element_xrefs(n, "alternate_names", n["ElementValue"]["$"])
-            for n in alternate_names
-        ]
+        alternate_name_xrefs = flatten1(
+            [
+                extract_element_xrefs(n, "alternate_names", n["ElementValue"]["$"])
+                for n in alternate_names
+            ]
+        )
         _logger.debug("alternate_names: %s", json.dumps(alternate_name_strs))
 
         # XRefs which are at the top level of Trait objects in the XML
@@ -426,7 +430,9 @@ class ClinicalAssertionTrait(Model):
         self.entity_type = "clinical_assertion_trait"
 
     @staticmethod
-    def match_to_trait(me: Trait, normalized_traits: List[Trait]):
+    def find_matching_trait(
+        me: TraitMetadata, reference_traits: List[Trait], mappings: List[TraitMapping]
+    ) -> Trait | None:
         """
         Given a list of normalized traits, find the one that matches the clinical assertion trait
 
@@ -441,10 +447,81 @@ class ClinicalAssertionTrait(Model):
 
         """
         # TODO match submitted traits to normalized traits
+        _logger.info(
+            "Matching clinical_assertion_trait %s to normalized traits %s",
+            me,
+            reference_traits,
+        )
+
+        # Try to match by MedGen ID
+        for t in reference_traits:
+            if me.medgen_id == t.medgen_id:
+                _logger.info("Matched by MedGen ID: %s", me.medgen_id)
+                return t
+
+        # Try to match by XRefs, direct comparison
+        for t in reference_traits:
+            for x in me.xrefs:
+                if x in t.xrefs:
+                    _logger.info("Matched by XRef: %s", x)
+                    return t
+
+        # Try to match by TraitMapping
+        ## "Name" mapping
+        matching_mapping = None
+        for mapping in mappings:
+            _logger.info("looking at trait_mapping: %s", mapping)
+            if mapping.trait_type == me.type:
+                _logger.info("trait_type matches: %s", me.type)
+                # "Name"
+                # "Preferred" (preferred name)
+                # "Alternate" (alternate name)
+                is_name_match = (
+                    mapping.mapping_type == "Name"
+                    and mapping.mapping_ref == "Preferred"
+                    and me.name == mapping.mapping_value
+                ) or (
+                    mapping.mapping_type == "Name"
+                    and mapping.mapping_ref == "Alternate"
+                    and me.name == mapping.mapping_value
+                )
+                _logger.info("is_name_match: %s", is_name_match)
+
+                # "XRef"
+                is_xref_match = mapping.mapping_type == "XRef" and any(
+                    [
+                        x.db == mapping.mapping_ref and x.id == mapping.mapping_value
+                        for x in me.xrefs
+                    ]
+                )
+                _logger.info("is_xref_match: %s", is_xref_match)
+
+                if is_name_match or is_xref_match:
+                    matching_mapping = mapping
+                    break
+
+        if matching_mapping is not None:
+            _logger.info("matching_mapping: %s", matching_mapping)
+            # Return a reference trait with the same medgen id
+            for t in reference_traits:
+                if t.medgen_id == matching_mapping.medgen_id:
+                    return t
+
+            # If no match on the matching medgen id, return one with a medgen name match
+            # TODO will this ever happen? medgen_name matches but not medgen_id?
+            for t in reference_traits:
+                if t.name == matching_mapping.medgen_name:
+                    return t
+
         return None
 
     @staticmethod
-    def from_xml(inp: dict, jsonify_content=True, normalized_traits: List[Trait] = []):
+    def from_xml(
+        inp: dict,
+        jsonify_content=True,
+        normalized_traits: List[Trait] = [],
+        trait_mappings: List[TraitMapping] = [],
+    ):
         _logger.debug(
             f"ClinicalAssertionTrait.from_xml(inp={json.dumps(dictify(inp))})"
         )
@@ -452,8 +529,10 @@ class ClinicalAssertionTrait(Model):
         trait_metadata = TraitMetadata.from_xml(inp, jsonify_content=jsonify_content)
 
         # Map submitted trait to normalized trait
-        trait_id = ClinicalAssertionTrait.match_to_trait(
-            trait_metadata, normalized_traits
+        matching_trait = ClinicalAssertionTrait.find_matching_trait(
+            trait_metadata,
+            reference_traits=normalized_traits,
+            mappings=trait_mappings,
         )
 
         obj = ClinicalAssertionTrait(
@@ -461,7 +540,7 @@ class ClinicalAssertionTrait(Model):
             type=trait_metadata.type,
             name=trait_metadata.name,
             medgen_id=trait_metadata.medgen_id,
-            trait_id=trait_id,
+            trait_id=matching_trait.id if matching_trait is not None else None,
             alternate_names=trait_metadata.alternate_names,
             xrefs=trait_metadata.xrefs,
             content=inp,
@@ -493,7 +572,12 @@ class ClinicalAssertionTraitSet(Model):
         self.entity_type = "clinical_assertion_trait_set"
 
     @staticmethod
-    def from_xml(inp: dict, jsonify_content=True):
+    def from_xml(
+        inp: dict,
+        jsonify_content=True,
+        normalized_traits: List[Trait] = [],
+        trait_mappings: List[TraitMapping] = [],
+    ):
         _logger.debug(
             f"ClinicalAssertionTraitSet.from_xml(inp={json.dumps(dictify(inp))})"
         )
@@ -501,7 +585,12 @@ class ClinicalAssertionTraitSet(Model):
             id=extract(inp, "@ID"),
             type=extract(inp, "@Type"),
             traits=[
-                ClinicalAssertionTrait.from_xml(t, jsonify_content=jsonify_content)
+                ClinicalAssertionTrait.from_xml(
+                    t,
+                    jsonify_content=jsonify_content,
+                    normalized_traits=normalized_traits,
+                    trait_mappings=trait_mappings,
+                )
                 for t in ensure_list(extract(inp, "Trait"))
             ],
             content=inp,

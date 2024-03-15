@@ -13,8 +13,20 @@ import logging
 from typing import List
 
 from clinvar_ingest.model.common import Model, int_or_none, model_copy, sanitize_date
-from clinvar_ingest.model.trait import ClinicalAssertionTraitSet, TraitMapping, TraitSet
-from clinvar_ingest.utils import ensure_list, extract, extract_oneof, get, make_counter
+from clinvar_ingest.model.trait import (
+    ClinicalAssertionTraitSet,
+    Trait,
+    TraitMapping,
+    TraitSet,
+)
+from clinvar_ingest.utils import (
+    ensure_list,
+    extract,
+    extract_oneof,
+    flatten1,
+    get,
+    make_counter,
+)
 
 _logger = logging.getLogger("clinvar_ingest")
 
@@ -145,7 +157,12 @@ class ClinicalAssertion(Model):
         self.entity_type = "clinical_assertion"
 
     @staticmethod
-    def from_xml(inp: dict, jsonify_content=True):
+    def from_xml(
+        inp: dict,
+        jsonify_content=True,
+        normalized_traits: List[Trait] = [],
+        trait_mappings: List[TraitMapping] = [],
+    ):
         _logger.debug(
             f"ClinicalAssertion.from_xml(inp={json.dumps(inp)}, {jsonify_content=})"
         )
@@ -174,7 +191,10 @@ class ClinicalAssertion(Model):
         assertion_trait_set = extract(inp, "TraitSet")
         if assertion_trait_set is not None:
             assertion_trait_set = ClinicalAssertionTraitSet.from_xml(
-                assertion_trait_set, jsonify_content=jsonify_content
+                assertion_trait_set,
+                jsonify_content=jsonify_content,
+                normalized_traits=normalized_traits,
+                trait_mappings=trait_mappings,
             )
             # The ClinicalAssertion TraitSet and Traits have synthetic ids.
             # Replace them with just the accession.<index>
@@ -586,6 +606,30 @@ class VariationArchive(Model):
         interpretations = extract(interp_record, "Interpretations")
         interpretation = interpretations["Interpretation"]
         variation = Variation.from_xml(interp_record, jsonify_content=jsonify_content)
+        trait_mappings = [
+            TraitMapping.from_xml(tm, jsonify_content=jsonify_content)
+            for tm in ensure_list(
+                extract(
+                    extract(
+                        interp_record,
+                        "TraitMappingList",
+                    ),
+                    "TraitMapping",
+                )
+                or []
+            )
+        ]
+        trait_sets = [
+            TraitSet.from_xml(ts, jsonify_content=jsonify_content)
+            for ts in ensure_list(
+                extract(
+                    interpretation,
+                    "ConditionList",
+                    "TraitSet",
+                )
+                or []
+            )
+        ]
         _id = extract(inp, "@Accession")
         obj = VariationArchive(
             id=_id,
@@ -593,7 +637,12 @@ class VariationArchive(Model):
             version=extract(inp, "@Version"),
             variation=variation,
             clinical_assertions=[
-                ClinicalAssertion.from_xml(ca, jsonify_content)
+                ClinicalAssertion.from_xml(
+                    ca,
+                    jsonify_content,
+                    normalized_traits=flatten1([ts.traits for ts in trait_sets]),
+                    trait_mappings=trait_mappings,
+                )
                 for ca in ensure_list(
                     extract(
                         extract(interp_record, "ClinicalAssertionList"),
@@ -618,30 +667,8 @@ class VariationArchive(Model):
             interp_date_last_evaluated=sanitize_date(
                 extract(interpretation, "@DateLastEvaluated")
             ),
-            trait_sets=[
-                TraitSet.from_xml(ts, jsonify_content=jsonify_content)
-                for ts in ensure_list(
-                    extract(
-                        interpretation,
-                        "ConditionList",
-                        "TraitSet",
-                    )
-                    or []
-                )
-            ],
-            trait_mappings=[
-                TraitMapping.from_xml(tm, jsonify_content=jsonify_content)
-                for tm in ensure_list(
-                    extract(
-                        extract(
-                            interp_record,
-                            "TraitMapping",
-                        ),
-                        "TraitMapping",
-                    )
-                    or []
-                )
-            ],
+            trait_sets=trait_sets,
+            trait_mappings=trait_mappings,
             rcv_accessions=[
                 RcvAccession.from_xml(
                     r,
@@ -666,6 +693,10 @@ class VariationArchive(Model):
         for val in self_copy.variation.disassemble():
             yield val
         del self_copy.variation
+        for tm in self_copy.trait_mappings:
+            for val in tm.disassemble():
+                yield val
+        del self_copy.trait_mappings
         for ts in self_copy.trait_sets:
             for val in ts.disassemble():
                 yield val

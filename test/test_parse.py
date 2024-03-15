@@ -2,6 +2,7 @@ from clinvar_ingest.model.trait import (
     ClinicalAssertionTrait,
     ClinicalAssertionTraitSet,
     Trait,
+    TraitMapping,
     TraitSet,
 )
 from clinvar_ingest.model.variation_archive import (
@@ -27,11 +28,13 @@ def test_read_original_clinvar_variation_2():
         objects = list(read_clinvar_xml(f))
 
     # print("\n".join([str(dictify(o)) for o in objects]))
-    assert 19 == len(objects)
+    assert len(objects) == 21
     expected_types = [
         Variation,
         Gene,
         GeneAssociation,
+        TraitMapping,
+        TraitMapping,
         Trait,
         TraitSet,
         Submitter,
@@ -90,6 +93,15 @@ def test_read_original_clinvar_variation_2():
     submission = list(filter(lambda o: isinstance(o, Submission), objects))[0]
     assert submission.id == "3"
     assert submission.submission_date == "2017-01-26"
+    # Verify SCV traits are linked to VCV traits
+    scv_trait_0: ClinicalAssertionTrait = list(
+        filter(lambda o: isinstance(o, ClinicalAssertionTrait), objects)
+    )[0]
+    assert scv_trait_0.trait_id == "9580"
+    scv_trait_1 = list(
+        filter(lambda o: isinstance(o, ClinicalAssertionTrait), objects)
+    )[1]
+    assert scv_trait_1.trait_id == "9580"
 
     scv = list(filter(lambda o: isinstance(o, ClinicalAssertion), objects))[1]
     assert scv.assertion_id == "2865972"
@@ -124,9 +136,13 @@ def test_read_original_clinvar_variation_634266():
     with open(filename) as f:
         objects = list(read_clinvar_xml(f))
 
-    assert 38 == len(objects)
+    assert len(objects) == 42
     expected_types = [
         Variation,
+        TraitMapping,
+        TraitMapping,
+        TraitMapping,
+        TraitMapping,
         Trait,
         TraitSet,
         Trait,
