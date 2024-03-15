@@ -245,8 +245,8 @@ def test_read_original_clinvar_variation_634266(log_conf):
     assert submission.submission_date == "2018-03-01"
 
     # SCV 2
-    scv = list(filter(lambda o: isinstance(o, ClinicalAssertion), objects))[1]
-    assert scv.assertion_id == "1801467"
+    scv2 = list(filter(lambda o: isinstance(o, ClinicalAssertion), objects))[1]
+    assert scv2.assertion_id == "1801467"
     submitter = list(filter(lambda o: isinstance(o, Submitter), objects))[1]
     assert submitter.id == "505961"
     assert (
@@ -257,8 +257,8 @@ def test_read_original_clinvar_variation_634266(log_conf):
     assert submission.submission_date == "2018-03-01"
 
     # SCV 3
-    scv = list(filter(lambda o: isinstance(o, ClinicalAssertion), objects))[2]
-    assert scv.assertion_id == "1802126"
+    scv3 = list(filter(lambda o: isinstance(o, ClinicalAssertion), objects))[2]
+    assert scv3.assertion_id == "1802126"
     submitter = list(filter(lambda o: isinstance(o, Submitter), objects))[2]
     assert submitter.id == "505961"
     assert (
@@ -269,8 +269,8 @@ def test_read_original_clinvar_variation_634266(log_conf):
     assert submission.submission_date == "2018-03-01"
 
     # SCV 4
-    scv = list(filter(lambda o: isinstance(o, ClinicalAssertion), objects))[3]
-    assert scv.assertion_id == "1802127"
+    scv4 = list(filter(lambda o: isinstance(o, ClinicalAssertion), objects))[3]
+    assert scv4.assertion_id == "1802127"
     submitter = list(filter(lambda o: isinstance(o, Submitter), objects))[3]
     assert submitter.id == "505961"
     assert (
@@ -283,10 +283,7 @@ def test_read_original_clinvar_variation_634266(log_conf):
     # Test a clinical_assertion_trait linked to a trait via medgen id
 
     # ClinicalAssertion ID="1801318"
-    # Trait should be linked to 32268 via Preferred name
-    assert isinstance(scv0, ClinicalAssertion)
-    print(vars(scv0))
-    # scv0_traits = scv0.clinical_assertion_trait_set.traits
+    # Trait should be linked to 32268, medgen CN221265 via Preferred name
     scv0_trait_set_id = scv0.clinical_assertion_trait_set_id
     scv0_trait_set = list(
         filter(
@@ -304,8 +301,78 @@ def test_read_original_clinvar_variation_634266(log_conf):
         )
     )
     assert len(scv0_traits) == 1
+    assert scv0_traits[0].name == "Sertraline response"
     assert scv0_traits[0].trait_id == "32268"
     assert scv0_traits[0].medgen_id == "CN221265"
+
+    # ClinicalAssertion ID="1801467"
+    # Trait should be 16405, medgen CN077957 via Preferred name
+    scv2_trait_set_id = scv2.clinical_assertion_trait_set_id
+    scv2_trait_set = list(
+        filter(
+            lambda o: isinstance(o, ClinicalAssertionTraitSet)
+            and o.id == scv2_trait_set_id,
+            objects,
+        )
+    )[0]
+    scv2_trait_ids = scv2_trait_set.clinical_assertion_trait_ids
+    assert len(scv2_trait_ids) == 1
+    scv2_traits: list[ClinicalAssertionTrait] = list(
+        filter(
+            lambda o: isinstance(o, ClinicalAssertionTrait) and o.id in scv2_trait_ids,
+            objects,
+        )
+    )
+    assert len(scv2_traits) == 1
+    assert scv2_traits[0].name == "Voriconazole response"
+    assert scv2_traits[0].trait_id == "16405"
+    assert scv2_traits[0].medgen_id == "CN077957"
+
+    # ClinicalAssertion ID="1802126"
+    # Trait should be 32266, medgen CN221263 via Preferred name
+    scv3_trait_set_id = scv3.clinical_assertion_trait_set_id
+    scv3_trait_set = list(
+        filter(
+            lambda o: isinstance(o, ClinicalAssertionTraitSet)
+            and o.id == scv3_trait_set_id,
+            objects,
+        )
+    )[0]
+    scv3_trait_ids = scv3_trait_set.clinical_assertion_trait_ids
+    assert len(scv3_trait_ids) == 1
+    scv3_traits: list[ClinicalAssertionTrait] = list(
+        filter(
+            lambda o: isinstance(o, ClinicalAssertionTrait) and o.id in scv3_trait_ids,
+            objects,
+        )
+    )
+    assert len(scv3_traits) == 1
+    assert scv3_traits[0].name == "Citalopram response"
+    assert scv3_traits[0].trait_id == "32266"
+    assert scv3_traits[0].medgen_id == "CN221263"
+
+    # ClinicalAssertion ID="1802127"
+    # Trait should be 32267, medgen CN221264 via Preferred name
+    scv4_trait_set_id = scv4.clinical_assertion_trait_set_id
+    scv4_trait_set = list(
+        filter(
+            lambda o: isinstance(o, ClinicalAssertionTraitSet)
+            and o.id == scv4_trait_set_id,
+            objects,
+        )
+    )[0]
+    scv4_trait_ids = scv4_trait_set.clinical_assertion_trait_ids
+    assert len(scv4_trait_ids) == 1
+    scv4_traits: list[ClinicalAssertionTrait] = list(
+        filter(
+            lambda o: isinstance(o, ClinicalAssertionTrait) and o.id in scv4_trait_ids,
+            objects,
+        )
+    )
+    assert len(scv4_traits) == 1
+    assert scv4_traits[0].name == "Escitalopram response"
+    assert scv4_traits[0].trait_id == "32267"
+    assert scv4_traits[0].medgen_id == "CN221264"
 
 
 def test_read_original_clinvar_variation_1264328():
