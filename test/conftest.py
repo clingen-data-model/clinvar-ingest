@@ -1,5 +1,6 @@
 import json
 import logging.config
+
 import pytest
 
 from clinvar_ingest import config
