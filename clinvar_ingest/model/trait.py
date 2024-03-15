@@ -541,7 +541,10 @@ class ClinicalAssertionTrait(Model):
             id=trait_metadata.id,
             type=trait_metadata.type,
             name=trait_metadata.name,
-            medgen_id=trait_metadata.medgen_id or matching_trait.medgen_id,
+            medgen_id=(
+                trait_metadata.medgen_id
+                or (matching_trait.medgen_id if matching_trait is not None else None)
+            ),
             trait_id=matching_trait.id if matching_trait is not None else None,
             alternate_names=trait_metadata.alternate_names,
             xrefs=trait_metadata.xrefs,
