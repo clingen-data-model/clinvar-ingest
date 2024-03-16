@@ -51,7 +51,7 @@ class TraitMetadata(Model):
 
     @staticmethod
     def from_xml(inp: dict, jsonify_content=True):
-        _logger.info(f"TraitMetadata.from_xml(inp={json.dumps(inp)})")
+        # _logger.info(f"TraitMetadata.from_xml(inp={json.dumps(inp)})")
 
         id = extract(inp, "@ID")
         trait_type = extract(inp, "@Type")
@@ -447,32 +447,27 @@ class ClinicalAssertionTrait(Model):
 
         """
         # TODO match submitted traits to normalized traits
-        _logger.info(
-            "Matching clinical_assertion_trait %s to normalized traits %s",
-            me,
-            reference_traits,
-        )
+        _logger.debug("Matching clinical_assertion_trait %s to normalized traits", me)
 
         # Try to match by MedGen ID
         for t in reference_traits:
             if me.medgen_id == t.medgen_id:
-                _logger.info("Matched by MedGen ID: %s", me.medgen_id)
+                _logger.debug("Matched by MedGen ID: %s", me.medgen_id)
                 return t
 
         # Try to match by XRefs, direct comparison
         for t in reference_traits:
             for x in me.xrefs:
                 if x in t.xrefs:
-                    _logger.info("Matched by XRef: %s", x)
+                    _logger.debug("Matched by XRef: %s", x)
                     return t
 
         # Try to match by TraitMapping
         ## "Name" mapping
         matching_mapping = None
         for mapping in mappings:
-            _logger.info("looking at trait_mapping: %s", mapping)
             if mapping.trait_type == me.type:
-                _logger.info("trait_type matches: %s", me.type)
+                _logger.debug("trait_type matches: %s", me.type)
                 # "Name"
                 # "Preferred" (preferred name)
                 # "Alternate" (alternate name)
@@ -485,7 +480,8 @@ class ClinicalAssertionTrait(Model):
                     and mapping.mapping_ref == "Alternate"
                     and me.name == mapping.mapping_value
                 )
-                _logger.info("is_name_match: %s", is_name_match)
+                if is_name_match:
+                    _logger.debug("is_name_match: %s", is_name_match)
 
                 # "XRef"
                 is_xref_match = mapping.mapping_type == "XRef" and any(
@@ -494,25 +490,28 @@ class ClinicalAssertionTrait(Model):
                         for x in me.xrefs
                     ]
                 )
-                _logger.info("is_xref_match: %s", is_xref_match)
+                if is_xref_match:
+                    _logger.debug("is_xref_match: %s", is_xref_match)
 
                 if is_name_match or is_xref_match:
                     matching_mapping = mapping
                     break
 
         if matching_mapping is not None:
-            _logger.info("matching_mapping: %s", matching_mapping)
+            _logger.debug("matching_mapping: %s", matching_mapping)
             # Return a reference trait with the same medgen id
             for t in reference_traits:
                 if t.medgen_id == matching_mapping.medgen_id:
-                    _logger.info("Matched by medgen_id: %s", t)
+                    _logger.debug(
+                        "Found trait matching trait_mapping by medgen_id: %s", t
+                    )
                     return t
 
             # If no match on the matching medgen id, return one with a medgen name match
             # TODO will this ever happen? medgen_name matches but not medgen_id?
             for t in reference_traits:
                 if t.name == matching_mapping.medgen_name:
-                    _logger.info("Matched by name: %s", t)
+                    _logger.debug("Found trait matching trait_mapping by name: %s", t)
                     return t
 
         return None

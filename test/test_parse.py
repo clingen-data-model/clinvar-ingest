@@ -395,5 +395,50 @@ def test_read_original_clinvar_variation_1264328():
     assert 0 == len(clinical_assertions)
 
 
+def test_read_original_clinvar_variation_10(log_conf):
+    """
+    This tests an IncludedRecord with no ClinicalAssertions.
+    Exercises this bug fix:
+    """
+    filename = "test/data/original-clinvar-variation-10.xml"
+    with open(filename) as f:
+        objects = list(read_clinvar_xml(f))
+
+    scv372036 = [o for o in objects if isinstance(o, ClinicalAssertion)][0]
+    assert scv372036.assertion_id == "372036"
+    scv372036_trait_set = [
+        o
+        for o in objects
+        if isinstance(o, ClinicalAssertionTraitSet)
+        and o.id == scv372036.clinical_assertion_trait_set_id
+    ][0]
+
+    # This one is an example of a SCV that was submitted only with a medgen id,
+    # no name or other attributes on the submitted trait
+    # The ClinicalAssertionTrait should be linked to the Trait
+    # and copy its medgen id if there, but not the name
+    """
+    <TraitSet Type="Disease">
+          <Trait Type="Disease">
+            <XRef DB="MedGen" ID="C0392514" Type="CUI"/>
+          </Trait>
+        </TraitSet>
+    """
+
+    scv372036_trait_ids = scv372036_trait_set.clinical_assertion_trait_ids
+    assert len(scv372036_trait_ids) == 1
+    scv372036_traits: list[ClinicalAssertionTrait] = [
+        o
+        for o in objects
+        if isinstance(o, ClinicalAssertionTrait) and o.id in scv372036_trait_ids
+    ]
+    assert len(scv372036_traits) == 1
+    assert scv372036_traits[0].trait_id == "33108"
+    assert scv372036_traits[0].medgen_id == "C0392514"
+    # Name
+    # assert scv372036_traits[0].name == "Hereditary hemochromatosis"
+    assert scv372036_traits[0].name is None
+
+
 if __name__ == "__main__":
     test_read_original_clinvar_variation_2()
