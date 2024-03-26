@@ -1,3 +1,5 @@
+import json
+
 from clinvar_ingest.model.trait import (
     ClinicalAssertionTrait,
     ClinicalAssertionTraitSet,
@@ -438,6 +440,116 @@ def test_read_original_clinvar_variation_10(log_conf):
     # Name
     # assert scv372036_traits[0].name == "Hereditary hemochromatosis"
     assert scv372036_traits[0].name is None
+
+    # Check an observation with a trait
+    # ClinicalAssertion ID="3442424"
+    # SCV 3442424 has an observation with a traitset
+    # pylint: disable=W0105
+
+    """
+    <TraitSet DateLastEvaluated="2019-06-26" Type="Finding">
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0000496"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0000545"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0000163"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0000929"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0001626"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0002564"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0002721"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0012647"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0002719"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0011968"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0002242"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0002577"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0000098"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0010674"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0002353"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0001290"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0001250"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0001560"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0001558"/>
+              </Trait>
+            </TraitSet>
+    """
+    scv = [
+        o
+        for o in objects
+        if isinstance(o, ClinicalAssertion) and o.assertion_id == "3442424"
+    ]
+    assert len(scv) == 1
+    scv = scv[0]
+    observations = [
+        o
+        for o in objects
+        if isinstance(o, ClinicalAssertionObservation)
+        and o.id in scv.clinical_assertion_observation_ids
+    ]
+    assert len(observations) == 5
+
+    # Match on XRef (line 1768)
+    # Submitted trait HP:0000836 should map to medgen trait C0020550
+    """
+    <TraitSet DateLastEvaluated="2020-05-05" Type="Finding">
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0000836"/>
+              </Trait>
+            </TraitSet>
+    """
+
+    traits_HP_0000836 = [o for o in objects if isinstance(o, ClinicalAssertionTrait)]
+    # parse xrefs
+    for t in traits_HP_0000836:
+        t.xrefs = [Trait.XRef(**json.loads(xref)) for xref in t.xrefs]
+    assert len(traits_HP_0000836) > 0
+    print(traits_HP_0000836)
+    assert len([o for o in objects])
+    traits_HP_0000836 = [
+        o
+        for o in objects
+        if isinstance(o, ClinicalAssertionTrait)
+        and len(
+            [xref for xref in o.xrefs if xref.db == "HP" and xref.id == "HP:0000836"]
+        )
+        > 0
+        # and o.trait_id == "HP:0000836"
+    ]
+    assert len(traits_HP_0000836) > 0
 
 
 if __name__ == "__main__":

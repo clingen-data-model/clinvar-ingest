@@ -103,6 +103,8 @@ class Submission(Model):
         yield self
 
 
+# TODO some ClinicalAssertionTraitSets come from ObservedIn elements,
+# but not link is retained between the Observation and its TraitSets
 @dataclasses.dataclass
 class ClinicalAssertionObservation(Model):
     id: str
@@ -208,7 +210,10 @@ class ClinicalAssertion(Model):
                 id=f"{scv_accession}.{i}",
                 clinical_assertion_trait_set=(
                     ClinicalAssertionTraitSet.from_xml(
-                        extract(o, "TraitSet"), jsonify_content=jsonify_content
+                        extract(o, "TraitSet"),
+                        jsonify_content=jsonify_content,
+                        normalized_traits=normalized_traits,
+                        trait_mappings=trait_mappings,
                     )
                     if "TraitSet" in o
                     else None
@@ -274,6 +279,11 @@ class ClinicalAssertion(Model):
         for obs in self_copy.clinical_assertion_observations:
             for subobj in obs.disassemble():
                 yield subobj
+        setattr(
+            self_copy,
+            "clinical_assertion_observation_ids",
+            [obs.id for obs in self_copy.clinical_assertion_observations],
+        )
         del self_copy.clinical_assertion_observations
 
         if self_copy.clinical_assertion_trait_set is not None:
