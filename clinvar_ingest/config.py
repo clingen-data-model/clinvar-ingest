@@ -50,7 +50,10 @@ def get_env() -> Env:
         bucket_parsed_prefix=_bucket_parsed_prefix,
         parse_output_prefix=_bucket_parsed_prefix,
         executions_output_prefix=_bucket_executions_prefix,
-        slack_token=_slack_token or _dotenv_values.get("CLINVAR_INGEST_SLACK_TOKEN", ""),
-        slack_channel=_slack_channel or _dotenv_values.get("CLINVAR_INGEST_SLACK_CHANNEL", ""),
-        release_tag=_release_tag or _dotenv_values.get("CLINVAR_INGEST_RELEASE_TAG", ""),
+        slack_token=_slack_token
+        or _dotenv_values.get("CLINVAR_INGEST_SLACK_TOKEN", ""),
+        slack_channel=_slack_channel
+        or _dotenv_values.get("CLINVAR_INGEST_SLACK_CHANNEL", ""),
+        release_tag=_release_tag
+        or _dotenv_values.get("CLINVAR_INGEST_RELEASE_TAG", ""),
     )
