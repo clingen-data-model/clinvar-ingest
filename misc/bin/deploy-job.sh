@@ -66,4 +66,5 @@ gcloud run jobs create $instance_name \
     --image=$image \
     --region=$region \
     --service-account=$pipeline_service_account \
-    --set-env-vars=CLINVAR_INGEST_BUCKET=$clinvar_ingest_bucket
+    --set-env-vars=CLINVAR_INGEST_BUCKET=$clinvar_ingest_bucket \
+    --set-secrets=CLINVAR_INGEST_SLACK_TOKEN=clinvar-ingest-slack-token:latest

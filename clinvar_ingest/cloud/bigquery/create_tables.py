@@ -49,7 +49,8 @@ def schema_file_path_for_table(table_name: str) -> str:
     """
     Returns the path to the BigQuery schema file for the given table name.
     """
-    schema_path = bq_schemas_dir / f"{table_name}.bq.json"
+    raw_table_name = table_name.replace("_external", "")
+    schema_path = bq_schemas_dir / f"{raw_table_name}.bq.json"
     return schema_path
 
 
@@ -128,13 +129,14 @@ def run_create_external_tables(
     # TODO maybe do something more clever if it fails part way through
     # but maybe not, it could be useful to see the partial results
     for table_name, gcs_blob_path in args.source_table_paths.items():
+        external_table_name = table_name + "_external"
         table = create_table(
-            table_name,
+            external_table_name,
             dataset=dataset_obj,
             blob_uri=gcs_blob_path.root,
             client=bq_client,
         )
-        outputs[table_name] = table
+        outputs[external_table_name] = table
     return outputs
 
 

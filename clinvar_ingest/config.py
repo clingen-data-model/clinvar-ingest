@@ -10,6 +10,11 @@ _bucket_parsed_prefix = os.environ.get("CLINVAR_INGEST_PARSED_PREFIX", "clinvar_
 _bucket_executions_prefix = os.environ.get(
     "CLINVAR_INGEST_EXECUTIONS_PREFIX", "executions"
 )
+_slack_token = os.environ.get("CLINVAR_INGEST_SLACK_TOKEN", "")
+_slack_channel = os.environ.get("CLINVAR_INGEST_SLACK_CHANNEL", "")
+
+_release_tag = os.environ.get("CLINVAR_INGEST_RELEASE_TAG", "")
+
 _dotenv_env = os.environ.get("DOTENV_ENV", "dev")
 _dotenv_values = dotenv_values(pathlib.Path(__file__).parent / f".{_dotenv_env}.env")
 
@@ -21,6 +26,9 @@ class Env(BaseModel):
     bucket_parsed_prefix: str
     parse_output_prefix: str
     executions_output_prefix: str
+    slack_token: str
+    slack_channel: str
+    release_tag: str
 
     @field_validator("bucket_name")
     @classmethod
@@ -42,4 +50,7 @@ def get_env() -> Env:
         bucket_parsed_prefix=_bucket_parsed_prefix,
         parse_output_prefix=_bucket_parsed_prefix,
         executions_output_prefix=_bucket_executions_prefix,
+        slack_token=_slack_token or _dotenv_values.get("CLINVAR_INGEST_SLACK_TOKEN", ""),
+        slack_channel=_slack_channel or _dotenv_values.get("CLINVAR_INGEST_SLACK_CHANNEL", ""),
+        release_tag=_release_tag or _dotenv_values.get("CLINVAR_INGEST_RELEASE_TAG", ""),
     )
