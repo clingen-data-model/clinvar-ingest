@@ -1,7 +1,8 @@
 import json
 from typing import List
 
-from clinvar_ingest.model import Trait, TraitMapping, TraitSet, dictify
+from clinvar_ingest.model.common import dictify
+from clinvar_ingest.model.trait import Trait, TraitMapping, TraitSet
 from clinvar_ingest.reader import _parse_xml_document
 from clinvar_ingest.utils import ensure_list
 

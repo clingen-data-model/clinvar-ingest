@@ -1,5 +1,3 @@
-import json
-import logging.config
 from datetime import datetime
 from unittest.mock import patch
 
@@ -9,13 +7,6 @@ from fastapi.testclient import TestClient
 from clinvar_ingest.api.main import app
 from clinvar_ingest.api.model.requests import StepStartedResponse
 from clinvar_ingest.status import StatusValue, StepName, StepStatus
-
-
-@pytest.fixture
-def log_conf():
-    with open("log_conf.json", "r") as f:
-        conf = json.load(f)
-        logging.config.dictConfig(conf)
 
 
 def test_status_check(log_conf, caplog) -> None:

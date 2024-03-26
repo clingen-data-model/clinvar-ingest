@@ -5,7 +5,7 @@ import pathlib
 
 from clinvar_ingest.cloud.gcs import blob_reader, blob_size, blob_writer
 from clinvar_ingest.fs import BinaryOpenMode, ReadCounter, fs_open
-from clinvar_ingest.model import dictify
+from clinvar_ingest.model.common import dictify
 from clinvar_ingest.reader import get_clinvar_xml_releaseinfo, read_clinvar_xml
 from clinvar_ingest.utils import make_progress_logger
 
