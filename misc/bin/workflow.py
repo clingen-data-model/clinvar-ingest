@@ -9,6 +9,7 @@ from google.cloud import bigquery
 from clinvar_ingest.cloud.bigquery.create_tables import (
     run_create_external_tables,
     create_internal_tables,
+    drop_external_tables,
 )
 from clinvar_ingest.config import get_env
 from clinvar_ingest.api.model.requests import (
@@ -17,6 +18,7 @@ from clinvar_ingest.api.model.requests import (
     CreateExternalTablesRequest,
     CreateExternalTablesResponse,
     CreateInternalTablesRequest,
+    DropExternalTablesRequest,
     ParseRequest,
     ParseResponse,
 )
@@ -210,6 +212,7 @@ except Exception as e:
     send_slack_message(workflow_id_message + " - " + msg)
     raise e
 
+
 ################################################################
 # Create internal tables
 
@@ -235,6 +238,20 @@ except Exception as e:
     send_slack_message(workflow_id_message + " - " + msg)
     raise e
 
+################################################################
+# Drop external tables
+try:
+    drop_external_tables_request = DropExternalTablesRequest(root=create_external_tables_response.root)
+    _logger.info(
+        f"Drop External Tables request: {drop_external_tables_request.model_dump_json()}"
+    )
+
+    drop_external_tables_response = drop_external_tables(drop_external_tables_request)
+except Exception as e:
+    msg = "Failed during 'drop_external_tables'."
+    _logger.exception(msg)
+    send_slack_message(workflow_id_message + " - " + msg)
+    raise e
 
 ################################################################
 _logger.info("Workflow succeeded")

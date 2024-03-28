@@ -16,6 +16,7 @@ from google.cloud.bigquery.dataset import Dataset, DatasetReference
 from clinvar_ingest.api.model.requests import (
     CreateExternalTablesRequest,
     CreateInternalTablesRequest,
+    DropExternalTablesRequest,
 )
 from clinvar_ingest.cloud.gcs import parse_blob_uri
 from clinvar_ingest.config import get_env
@@ -201,5 +202,20 @@ def create_internal_tables(
         # Wait for job to complete
         job_result = create_job.result()
         _logger.info("Job %s completed: %s", create_job.job_id, job_result)
+
+    return args
+
+
+def drop_external_tables(
+    args: DropExternalTablesRequest,
+) -> DropExternalTablesRequest:
+    drop_tables = [f"DROP TABLE {bq_table};" for table_name, bq_table in args.root.items()]
+    drop_tables_query = " ".join(drop_tables)
+    _logger.info(
+        f"Drop external tables query: {drop_tables_query}"
+    )
+
+    bq_client = bigquery.Client()
+    bq_client.query(drop_tables_query)
 
     return args

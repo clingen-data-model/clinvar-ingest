@@ -207,6 +207,13 @@ class CreateInternalTablesRequest(BaseModel):
     ]
 
 
+class DropExternalTablesRequest(CreateExternalTablesResponse):
+    """
+    Defines the arguments to the drop_external_tables endpoint
+    """
+    pass
+
+
 class InitializeWorkflowResponse(BaseModel):
     """
     Defines the response from create_workflow_id endpoint.
