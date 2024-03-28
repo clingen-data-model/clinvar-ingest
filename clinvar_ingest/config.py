@@ -11,7 +11,8 @@ _bucket_executions_prefix = os.environ.get(
     "CLINVAR_INGEST_EXECUTIONS_PREFIX", "executions"
 )
 _slack_token = os.environ.get("CLINVAR_INGEST_SLACK_TOKEN", "")
-_slack_channel = os.environ.get("CLINVAR_INGEST_SLACK_CHANNEL", "")
+# defaults to test "clinvar-message-test"
+_slack_channel = os.environ.get("CLINVAR_INGEST_SLACK_CHANNEL", "C06QFR0278D")
 
 _release_tag = os.environ.get("CLINVAR_INGEST_RELEASE_TAG", "")
 
