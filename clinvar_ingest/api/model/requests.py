@@ -211,6 +211,7 @@ class DropExternalTablesRequest(CreateExternalTablesResponse):
     """
     Defines the arguments to the drop_external_tables endpoint
     """
+
     pass
 
 

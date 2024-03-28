@@ -209,11 +209,11 @@ def create_internal_tables(
 def drop_external_tables(
     args: DropExternalTablesRequest,
 ) -> DropExternalTablesRequest:
-    drop_tables = [f"DROP TABLE {bq_table};" for table_name, bq_table in args.root.items()]
+    drop_tables = [
+        f"DROP TABLE {bq_table};" for table_name, bq_table in args.root.items()
+    ]
     drop_tables_query = " ".join(drop_tables)
-    _logger.info(
-        f"Drop external tables query: {drop_tables_query}"
-    )
+    _logger.info(f"Drop external tables query: {drop_tables_query}")
 
     bq_client = bigquery.Client()
     bq_client.query(drop_tables_query)
