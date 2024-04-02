@@ -44,7 +44,7 @@ jobs:
           export release_tag=${{ github.ref_name }}
           echo "branch=$branch" >> $GITHUB_ENV
           echo "commit=$commit" >> $GITHUB_ENV
-          if [ $branch != "HEAD" ]; then
+          if [ $branch -ne "HEAD" ]; then
             echo "instance_name=clinvar-ingest-$branch" >> $GITHUB_ENV
           else
             echo "instance_name=clinvar-ingest-${release_tag}" >> $GITHUB_ENV
