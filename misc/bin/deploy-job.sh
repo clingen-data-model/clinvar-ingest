@@ -2,34 +2,38 @@
 
 set -xeo pipefail
 
-if [ -z "$branch" ]; then
-    branch=$(git rev-parse --abbrev-ref HEAD)
-else
-    echo "branch set in environment"
-fi
-if [ -z "$commit" ]; then
-    commit=$(git rev-parse HEAD)
-else
-    echo "commit set in environment"
-fi
+# if [ -z "$branch" ]; then
+#     branch=$(git rev-parse --abbrev-ref HEAD)
+# else
+#     echo "branch set in environment"
+# fi
+# if [ -z "$commit" ]; then
+#     commit=$(git rev-parse HEAD)
+# else
+#     echo "commit set in environment"
+# fi
 if [ -z "$release_tag" ]; then
     release_tag="missing_release_tag" # ensure underscore separators for BQ naming
 else
     echo "release_tag set in environment"
 fi
 
-echo "Branch: $branch"
-echo "Commit: $commit"
+if [ -z "$instance_name" ]; then
+    instance_name="clinvar-ingest-${release_tag}"
+else
+    echo "instance_name set in environment"
+fi
+
 echo "Release tag: $release_tag"
+echo "Instance name: $instance_name"
 
 set -u
 
-instance_name="clinvar-ingest-${branch}"
 clinvar_ingest_bucket="clinvar-ingest"
 
 region="us-central1"
 # project=$(gcloud config get project)
-image_tag=workflow-py-$commit
+image_tag=workflow-py-${release_tag}
 image=gcr.io/clingen-dev/clinvar-ingest:$image_tag
 pipeline_service_account=clinvar-ingest-pipeline@clingen-dev.iam.gserviceaccount.com
 deployment_service_account=clinvar-ingest-deployment@clingen-dev.iam.gserviceaccount.com
@@ -71,5 +75,5 @@ gcloud run jobs $command $instance_name \
     --image=$image \
     --region=$region \
     --service-account=$pipeline_service_account \
-    --set-env-vars=CLINVAR_INGEST_BUCKET=$clinvar_ingest_bucket \
+    --set-env-vars=CLINVAR_INGEST_BUCKET=$clinvar_ingest_bucket,CLINVAR_INGEST_RELEASE_TAG=${release_tag} \
     --set-secrets=CLINVAR_INGEST_SLACK_TOKEN=clinvar-ingest-slack-token:latest

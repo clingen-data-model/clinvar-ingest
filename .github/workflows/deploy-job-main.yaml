@@ -1,11 +1,9 @@
 name: Deploy Job
-run-name: Deploy ${{ github.event.workflow_run.head_branch }} by @${{ github.actor }}
+run-name: Deploy ${{ github.ref_name }} by @${{ github.actor }}
 
 on:
   release:
     types: [published]
-    branches:
-      - main
 
 permissions:
   id-token: write
@@ -13,19 +11,11 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
-    # if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: checkout
         uses: actions/checkout@v3
         with:
-          ref: ${{ github.event.workflow_run.head_branch }}
-          repository: github/actions-oidc-debugger          # debugging to blank line
-          token: ${{ secrets.GITHUB_TOKEN }}
-          path: ./.github/actions/actions-oidc-debugger
-      - name: Debug OIDC Claims
-        uses: ./.github/actions/actions-oidc-debugger
-        with:
-          audience: projects/522856288592/locations/global/workloadIdentityPools/clingen-actions-pool/providers/clingen-github-actions
+          ref: ${{ github.sha }}
 
       - name: authenticate to google cloud
         id: "auth"
@@ -39,16 +29,9 @@ jobs:
 
       - name: set env vars
         run: |
-          export branch=${{ github.event.workflow_run.head_branch }}
-          export commit=${{ github.event.workflow_run.head_sha }}
           export release_tag=${{ github.ref_name }}
-          echo "branch=$branch" >> $GITHUB_ENV
-          echo "commit=$commit" >> $GITHUB_ENV
-          if [ $branch -ne "HEAD" ]; then
-            echo "instance_name=clinvar-ingest-$branch" >> $GITHUB_ENV
-          else
-            echo "instance_name=clinvar-ingest-${release_tag}" >> $GITHUB_ENV
-          fi
+          export instance_name=clinvar-ingest
+          echo "instance_name=$instance_name" >> $GITHUB_ENV
           echo "release_tag=$release_tag" >> $GITHUB_ENV
 
       - name: build and deploy

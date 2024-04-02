@@ -1,11 +1,16 @@
 #!/bin/bash
 
 set -xeo pipefail
-
-if [ -z "$branch" ]; then
-    branch=$(git rev-parse --abbrev-ref HEAD)
+if [ -z "$release_tag" ]; then
+    release_tag="missing_release_tag" # ensure underscore separators for BQ naming
 else
-    echo "branch set in environment"
+    echo "release_tag set in environment"
+fi
+
+if [ -z "$instance_name" ]; then
+    instance_name="clinvar-ingest-${release_tag}"
+else
+    echo "instance_name set in environment"
 fi
 
 if [ "$JOB_WAIT" == "1" ]; then
@@ -16,9 +21,7 @@ fi
 
 set -u
 
-echo "Branch: $branch"
-
-job_name="clinvar-ingest-${branch}"
+job_name=$instance_name
 region="us-central1"
 
 # Global Variables
