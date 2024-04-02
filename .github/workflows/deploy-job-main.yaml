@@ -6,7 +6,6 @@ on:
     types: [published]
     branches:
       - main
-      - epic-112
 
 permissions:
   id-token: write
@@ -20,6 +19,13 @@ jobs:
         uses: actions/checkout@v3
         with:
           ref: ${{ github.event.workflow_run.head_branch }}
+          repository: github/actions-oidc-debugger          # debugging to blank line
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: ./.github/actions/actions-oidc-debugger
+      - name: Debug OIDC Claims
+        uses: ./.github/actions/actions-oidc-debugger
+        with:
+          audience: projects/522856288592/locations/global/workloadIdentityPools/clingen-actions-pool/providers/clingen-github-actions
 
       - name: authenticate to google cloud
         id: "auth"
@@ -38,7 +44,11 @@ jobs:
           export release_tag=${{ github.ref_name }}
           echo "branch=$branch" >> $GITHUB_ENV
           echo "commit=$commit" >> $GITHUB_ENV
-          echo "instance_name=clinvar-ingest-$branch" >> $GITHUB_ENV
+          if [ $branch != "HEAD" ]; then
+            echo "instance_name=clinvar-ingest-$branch" >> $GITHUB_ENV
+          else
+            echo "instance_name=clinvar-ingest-${release_tag}" >> $GITHUB_ENV
+          fi
           echo "release_tag=$release_tag" >> $GITHUB_ENV
 
       - name: build and deploy
