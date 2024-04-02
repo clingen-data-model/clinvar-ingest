@@ -122,3 +122,22 @@ def make_progress_logger(logger, fmt: str, max_value: int = 0, interval: int = 1
             log_progress.prev_value = current_value
 
     return log_progress
+
+
+def make_counter():
+    """
+    Create a counter that starts at 0 and increments by 1 each time it is iterated on.
+
+    Example:
+        >>> counter = make_counter()
+        >>> next(counter)
+        0
+        >>> next(counter)
+        1
+        >>> next(counter)
+        2
+    """
+    i = 0
+    while True:
+        yield i
+        i += 1

@@ -10,7 +10,8 @@ from typing import Any, Iterator, TextIO, Tuple
 
 import xmltodict
 
-import clinvar_ingest.model as model
+from clinvar_ingest.model.common import Model
+from clinvar_ingest.model.variation_archive import VariationArchive
 
 _logger = logging.getLogger("clinvar_ingest")
 
@@ -21,7 +22,7 @@ def construct_model(tag, item, jsonify_content=True):
     _logger.debug(f"construct_model: {tag=}, {item=}")
     if tag == "VariationArchive":
         _logger.debug("Returning new VariationArchive")
-        return model.VariationArchive.from_xml(item, jsonify_content=jsonify_content)
+        return VariationArchive.from_xml(item, jsonify_content=jsonify_content)
     else:
         raise ValueError(f"Unexpected tag: {tag} {item=}")
 
@@ -110,7 +111,7 @@ def _parse_xml_document(doc_str: str):
 
 def read_clinvar_xml(
     reader: TextIO, disassemble=True, jsonify_content=True
-) -> Iterator[model.Model]:
+) -> Iterator[Model]:
     """
     Generator function that reads a ClinVar Variation XML file and outputs objects.
     Accepts `reader` as a readable TextIO/BytesIO object, or a filename.

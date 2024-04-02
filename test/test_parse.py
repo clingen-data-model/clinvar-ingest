@@ -1,11 +1,20 @@
-from clinvar_ingest.model import (
+import json
+
+from clinvar_ingest.model.trait import (
+    ClinicalAssertionTrait,
+    ClinicalAssertionTraitSet,
+    Trait,
+    TraitMapping,
+    TraitSet,
+)
+from clinvar_ingest.model.variation_archive import (
     ClinicalAssertion,
+    ClinicalAssertionObservation,
     Gene,
     GeneAssociation,
+    RcvAccession,
     Submission,
     Submitter,
-    Trait,
-    TraitSet,
     Variation,
     VariationArchive,
 )
@@ -17,26 +26,40 @@ def test_read_original_clinvar_variation_2():
     Test a SimpleAllele record
     """
     filename = "test/data/original-clinvar-variation-2.xml"
-    # filename = "data/original-clinvar-variation-2.xml"
     with open(filename) as f:
         objects = list(read_clinvar_xml(f))
 
-    # gene, gene_association, variation, variation_archive
-    assert 12 == len(objects)
-    assert isinstance(objects[0], Variation)
-    assert isinstance(objects[1], Gene)
-    assert isinstance(objects[2], GeneAssociation)
-    assert isinstance(objects[3], Trait)
-    assert isinstance(objects[4], TraitSet)
-    assert isinstance(objects[5], Submitter)
-    assert isinstance(objects[6], Submission)
-    assert isinstance(objects[7], ClinicalAssertion)
-    assert isinstance(objects[8], Submitter)
-    assert isinstance(objects[9], Submission)
-    assert isinstance(objects[10], ClinicalAssertion)
-    assert isinstance(objects[11], VariationArchive)
+    # print("\n".join([str(dictify(o)) for o in objects]))
+    assert len(objects) == 21
+    expected_types = [
+        Variation,
+        Gene,
+        GeneAssociation,
+        TraitMapping,
+        TraitMapping,
+        Trait,
+        TraitSet,
+        Submitter,
+        Submission,
+        ClinicalAssertionObservation,
+        ClinicalAssertionTrait,
+        ClinicalAssertionTraitSet,
+        ClinicalAssertion,
+        Submitter,
+        Submission,
+        ClinicalAssertionObservation,
+        ClinicalAssertionTrait,
+        ClinicalAssertionTraitSet,
+        ClinicalAssertion,
+        RcvAccession,
+        VariationArchive,
+    ]
+    for i, obj in enumerate(objects):
+        assert isinstance(
+            obj, expected_types[i]
+        ), f"Expected {expected_types[i]} at index {i}, got {type(obj)}"
 
-    variation = objects[0]
+    variation = list(filter(lambda o: isinstance(o, Variation), objects))[0]
 
     # Test that extracted fields were there
     assert variation.id == "2"
@@ -49,8 +72,10 @@ def test_read_original_clinvar_variation_2():
     assert "SequenceLocation" in variation.content
 
     # Verify gene association
-    gene = objects[1]
-    gene_association = objects[2]
+    gene = list(filter(lambda o: isinstance(o, Gene), objects))[0]
+    gene_association = list(filter(lambda o: isinstance(o, GeneAssociation), objects))[
+        0
+    ]
     assert gene.id == "9907"
     assert gene.hgnc_id == "HGNC:22197"
     assert gene.symbol == "AP5Z1"
@@ -62,26 +87,50 @@ def test_read_original_clinvar_variation_2():
     assert gene_association.variation_id == "2"
 
     # SCVs - TODO build out further
-    scv = objects[7]
+    scv = list(filter(lambda o: isinstance(o, ClinicalAssertion), objects))[0]
     assert scv.assertion_id == "20155"
-    submitter = objects[5]
+    submitter = list(filter(lambda o: isinstance(o, Submitter), objects))[0]
     assert submitter.id == "3"
     assert submitter.current_name == "OMIM"
-    submission = objects[6]
+    submission = list(filter(lambda o: isinstance(o, Submission), objects))[0]
     assert submission.id == "3"
     assert submission.submission_date == "2017-01-26"
+    # Verify SCV traits are linked to VCV traits
+    scv_trait_0: ClinicalAssertionTrait = list(
+        filter(lambda o: isinstance(o, ClinicalAssertionTrait), objects)
+    )[0]
+    assert scv_trait_0.trait_id == "9580"
+    scv_trait_1 = list(
+        filter(lambda o: isinstance(o, ClinicalAssertionTrait), objects)
+    )[1]
+    assert scv_trait_1.trait_id == "9580"
 
-    scv = objects[10]
+    scv = list(filter(lambda o: isinstance(o, ClinicalAssertion), objects))[1]
     assert scv.assertion_id == "2865972"
-    submitter = objects[8]
+    submitter = list(filter(lambda o: isinstance(o, Submitter), objects))[1]
     assert submitter.id == "507826"
     assert submitter.current_name == "Paris Brain Institute, Inserm - ICM"
-    submission = objects[9]
+    submission = list(filter(lambda o: isinstance(o, Submission), objects))[1]
     assert submission.id == "507826"
     assert submission.submission_date == "2020-11-14"
 
+    # Rcv
+    rcv: RcvAccession = list(filter(lambda o: isinstance(o, RcvAccession), objects))[0]
+    assert rcv.id == "RCV000000012"
+    assert rcv.variation_archive_id == "VCV000000002"
+    assert rcv.variation_id == "2"
+    assert rcv.date_last_evaluated is None
+    assert rcv.version == 5
+    assert (
+        rcv.title
+        == "NM_014855.3(AP5Z1):c.80_83delinsTGCTGTAAACTGTAACTGTAAA (p.Arg27_Ile28delinsLeuLeuTer) AND Hereditary spastic paraplegia 48"
+    )
+    assert rcv.trait_set_id == "2"
+    assert rcv.review_status == "criteria provided, single submitter"
+    assert rcv.interpretation == "Pathogenic"
 
-def test_read_original_clinvar_variation_634266():
+
+def test_read_original_clinvar_variation_634266(log_conf):
     """
     Test a Genotype record
     """
@@ -89,33 +138,56 @@ def test_read_original_clinvar_variation_634266():
     with open(filename) as f:
         objects = list(read_clinvar_xml(f))
 
-    assert 22 == len(objects)
-    assert isinstance(objects[0], Variation)
-    assert isinstance(objects[1], Trait)
-    assert isinstance(objects[2], TraitSet)
-    assert isinstance(objects[3], Trait)
-    assert isinstance(objects[4], TraitSet)
-    assert isinstance(objects[5], Trait)
-    assert isinstance(objects[6], TraitSet)
-    assert isinstance(objects[7], Trait)
-    assert isinstance(objects[8], TraitSet)
+    assert len(objects) == 42
+    expected_types = [
+        Variation,
+        TraitMapping,
+        TraitMapping,
+        TraitMapping,
+        TraitMapping,
+        Trait,
+        TraitSet,
+        Trait,
+        TraitSet,
+        Trait,
+        TraitSet,
+        Trait,
+        TraitSet,
+        Submitter,
+        Submission,
+        ClinicalAssertionObservation,
+        ClinicalAssertionTrait,
+        ClinicalAssertionTraitSet,
+        ClinicalAssertion,
+        Submitter,
+        Submission,
+        ClinicalAssertionObservation,
+        ClinicalAssertionTrait,
+        ClinicalAssertionTraitSet,
+        ClinicalAssertion,
+        Submitter,
+        Submission,
+        ClinicalAssertionObservation,
+        ClinicalAssertionTrait,
+        ClinicalAssertionTraitSet,
+        ClinicalAssertion,
+        Submitter,
+        Submission,
+        ClinicalAssertionObservation,
+        ClinicalAssertionTrait,  # 30
+        ClinicalAssertionTraitSet,
+        ClinicalAssertion,
+        RcvAccession,
+        RcvAccession,
+        RcvAccession,
+        RcvAccession,
+        VariationArchive,
+    ]
 
-    assert isinstance(objects[9], Submitter)
-    assert isinstance(objects[10], Submission)
-    assert isinstance(objects[11], ClinicalAssertion)
-
-    assert isinstance(objects[12], Submitter)
-    assert isinstance(objects[13], Submission)
-    assert isinstance(objects[14], ClinicalAssertion)
-
-    assert isinstance(objects[15], Submitter)
-    assert isinstance(objects[16], Submission)
-    assert isinstance(objects[17], ClinicalAssertion)
-
-    assert isinstance(objects[18], Submitter)
-    assert isinstance(objects[19], Submission)
-    assert isinstance(objects[20], ClinicalAssertion)
-    assert isinstance(objects[21], VariationArchive)
+    for i, obj in enumerate(objects):
+        assert isinstance(
+            obj, expected_types[i]
+        ), f"Expected {expected_types[i]} at index {i}, got {type(obj)}"
 
     # Verify variation
     variation = objects[0]
@@ -135,7 +207,9 @@ def test_read_original_clinvar_variation_634266():
     ]
 
     # Verify variation archive
-    variation_archive = objects[21]
+    variation_archive = list(
+        filter(lambda o: isinstance(o, VariationArchive), objects)
+    )[0]
     assert variation_archive.id == "VCV000634266"
     assert variation_archive.name == "CYP2C19*12/*34"
     assert variation_archive.date_created == "2019-06-17"
@@ -159,52 +233,148 @@ def test_read_original_clinvar_variation_634266():
 
     # SCVs - TODO build out further
     # SCV 1
-    scv = objects[11]
-    assert scv.assertion_id == "1801318"
-    submitter = objects[9]
+    scv0: ClinicalAssertion = list(
+        filter(lambda o: isinstance(o, ClinicalAssertion), objects)
+    )[0]
+    assert scv0.assertion_id == "1801318"
+    submitter = list(filter(lambda o: isinstance(o, Submitter), objects))[0]
     assert submitter.id == "505961"
     assert (
         submitter.current_name == "Clinical Pharmacogenetics Implementation Consortium"
     )
-    submission = objects[10]
+    submission = list(filter(lambda o: isinstance(o, Submission), objects))[0]
     assert submission.id == "505961"
     assert submission.submission_date == "2018-03-01"
 
     # SCV 2
-    scv = objects[14]
-    assert scv.assertion_id == "1801467"
-    submitter = objects[12]
+    scv2 = list(filter(lambda o: isinstance(o, ClinicalAssertion), objects))[1]
+    assert scv2.assertion_id == "1801467"
+    submitter = list(filter(lambda o: isinstance(o, Submitter), objects))[1]
     assert submitter.id == "505961"
     assert (
         submitter.current_name == "Clinical Pharmacogenetics Implementation Consortium"
     )
-    submission = objects[13]
+    submission = list(filter(lambda o: isinstance(o, Submission), objects))[1]
     assert submission.id == "505961"
     assert submission.submission_date == "2018-03-01"
 
     # SCV 3
-    scv = objects[17]
-    assert scv.assertion_id == "1802126"
-    submitter = objects[15]
+    scv3 = list(filter(lambda o: isinstance(o, ClinicalAssertion), objects))[2]
+    assert scv3.assertion_id == "1802126"
+    submitter = list(filter(lambda o: isinstance(o, Submitter), objects))[2]
     assert submitter.id == "505961"
     assert (
         submitter.current_name == "Clinical Pharmacogenetics Implementation Consortium"
     )
-    submission = objects[16]
+    submission = list(filter(lambda o: isinstance(o, Submission), objects))[2]
     assert submission.id == "505961"
     assert submission.submission_date == "2018-03-01"
 
     # SCV 4
-    scv = objects[20]
-    assert scv.assertion_id == "1802127"
-    submitter = objects[18]
+    scv4 = list(filter(lambda o: isinstance(o, ClinicalAssertion), objects))[3]
+    assert scv4.assertion_id == "1802127"
+    submitter = list(filter(lambda o: isinstance(o, Submitter), objects))[3]
     assert submitter.id == "505961"
     assert (
         submitter.current_name == "Clinical Pharmacogenetics Implementation Consortium"
     )
-    submission = objects[19]
+    submission = list(filter(lambda o: isinstance(o, Submission), objects))[3]
     assert submission.id == "505961"
     assert submission.submission_date == "2018-03-01"
+
+    # Test a clinical_assertion_trait linked to a trait via medgen id
+
+    # ClinicalAssertion ID="1801318"
+    # Trait should be linked to 32268, medgen CN221265 via Preferred name
+    scv0_trait_set_id = scv0.clinical_assertion_trait_set_id
+    scv0_trait_set = list(
+        filter(
+            lambda o: isinstance(o, ClinicalAssertionTraitSet)
+            and o.id == scv0_trait_set_id,
+            objects,
+        )
+    )[0]
+    scv0_trait_ids = scv0_trait_set.clinical_assertion_trait_ids
+    assert len(scv0_trait_ids) == 1
+    scv0_traits: list[ClinicalAssertionTrait] = list(
+        filter(
+            lambda o: isinstance(o, ClinicalAssertionTrait) and o.id in scv0_trait_ids,
+            objects,
+        )
+    )
+    assert len(scv0_traits) == 1
+    assert scv0_traits[0].name == "Sertraline response"
+    assert scv0_traits[0].trait_id == "32268"
+    assert scv0_traits[0].medgen_id == "CN221265"
+
+    # ClinicalAssertion ID="1801467"
+    # Trait should be 16405, medgen CN077957 via Preferred name
+    scv2_trait_set_id = scv2.clinical_assertion_trait_set_id
+    scv2_trait_set = list(
+        filter(
+            lambda o: isinstance(o, ClinicalAssertionTraitSet)
+            and o.id == scv2_trait_set_id,
+            objects,
+        )
+    )[0]
+    scv2_trait_ids = scv2_trait_set.clinical_assertion_trait_ids
+    assert len(scv2_trait_ids) == 1
+    scv2_traits: list[ClinicalAssertionTrait] = list(
+        filter(
+            lambda o: isinstance(o, ClinicalAssertionTrait) and o.id in scv2_trait_ids,
+            objects,
+        )
+    )
+    assert len(scv2_traits) == 1
+    assert scv2_traits[0].name == "Voriconazole response"
+    assert scv2_traits[0].trait_id == "16405"
+    assert scv2_traits[0].medgen_id == "CN077957"
+
+    # ClinicalAssertion ID="1802126"
+    # Trait should be 32266, medgen CN221263 via Preferred name
+    scv3_trait_set_id = scv3.clinical_assertion_trait_set_id
+    scv3_trait_set = list(
+        filter(
+            lambda o: isinstance(o, ClinicalAssertionTraitSet)
+            and o.id == scv3_trait_set_id,
+            objects,
+        )
+    )[0]
+    scv3_trait_ids = scv3_trait_set.clinical_assertion_trait_ids
+    assert len(scv3_trait_ids) == 1
+    scv3_traits: list[ClinicalAssertionTrait] = list(
+        filter(
+            lambda o: isinstance(o, ClinicalAssertionTrait) and o.id in scv3_trait_ids,
+            objects,
+        )
+    )
+    assert len(scv3_traits) == 1
+    assert scv3_traits[0].name == "Citalopram response"
+    assert scv3_traits[0].trait_id == "32266"
+    assert scv3_traits[0].medgen_id == "CN221263"
+
+    # ClinicalAssertion ID="1802127"
+    # Trait should be 32267, medgen CN221264 via Preferred name
+    scv4_trait_set_id = scv4.clinical_assertion_trait_set_id
+    scv4_trait_set = list(
+        filter(
+            lambda o: isinstance(o, ClinicalAssertionTraitSet)
+            and o.id == scv4_trait_set_id,
+            objects,
+        )
+    )[0]
+    scv4_trait_ids = scv4_trait_set.clinical_assertion_trait_ids
+    assert len(scv4_trait_ids) == 1
+    scv4_traits: list[ClinicalAssertionTrait] = list(
+        filter(
+            lambda o: isinstance(o, ClinicalAssertionTrait) and o.id in scv4_trait_ids,
+            objects,
+        )
+    )
+    assert len(scv4_traits) == 1
+    assert scv4_traits[0].name == "Escitalopram response"
+    assert scv4_traits[0].trait_id == "32267"
+    assert scv4_traits[0].medgen_id == "CN221264"
 
 
 def test_read_original_clinvar_variation_1264328():
@@ -225,6 +395,171 @@ def test_read_original_clinvar_variation_1264328():
     assert isinstance(objects[5], VariationArchive)
     clinical_assertions = [obj for obj in objects if isinstance(obj, ClinicalAssertion)]
     assert 0 == len(clinical_assertions)
+
+
+def test_read_original_clinvar_variation_10():
+    """
+    This tests an IncludedRecord with no ClinicalAssertions.
+    Exercises this bug fix:
+    """
+    # filename = "test/data/original-clinvar-variation-10.xml"
+    filename = "test/data/original-clinvar-variation-10.xml"
+    with open(filename) as f:
+        objects = list(read_clinvar_xml(f))
+
+    scv372036 = [o for o in objects if isinstance(o, ClinicalAssertion)][0]
+    assert scv372036.assertion_id == "372036"
+    scv372036_trait_set = [
+        o
+        for o in objects
+        if isinstance(o, ClinicalAssertionTraitSet)
+        and o.id == scv372036.clinical_assertion_trait_set_id
+    ][0]
+
+    # This one is an example of a SCV that was submitted only with a medgen id,
+    # no name or other attributes on the submitted trait
+    # The ClinicalAssertionTrait should be linked to the Trait
+    # and copy its medgen id if there, but not the name
+    """
+    <TraitSet Type="Disease">
+          <Trait Type="Disease">
+            <XRef DB="MedGen" ID="C0392514" Type="CUI"/>
+          </Trait>
+        </TraitSet>
+    """
+
+    scv372036_trait_ids = scv372036_trait_set.clinical_assertion_trait_ids
+    assert len(scv372036_trait_ids) == 1
+    scv372036_traits: list[ClinicalAssertionTrait] = [
+        o
+        for o in objects
+        if isinstance(o, ClinicalAssertionTrait) and o.id in scv372036_trait_ids
+    ]
+    assert len(scv372036_traits) == 1
+    assert scv372036_traits[0].trait_id == "33108"
+    assert scv372036_traits[0].medgen_id == "C0392514"
+    # Name
+    # assert scv372036_traits[0].name == "Hereditary hemochromatosis"
+    assert scv372036_traits[0].name is None
+
+    # Check an observation with a trait
+    # ClinicalAssertion ID="3442424"
+    # SCV 3442424 has an observation with a traitset
+    # pylint: disable=W0105
+
+    """
+    <TraitSet DateLastEvaluated="2019-06-26" Type="Finding">
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0000496"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0000545"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0000163"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0000929"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0001626"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0002564"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0002721"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0012647"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0002719"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0011968"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0002242"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0002577"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0000098"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0010674"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0002353"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0001290"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0001250"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0001560"/>
+              </Trait>
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0001558"/>
+              </Trait>
+            </TraitSet>
+    """
+    scv = [
+        o
+        for o in objects
+        if isinstance(o, ClinicalAssertion) and o.assertion_id == "3442424"
+    ]
+    assert len(scv) == 1
+    scv = scv[0]
+    observations = [
+        o
+        for o in objects
+        if isinstance(o, ClinicalAssertionObservation)
+        and o.id in scv.clinical_assertion_observation_ids
+    ]
+    assert len(observations) == 5
+
+    # Match on XRef (line 1768)
+    # Submitted trait HP:0000836 should map to medgen trait C0020550
+    """
+    <TraitSet DateLastEvaluated="2020-05-05" Type="Finding">
+              <Trait Type="Finding" ClinicalFeaturesAffectedStatus="present">
+                <XRef DB="HP" ID="HP:0000836"/>
+              </Trait>
+            </TraitSet>
+    """
+    trait_mappings_medgen_C0020550 = [
+        o for o in objects if isinstance(o, TraitMapping) and o.medgen_id == "C0020550"
+    ]
+    assert len(trait_mappings_medgen_C0020550) == 8
+
+    """
+    Get trait set ids from the vcv
+    xq -x '//ClinVarVariationRelease/VariationArchive/InterpretedRecord/Interpretations/Interpretation/ConditionList/TraitSet/@ID' original-clinvar-variation-10.xml
+    """
+
+    clinical_assertion_traits = [
+        o for o in objects if isinstance(o, ClinicalAssertionTrait)
+    ]
+    # parse xrefs
+    for t in clinical_assertion_traits:
+        t.xrefs = [Trait.XRef(**json.loads(xref)) for xref in t.xrefs]
+    assert len(clinical_assertion_traits) > 0
+
+    traits_HP_0000836 = [
+        o
+        for o in objects
+        if isinstance(o, ClinicalAssertionTrait)
+        and len(
+            [xref for xref in o.xrefs if xref.db == "HP" and xref.id == "HP:0000836"]
+        )
+        > 0
+    ]
+    assert len(traits_HP_0000836) == 8
 
 
 if __name__ == "__main__":
