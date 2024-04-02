@@ -1,6 +1,6 @@
 import logging
 
-import httpx
+import requests
 
 import clinvar_ingest.config
 
@@ -16,7 +16,7 @@ def send_slack_message(message: str) -> None:
     else:
         slack_url = "https://slack.com/api/chat.postMessage"
         data = {"text": message, "channel": app_env.slack_channel}
-        resp = httpx.post(
+        resp = requests.post(
             slack_url,
             json=data,
             headers={"Authorization": f"Bearer {app_env.slack_token}"},
