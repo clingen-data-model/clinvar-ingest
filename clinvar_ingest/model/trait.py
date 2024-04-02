@@ -447,7 +447,9 @@ class ClinicalAssertionTrait(Model):
 
         """
         # TODO match submitted traits to normalized traits
-        _logger.debug("Matching clinical_assertion_trait %s to normalized traits", me)
+        _logger.debug(
+            "Matching clinical_assertion_trait %s to normalized traits", dictify(me)
+        )
 
         # Try to match by MedGen ID
         for t in reference_traits:

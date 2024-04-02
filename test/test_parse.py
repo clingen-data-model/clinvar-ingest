@@ -397,11 +397,12 @@ def test_read_original_clinvar_variation_1264328():
     assert 0 == len(clinical_assertions)
 
 
-def test_read_original_clinvar_variation_10(log_conf):
+def test_read_original_clinvar_variation_10():
     """
     This tests an IncludedRecord with no ClinicalAssertions.
     Exercises this bug fix:
     """
+    # filename = "test/data/original-clinvar-variation-10.xml"
     filename = "test/data/original-clinvar-variation-10.xml"
     with open(filename) as f:
         objects = list(read_clinvar_xml(f))
@@ -531,14 +532,24 @@ def test_read_original_clinvar_variation_10(log_conf):
               </Trait>
             </TraitSet>
     """
+    trait_mappings_medgen_C0020550 = [
+        o for o in objects if isinstance(o, TraitMapping) and o.medgen_id == "C0020550"
+    ]
+    assert len(trait_mappings_medgen_C0020550) == 8
 
-    traits_HP_0000836 = [o for o in objects if isinstance(o, ClinicalAssertionTrait)]
+    """
+    Get trait set ids from the vcv
+    xq -x '//ClinVarVariationRelease/VariationArchive/InterpretedRecord/Interpretations/Interpretation/ConditionList/TraitSet/@ID' original-clinvar-variation-10.xml
+    """
+
+    clinical_assertion_traits = [
+        o for o in objects if isinstance(o, ClinicalAssertionTrait)
+    ]
     # parse xrefs
-    for t in traits_HP_0000836:
+    for t in clinical_assertion_traits:
         t.xrefs = [Trait.XRef(**json.loads(xref)) for xref in t.xrefs]
-    assert len(traits_HP_0000836) > 0
-    print(traits_HP_0000836)
-    assert len([o for o in objects])
+    assert len(clinical_assertion_traits) > 0
+
     traits_HP_0000836 = [
         o
         for o in objects
@@ -547,9 +558,8 @@ def test_read_original_clinvar_variation_10(log_conf):
             [xref for xref in o.xrefs if xref.db == "HP" and xref.id == "HP:0000836"]
         )
         > 0
-        # and o.trait_id == "HP:0000836"
     ]
-    assert len(traits_HP_0000836) > 0
+    assert len(traits_HP_0000836) == 8
 
 
 if __name__ == "__main__":
