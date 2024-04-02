@@ -127,7 +127,8 @@ class ClinicalAssertionObservation(Model):
         del self_copy.clinical_assertion_trait_set
         if trait_set is not None:
             setattr(self_copy, "clinical_assertion_trait_set_id", trait_set.id)
-            yield trait_set
+            for subobj in trait_set.disassemble():
+                yield subobj
         else:
             setattr(self_copy, "clinical_assertion_trait_set_id", None)
         yield self
