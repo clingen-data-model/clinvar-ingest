@@ -12,9 +12,15 @@ if [ -z "$commit" ]; then
 else
     echo "commit set in environment"
 fi
+if [ -z "$release_tag" ]; then
+    release_tag="missing_release_tag" # ensure underscore separators for BQ naming
+else
+    echo "release_tag set in environment"
+fi
 
 echo "Branch: $branch"
 echo "Commit: $commit"
+echo "Release tag: $release_tag"
 
 set -u
 
@@ -27,13 +33,6 @@ image_tag=workflow-py-$commit
 image=gcr.io/clingen-dev/clinvar-ingest:$image_tag
 pipeline_service_account=clinvar-ingest-pipeline@clingen-dev.iam.gserviceaccount.com
 deployment_service_account=clinvar-ingest-deployment@clingen-dev.iam.gserviceaccount.com
-
-
-if gcloud run jobs list --region us-central1 | awk '{print $2}' | grep "^$instance_name$"  ; then
-    echo "Cloud Run Job $instance_name already exists"
-    echo "Deleting Cloud Run Job"
-    gcloud run jobs delete $instance_name --region $region --quiet
-fi
 
 ################################################################
 # Build the image
@@ -58,12 +57,19 @@ gcloud builds submit \
 
 ################################################################
 # Deploy job
-
-gcloud run jobs create $instance_name \
+if gcloud run jobs list --region us-central1 | awk '{print $2}' | grep "^$instance_name$"  ; then
+    echo "Cloud Run Job $instance_name already exists - updating it"
+    command="update"
+else
+    echo "Cloud Run Job $instance_name doesn't exist - creating it"
+    command="create"
+fi
+gcloud run jobs $command $instance_name \
     --cpu=2 \
     --memory=8Gi \
     --task-timeout=10h \
     --image=$image \
     --region=$region \
     --service-account=$pipeline_service_account \
-    --set-env-vars=CLINVAR_INGEST_BUCKET=$clinvar_ingest_bucket
+    --set-env-vars=CLINVAR_INGEST_BUCKET=$clinvar_ingest_bucket \
+    --set-secrets=CLINVAR_INGEST_SLACK_TOKEN=clinvar-ingest-slack-token:latest

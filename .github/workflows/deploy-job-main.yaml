@@ -2,10 +2,8 @@ name: Deploy Job
 run-name: Deploy ${{ github.event.workflow_run.head_branch }} by @${{ github.actor }}
 
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types:
-      - completed
+  release:
+    types: [published]
     branches:
       - main
       - epic-112
@@ -16,7 +14,7 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    # if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: checkout
         uses: actions/checkout@v3
@@ -37,9 +35,11 @@ jobs:
         run: |
           export branch=${{ github.event.workflow_run.head_branch }}
           export commit=${{ github.event.workflow_run.head_sha }}
+          export release_tag=${{ github.ref_name }}
           echo "branch=$branch" >> $GITHUB_ENV
           echo "commit=$commit" >> $GITHUB_ENV
           echo "instance_name=clinvar-ingest-$branch" >> $GITHUB_ENV
+          echo "release_tag=$release_tag" >> $GITHUB_ENV
 
       - name: build and deploy
         run: |

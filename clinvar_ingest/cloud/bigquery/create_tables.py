@@ -16,6 +16,7 @@ from google.cloud.bigquery.dataset import Dataset, DatasetReference
 from clinvar_ingest.api.model.requests import (
     CreateExternalTablesRequest,
     CreateInternalTablesRequest,
+    DropExternalTablesRequest,
 )
 from clinvar_ingest.cloud.gcs import parse_blob_uri
 from clinvar_ingest.config import get_env
@@ -49,7 +50,8 @@ def schema_file_path_for_table(table_name: str) -> str:
     """
     Returns the path to the BigQuery schema file for the given table name.
     """
-    schema_path = bq_schemas_dir / f"{table_name}.bq.json"
+    raw_table_name = table_name.replace("_external", "")
+    schema_path = bq_schemas_dir / f"{raw_table_name}.bq.json"
     return schema_path
 
 
@@ -128,13 +130,14 @@ def run_create_external_tables(
     # TODO maybe do something more clever if it fails part way through
     # but maybe not, it could be useful to see the partial results
     for table_name, gcs_blob_path in args.source_table_paths.items():
+        external_table_name = table_name + "_external"
         table = create_table(
-            table_name,
+            external_table_name,
             dataset=dataset_obj,
             blob_uri=gcs_blob_path.root,
             client=bq_client,
         )
-        outputs[table_name] = table
+        outputs[external_table_name] = table
     return outputs
 
 
@@ -199,5 +202,20 @@ def create_internal_tables(
         # Wait for job to complete
         job_result = create_job.result()
         _logger.info("Job %s completed: %s", create_job.job_id, job_result)
+
+    return args
+
+
+def drop_external_tables(
+    args: DropExternalTablesRequest,
+) -> DropExternalTablesRequest:
+    drop_tables = [
+        f"DROP TABLE {bq_table};" for table_name, bq_table in args.root.items()
+    ]
+    drop_tables_query = " ".join(drop_tables)
+    _logger.info(f"Drop external tables query: {drop_tables_query}")
+
+    bq_client = bigquery.Client()
+    bq_client.query(drop_tables_query)
 
     return args
