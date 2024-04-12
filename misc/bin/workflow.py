@@ -87,10 +87,9 @@ env = get_env()
 # Workflow specific input (which also comes from the env)
 wf_input = ClinvarFTPWatcherRequest(**os.environ)
 
-reprocess_prior_release = wf_input.released != wf_input.last_modified
 workflow_execution_id = create_execution_id(
     wf_input.release_date.isoformat().replace("-", "_"),
-    reprocess_prior_release
+    wf_input.released != wf_input.last_modified
 )
 workflow_id_message = f"Workflow Execution ID: {workflow_execution_id}"
 send_slack_message("Starting " + workflow_id_message)
