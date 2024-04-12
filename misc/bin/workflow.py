@@ -68,7 +68,7 @@ _logger = logging.getLogger("clinvar-ingest-workflow")
 def create_execution_id(seed: str):
     if env.release_tag is None:
         raise RuntimeError("Must specify 'release_tag' in the environment")
-    return f"{seed}_{env.release_tag}"
+    return f"clinvar_{seed}_{env.release_tag}"
 
 
 def _get_gcs_client() -> GCSClient:
@@ -90,7 +90,7 @@ reprocess_prior_release = "_reprocessed" if wf_input.released != wf_input.last_m
 workflow_execution_base = create_execution_id(
     wf_input.release_date.isoformat().replace("-", "_")
 )
-workflow_execution_id = f"clinvar_{workflow_execution_base}{reprocess_prior_release}"
+workflow_execution_id = f"{workflow_execution_base}{reprocess_prior_release}"
 workflow_id_message = f"Workflow Execution ID: {workflow_execution_id}"
 send_slack_message("Starting " + workflow_id_message)
 _logger.info(workflow_id_message)
