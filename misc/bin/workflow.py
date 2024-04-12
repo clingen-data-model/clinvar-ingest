@@ -65,10 +65,11 @@ _logger = logging.getLogger("clinvar-ingest-workflow")
 # }
 
 
-def create_execution_id(seed: str, reprocessed: str):
+def create_execution_id(seed: str, reprocessed: bool = False) -> str:
     if env.release_tag is None:
         raise RuntimeError("Must specify 'release_tag' in the environment")
-    return f"clinvar_{seed}_{env.release_tag}{reprocessed}"
+    repro = "_reprocessed" if reprocessed else ""
+    return f"clinvar_{seed}_{env.release_tag}{repro}"
 
 
 def _get_gcs_client() -> GCSClient:
@@ -86,7 +87,7 @@ env = get_env()
 # Workflow specific input (which also comes from the env)
 wf_input = ClinvarFTPWatcherRequest(**os.environ)
 
-reprocess_prior_release = "_reprocessed" if wf_input.released != wf_input.last_modified else ""
+reprocess_prior_release = wf_input.released != wf_input.last_modified
 workflow_execution_id = create_execution_id(
     wf_input.release_date.isoformat().replace("-", "_"),
     reprocess_prior_release
