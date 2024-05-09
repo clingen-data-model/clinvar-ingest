@@ -2,6 +2,7 @@ import gzip
 import json
 import logging
 import pathlib
+from typing import IO, Any, TextIO
 
 from clinvar_ingest.cloud.gcs import blob_reader, blob_size, blob_writer
 from clinvar_ingest.fs import BinaryOpenMode, ReadCounter, fs_open
@@ -19,7 +20,9 @@ def _st_size(filepath: str):
         return pathlib.Path(filepath).stat().st_size
 
 
-def _open(filepath: str, mode: BinaryOpenMode = BinaryOpenMode.READ):
+def _open(
+    filepath: str, mode: BinaryOpenMode = BinaryOpenMode.READ
+) -> ReadCounter | TextIO | IO[Any] | gzip.GzipFile:
     _logger.debug(f"Opening file: {filepath}, mode: {mode}")
     if filepath.startswith("gs://"):
         if mode == BinaryOpenMode.WRITE:
@@ -31,7 +34,7 @@ def _open(filepath: str, mode: BinaryOpenMode = BinaryOpenMode.READ):
 
         if filepath.endswith(".gz"):
             # wraps BlobReader in gzip.GzipFile, which implements .tell()
-            return gzip.open(f, mode=mode)
+            return gzip.open(f, mode=str(mode))
         else:
             # Need to wrap in a counter so we can track bytes read
             return ReadCounter(f)
@@ -69,7 +72,7 @@ def parse_and_write_files(
     Returns the dict of types to their output files.
     """
     open_output_files = {}
-    with _open(input_filename) as f_in:
+    with _open(input_filename) as f_in:  # type: ignore
         releaseinfo = get_clinvar_xml_releaseinfo(f_in)
         release_date = releaseinfo["release_date"]
         _logger.debug(f"Parsing release date: {release_date}")
@@ -89,13 +92,11 @@ def parse_and_write_files(
     )
 
     try:
-        with _open(input_filename) as f_in:
+        with _open(input_filename) as f_in:  # type: ignore
             byte_log_progress(0)  # initialize
             vcv_log_progress(0)  # initialize
 
-            for obj in read_clinvar_xml(
-                f_in, disassemble=disassemble, jsonify_content=jsonify_content
-            ):
+            for obj in read_clinvar_xml(f_in, disassemble=disassemble):
                 entity_type = obj.entity_type
                 f_out = get_open_file_for_writing(
                     open_output_files,
@@ -103,6 +104,15 @@ def parse_and_write_files(
                     label=entity_type,
                 )
                 obj_dict = dictify(obj)
+                assert isinstance(obj_dict, dict), obj_dict
+
+                # jsonify content type fields if requested
+                if jsonify_content:
+                    if hasattr(type(obj), "jsonifiable_fields"):
+                        for field in getattr(type(obj), "jsonifiable_fields")():
+                            if field in obj_dict:
+                                obj_dict[field] = json.dumps(obj_dict[field])
+
                 obj_dict["release_date"] = release_date
                 f_out.write(json.dumps(obj_dict).encode("utf-8"))
                 f_out.write("\n".encode("utf-8"))

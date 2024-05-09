@@ -2,13 +2,14 @@ import dataclasses
 import logging
 import re
 from abc import ABCMeta, abstractmethod
-from typing import Union
+from typing import Any
 
 _logger = logging.getLogger("clinvar_ingest")
 
 
 class Model(object, metaclass=ABCMeta):
     @staticmethod
+    @abstractmethod
     def from_xml(inp: dict):
         """
         Constructs an instance of this class using the XML structure parsed into a dict.
@@ -26,6 +27,11 @@ class Model(object, metaclass=ABCMeta):
         Decomposes this instance into instances of contained Model classes, and itself.
         An object referred to by another will be returned before the other.
         """
+        raise NotImplementedError()
+
+    @staticmethod
+    @abstractmethod
+    def jsonifiable_fields() -> list[str]:
         raise NotImplementedError()
 
     def __repr__(self) -> str:
@@ -65,7 +71,7 @@ def model_copy(obj):
     return cls(**kwargs)
 
 
-def int_or_none(s: Union[str, None]) -> Union[int, None]:
+def int_or_none(s: str | None) -> int | None:
     if s is None:
         return None
     return int(s)
@@ -96,7 +102,9 @@ def sanitize_date(s: str) -> str:
         raise ValueError(f"Invalid date: {s}, must match {pattern_str}")
 
 
-def dictify(obj):
+def dictify(
+    obj,
+) -> dict | list[dict | Any]:  # recursive type truncated at 2nd level
     """
     Recursively dictify Python objects into dicts. Objects may be Model instances.
     """

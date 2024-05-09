@@ -138,7 +138,7 @@ class ClinicalAssertionObservation(Model):
                 yield subobj
         else:
             setattr(self_copy, "clinical_assertion_trait_set_id", None)
-        yield self
+        yield self_copy
 
 
 @dataclasses.dataclass
@@ -306,6 +306,10 @@ class Gene(Model):
     id: str
     symbol: str
     full_name: str
+
+    @staticmethod
+    def jsonifiable_fields() -> List[str]:
+        return []
 
     def __post_init__(self):
         self.entity_type = "gene"

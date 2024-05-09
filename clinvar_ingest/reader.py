@@ -18,11 +18,11 @@ _logger = logging.getLogger("clinvar_ingest")
 QUEUE_STOP_VALUE = -1
 
 
-def construct_model(tag, item, jsonify_content=True):
+def construct_model(tag, item):
     _logger.debug(f"construct_model: {tag=}, {item=}")
     if tag == "VariationArchive":
         _logger.debug("Returning new VariationArchive")
-        return VariationArchive.from_xml(item, jsonify_content=jsonify_content)
+        return VariationArchive.from_xml(item)
     else:
         raise ValueError(f"Unexpected tag: {tag} {item=}")
 
@@ -102,16 +102,14 @@ def _handle_text_nodes(path, key, value) -> Tuple[Any, Any]:
     return (key, value)
 
 
-def _parse_xml_document(doc_str: str):
+def _parse_xml_document(doc_str: str | bytes):
     """
     Reads an XML document from a string.
     """
     return xmltodict.parse(doc_str, postprocessor=_handle_text_nodes)
 
 
-def read_clinvar_xml(
-    reader: TextIO, disassemble=True, jsonify_content=True
-) -> Iterator[Model]:
+def read_clinvar_xml(reader: TextIO, disassemble=True) -> Iterator[Model]:
     """
     Generator function that reads a ClinVar Variation XML file and outputs objects.
     Accepts `reader` as a readable TextIO/BytesIO object, or a filename.
@@ -151,9 +149,7 @@ def read_clinvar_xml(
                         f"parsed dict had more than 1 key: ({elem_d.keys()}) {elem_d}"
                     )
                 tag, contents = list(elem_d.items())[0]
-                model_obj = construct_model(
-                    tag, contents, jsonify_content=jsonify_content
-                )
+                model_obj = construct_model(tag, contents)
                 if disassemble:
                     for subobj in model_obj.disassemble():
                         yield subobj
