@@ -1,5 +1,3 @@
-import json
-
 from clinvar_ingest.model.trait import (
     ClinicalAssertionTrait,
     ClinicalAssertionTraitSet,
@@ -69,7 +67,11 @@ def test_read_original_clinvar_variation_2():
     # Test that included fields were not included in content
     assert "@VariationID" not in variation.content
     assert "GeneList" not in variation.content
-    assert "SequenceLocation" in variation.content
+    assert "SequenceLocation" in variation.content["Location"]
+    assert (
+        variation.content["OtherNameList"]["Name"]["$"]
+        == "AP5Z1, 4-BP DEL/22-BP INS, NT80"
+    )
 
     # Verify gene association
     gene = list(filter(lambda o: isinstance(o, Gene), objects))[0]
@@ -229,7 +231,13 @@ def test_read_original_clinvar_variation_634266(log_conf):
 
     # Test that included fields were not included in content
     # assert "@VariationID" not in variation.content  # TODO - broken
-    assert "GeneList" in variation.content
+    assert variation.content["Haplotype"][0]["@VariationID"] == "633847"
+    assert (
+        variation.content["Haplotype"][0]["SimpleAllele"][0]["GeneList"]["Gene"][
+            "@Symbol"
+        ]
+        == "CYP2C19"
+    )
 
     # SCVs - TODO build out further
     # SCV 1
@@ -546,8 +554,8 @@ def test_read_original_clinvar_variation_10():
         o for o in objects if isinstance(o, ClinicalAssertionTrait)
     ]
     # parse xrefs
-    for t in clinical_assertion_traits:
-        t.xrefs = [Trait.XRef(**json.loads(xref)) for xref in t.xrefs]
+    # for t in clinical_assertion_traits:
+    #     t.xrefs = [Trait.XRef(**json.loads(xref)) for xref in t.xrefs]
     assert len(clinical_assertion_traits) > 0
 
     traits_HP_0000836 = [
