@@ -65,7 +65,7 @@ def get_open_file_for_writing(
 
 def parse_and_write_files(
     input_filename: str, output_directory: str, disassemble=True, jsonify_content=True
-) -> list:
+) -> dict[str, str]:
     """
     Parses input file, writes outputs to output directory.
 
@@ -111,7 +111,12 @@ def parse_and_write_files(
                     if hasattr(type(obj), "jsonifiable_fields"):
                         for field in getattr(type(obj), "jsonifiable_fields")():
                             if field in obj_dict:
-                                obj_dict[field] = json.dumps(obj_dict[field])
+                                if isinstance(obj_dict[field], list):
+                                    obj_dict[field] = [
+                                        json.dumps(i) for i in obj_dict[field]
+                                    ]
+                                else:
+                                    obj_dict[field] = json.dumps(obj_dict[field])
 
                 obj_dict["release_date"] = release_date
                 f_out.write(json.dumps(obj_dict).encode("utf-8"))

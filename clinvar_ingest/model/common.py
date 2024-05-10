@@ -32,6 +32,32 @@ class Model(object, metaclass=ABCMeta):
     @staticmethod
     @abstractmethod
     def jsonifiable_fields() -> list[str]:
+        """
+        List of field names which can be serialized to JSON upon the object's serialization
+        for output. Field names which map to lists of objects will have each item in the
+        list serialized to JSON individually, and the list will remain a list.
+
+        Example:
+            >>> class Foo(Model):
+            ...     def __init__(self, a, b, c):
+            ...         self.a = a
+            ...         self.b = b
+            ...         self.c = c
+            ...     @staticmethod
+            ...     def jsonifiable_fields():
+            ...         return ["a", "c"]
+            >>> foo = Foo(1, 2, 3)
+            >>> foo.a = {"x": 1}
+            >>> foo.b = {"y": 2}
+            >>> foo.c = [{"z1": 3}, {"z2": 4}]
+            >>> foo_dict = dictify(foo)
+            >>> foo_dict["a"]
+            '{"x": 1}'
+            >>> foo_dict["b"]
+            {'y': 2}
+            >>> foo_dict["c"]
+            ['{"z1": 3}', '{"z2": 4}']
+        """
         raise NotImplementedError()
 
     def __repr__(self) -> str:

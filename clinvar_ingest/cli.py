@@ -20,8 +20,8 @@ def parse_args(argv):
     )
     parse_sp.add_argument(
         "--jsonify-content",
-        type=bool,
-        default=True,
+        choices=["true", "false"],
+        default="true",
         help="JSON encode content fields (default: true)",
     )
 

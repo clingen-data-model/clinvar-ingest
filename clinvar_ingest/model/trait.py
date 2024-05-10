@@ -48,6 +48,10 @@ class TraitMetadata(Model):
     xrefs: List[Trait.XRef]
 
     @staticmethod
+    def jsonifiable_fields() -> List[str]:
+        return ["xrefs"]
+
+    @staticmethod
     def from_xml(inp: dict):
         # _logger.info(f"TraitMetadata.from_xml(inp={json.dumps(inp)})")
 
@@ -622,6 +626,10 @@ class TraitMapping(Model):
     mapping_ref: str
     medgen_name: str
     medgen_id: str
+
+    @staticmethod
+    def jsonifiable_fields() -> List[str]:
+        return []
 
     def __post_init__(self):
         self.entity_type = "trait_mapping"
