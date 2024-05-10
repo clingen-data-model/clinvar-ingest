@@ -121,24 +121,24 @@ class TraitMetadata(Model):
 @dataclasses.dataclass
 class Trait(Model):
     id: str
-    disease_mechanism_id: int
+    disease_mechanism_id: int | None
     name: str
     attribute_content: List[str]
-    mode_of_inheritance: str
-    ghr_links: str
-    keywords: List[str]
-    gard_id: int
+    mode_of_inheritance: str | None
+    ghr_links: str | None
+    keywords: List[str] | None
+    gard_id: int | None
     medgen_id: str
-    public_definition: str
+    public_definition: str | None
     type: str
-    symbol: str
-    disease_mechanism: str
+    symbol: str | None
+    disease_mechanism: str | None
     alternate_symbols: List[str]
-    gene_reviews_short: str
+    gene_reviews_short: str | None
     alternate_names: List[str]
     xrefs: List[str]
 
-    content: str
+    content: dict
 
     @staticmethod
     def jsonifiable_fields() -> List[str]:
