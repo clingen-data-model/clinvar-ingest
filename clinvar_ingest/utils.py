@@ -2,7 +2,7 @@ import time
 from typing import Any, List
 
 
-def extract_oneof(d: dict, *keys: List[Any]) -> Any:
+def extract_oneof(d: dict, *keys: Any) -> Any:
     """
     For each key in `keys`, if key exists, remove it and return a
     tuple of the key and the value. If not, try the next key.
@@ -15,7 +15,7 @@ def extract_oneof(d: dict, *keys: List[Any]) -> Any:
     return None
 
 
-def extract(d: dict, *keys: List[Any]) -> Any:
+def extract(d: dict, *keys: Any) -> Any:
     """
     For the path of `keys`, get each value in succession. If any key does not exist,
     return None. If all keys exist, return the value of the last key.
@@ -31,7 +31,7 @@ def extract(d: dict, *keys: List[Any]) -> Any:
             return None
 
 
-def get(d: dict, *keys: List[Any]) -> Any:
+def get(d: dict, *keys: Any) -> Any:
     """
     Traverses the path of `keys` in `d` and returns the value.
     If any key does not exist, returns None.

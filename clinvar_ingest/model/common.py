@@ -2,14 +2,15 @@ import dataclasses
 import logging
 import re
 from abc import ABCMeta, abstractmethod
-from typing import Union
+from typing import Any
 
 _logger = logging.getLogger("clinvar_ingest")
 
 
 class Model(object, metaclass=ABCMeta):
     @staticmethod
-    def from_xml(inp: dict, jsonify_content=True):
+    @abstractmethod
+    def from_xml(inp: dict):
         """
         Constructs an instance of this class using the XML structure parsed into a dict.
 
@@ -25,6 +26,37 @@ class Model(object, metaclass=ABCMeta):
         """
         Decomposes this instance into instances of contained Model classes, and itself.
         An object referred to by another will be returned before the other.
+        """
+        raise NotImplementedError()
+
+    @staticmethod
+    @abstractmethod
+    def jsonifiable_fields() -> list[str]:
+        """
+        List of field names which can be serialized to JSON upon the object's serialization
+        for output. Field names which map to lists of objects will have each item in the
+        list serialized to JSON individually, and the list will remain a list.
+
+        Example:
+            >>> class Foo(Model):
+            ...     def __init__(self, a, b, c):
+            ...         self.a = a
+            ...         self.b = b
+            ...         self.c = c
+            ...     @staticmethod
+            ...     def jsonifiable_fields():
+            ...         return ["a", "c"]
+            >>> foo = Foo(1, 2, 3)
+            >>> foo.a = {"x": 1}
+            >>> foo.b = {"y": 2}
+            >>> foo.c = [{"z1": 3}, {"z2": 4}]
+            >>> foo_dict = dictify(foo)
+            >>> foo_dict["a"]
+            '{"x": 1}'
+            >>> foo_dict["b"]
+            {'y': 2}
+            >>> foo_dict["c"]
+            ['{"z1": 3}', '{"z2": 4}']
         """
         raise NotImplementedError()
 
@@ -65,7 +97,7 @@ def model_copy(obj):
     return cls(**kwargs)
 
 
-def int_or_none(s: Union[str, None]) -> Union[int, None]:
+def int_or_none(s: str | None) -> int | None:
     if s is None:
         return None
     return int(s)
@@ -96,7 +128,9 @@ def sanitize_date(s: str) -> str:
         raise ValueError(f"Invalid date: {s}, must match {pattern_str}")
 
 
-def dictify(obj):
+def dictify(
+    obj,
+) -> dict | list[dict | Any]:  # recursive type truncated at 2nd level
     """
     Recursively dictify Python objects into dicts. Objects may be Model instances.
     """

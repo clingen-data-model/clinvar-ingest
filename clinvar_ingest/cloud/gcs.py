@@ -3,10 +3,12 @@ import queue
 import subprocess
 import threading
 import time
+from io import TextIOWrapper
 from pathlib import Path, PurePath
 
 import requests
 from google.cloud import storage
+from google.cloud.storage.fileio import BlobReader, BlobWriter
 
 from clinvar_ingest.utils import make_progress_logger
 
@@ -47,26 +49,26 @@ def copy_file_to_bucket(
 
 def blob_writer(
     blob_uri: str, client: storage.Client = None, binary=True
-) -> storage.Blob:
+) -> BlobWriter | TextIOWrapper:
     """
     Returns a file-like object that can be used to write to the blob at `blob_uri`
     """
     if client is None:
         client = _get_gcs_client()
     blob = parse_blob_uri(blob_uri, client=client)
-    return blob.open("wb" if binary else "w")
+    return blob.open("wb" if binary else "w")  # type: ignore
 
 
 def blob_reader(
     blob_uri: str, client: storage.Client = None, binary=True
-) -> storage.Blob:
+) -> BlobReader | TextIOWrapper:
     """
     Returns a file-like object that can be used to read from the blob at `blob_uri`
     """
     if client is None:
         client = _get_gcs_client()
     blob = parse_blob_uri(blob_uri, client=client)
-    return blob.open("rb" if binary else "r")
+    return blob.open("rb" if binary else "r")  # type: ignore
 
 
 def blob_size(blob_uri: str, client: storage.Client = None) -> int:
@@ -142,7 +144,7 @@ def http_download_curl(
         stderr=subprocess.PIPE,
     )
 
-    def reader(pipe: subprocess.PIPE, q: queue.Queue):
+    def reader(pipe, q: queue.Queue):
         try:
             with pipe:
                 for line in iter(pipe.readline, b""):

@@ -1,4 +1,3 @@
-import json
 from typing import List
 
 from clinvar_ingest.model.common import dictify
@@ -36,7 +35,7 @@ def test_trait_from_xml_32():
     interp_traitset = interp["ConditionList"]["TraitSet"]
     raw_trait = interp_traitset["Trait"]  # only 1 trait in this example
 
-    trait = Trait.from_xml(raw_trait)
+    trait: Trait = Trait.from_xml(raw_trait)
 
     assert trait.id == "9592"
     assert trait.type == "Disease"
@@ -130,7 +129,7 @@ def test_trait_from_xml_32():
         },
     ]
     assert unordered_dict_list_equal(
-        expected_trait_xrefs, dictify([json.loads(x) for x in trait.xrefs])
+        expected_trait_xrefs, [dictify(x) for x in trait.xrefs]
     )
 
 
@@ -151,9 +150,9 @@ def test_trait_from_xml_6619():
     # This trait has a preferred symbol
     assert trait.symbol == "ARVD"
 
-    # This trait has multiple XRefs on Name(Preffered) and Name(Alternate)
-    trait_xrefs = dictify([json.loads(x) for x in trait.xrefs])
-    ## Name(Preffered)
+    # This trait has multiple XRefs on Name(Preferred) and Name(Alternate)
+    trait_xrefs = [dictify(x) for x in trait.xrefs]
+    ## Name(Preferred)
     assert {
         "db": "Genetic Alliance",
         "id": "Arrhythmogenic+Right+Ventricular+Cardiomyopathy/587",
@@ -230,15 +229,13 @@ def test_trait_from_xml_3510():
     # This trait has an attribute_content array because it has multiple GARD ids
     assert len(trait.attribute_content) == 1
     assert trait.attribute_content == [
-        json.dumps(
-            {
-                "Attribute": {
-                    "@Type": "GARD id",
-                    "@integerValue": "5289",
-                },
-                "XRef": {"@ID": "5289", "@DB": "Office of Rare Diseases"},
-            }
-        )
+        {
+            "Attribute": {
+                "@Type": "GARD id",
+                "@integerValue": "5289",
+            },
+            "XRef": {"@ID": "5289", "@DB": "Office of Rare Diseases"},
+        }
     ]
 
 
@@ -269,7 +266,7 @@ def test_trait_from_xml_406155():
         "type": None,
         "ref_field": "public_definition",
         "ref_field_element": None,
-    } in dictify([json.loads(x) for x in trait.xrefs])
+    } in [dictify(x) for x in trait.xrefs]
 
 
 def test_trait_set_from_xml_10():
@@ -324,7 +321,7 @@ def test_trait_set_from_xml_10():
     ]
 
     # test content
-    assert ts13451.content == json.dumps({"@ContributesToAggregateClinsig": "true"})
+    assert ts13451.content == {"@ContributesToAggregateClinsig": "true"}
 
 
 def test_trait_mapping_10():

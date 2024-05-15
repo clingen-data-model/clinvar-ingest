@@ -21,7 +21,7 @@ def run_parse(args):
         args.input_filename,
         args.output_directory,
         disassemble=args.disassemble,
-        jsonify_content=args.jsonify_content,
+        jsonify_content=args.jsonify_content == "true",
     )
     print(output_files)
 

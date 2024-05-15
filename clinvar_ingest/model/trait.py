@@ -47,10 +47,12 @@ class TraitMetadata(Model):
     alternate_names: List[str]
     xrefs: List[Trait.XRef]
 
-    # content: dict
+    @staticmethod
+    def jsonifiable_fields() -> List[str]:
+        return ["xrefs"]
 
     @staticmethod
-    def from_xml(inp: dict, jsonify_content=True):
+    def from_xml(inp: dict):
         # _logger.info(f"TraitMetadata.from_xml(inp={json.dumps(inp)})")
 
         id = extract(inp, "@ID")
@@ -119,24 +121,28 @@ class TraitMetadata(Model):
 @dataclasses.dataclass
 class Trait(Model):
     id: str
-    disease_mechanism_id: int
+    disease_mechanism_id: int | None
     name: str
     attribute_content: List[str]
-    mode_of_inheritance: str
-    ghr_links: str
-    keywords: List[str]
-    gard_id: int
+    mode_of_inheritance: str | None
+    ghr_links: str | None
+    keywords: List[str] | None
+    gard_id: int | None
     medgen_id: str
-    public_definition: str
+    public_definition: str | None
     type: str
-    symbol: str
-    disease_mechanism: str
+    symbol: str | None
+    disease_mechanism: str | None
     alternate_symbols: List[str]
-    gene_reviews_short: str
+    gene_reviews_short: str | None
     alternate_names: List[str]
     xrefs: List[str]
 
-    content: str
+    content: dict
+
+    @staticmethod
+    def jsonifiable_fields() -> List[str]:
+        return ["content", "attribute_content", "xrefs"]
 
     class XRef:
         def __init__(
@@ -166,10 +172,10 @@ class Trait(Model):
         self.entity_type = "trait"
 
     @staticmethod
-    def from_xml(inp: dict, jsonify_content=True) -> Trait:
+    def from_xml(inp: dict) -> Trait:
         _logger.debug(f"Trait.from_xml(inp={json.dumps(inp)})")
 
-        trait_metadata = TraitMetadata.from_xml(inp, jsonify_content=jsonify_content)
+        trait_metadata = TraitMetadata.from_xml(inp)
 
         # TODO the logic here is the same as Preferred and Alternate Name
         # Preferred Symbol (Symbol type=Preferred)
@@ -366,10 +372,6 @@ class Trait(Model):
             attribute_content=attribute_set,
             content=inp,
         )
-        if jsonify_content:
-            obj.content = json.dumps(inp)
-            obj.attribute_content = [json.dumps(a) for a in attribute_set]
-            obj.xrefs = [json.dumps(dictify(x)) for x in all_xrefs]
         return obj
 
     def disassemble(self):
@@ -382,28 +384,26 @@ class TraitSet(Model):
     type: str
     traits: List[Trait]
 
-    content: str
+    content: dict
+
+    @staticmethod
+    def jsonifiable_fields() -> List[str]:
+        return ["content"]
 
     def __post_init__(self):
         self.trait_ids = [t.id for t in self.traits]
         self.entity_type = "trait_set"
 
     @staticmethod
-    def from_xml(inp: dict, jsonify_content=True):
+    def from_xml(inp: dict):
         _logger.debug(f"TraitSet.from_xml(inp={json.dumps(dictify(inp))})")
         obj = TraitSet(
             id=extract(inp, "@ID"),
             type=extract(inp, "@Type"),
-            traits=[
-                Trait.from_xml(t, jsonify_content=jsonify_content)
-                for t in ensure_list(extract(inp, "Trait"))
-            ],
+            traits=[Trait.from_xml(t) for t in ensure_list(extract(inp, "Trait"))],
             content=inp,
         )
-        if jsonify_content:
-            obj.content = json.dumps(inp)
-            for t in obj.traits:
-                t.content = json.dumps(t.content)
+
         return obj
 
     def disassemble(self):
@@ -425,6 +425,10 @@ class ClinicalAssertionTrait(Model):
     xrefs: List[Trait.XRef]
 
     content: dict
+
+    @staticmethod
+    def jsonifiable_fields() -> List[str]:
+        return ["content", "xrefs"]
 
     def __post_init__(self):
         self.entity_type = "clinical_assertion_trait"
@@ -521,7 +525,6 @@ class ClinicalAssertionTrait(Model):
     @staticmethod
     def from_xml(
         inp: dict,
-        jsonify_content=True,
         normalized_traits: List[Trait] = [],
         trait_mappings: List[TraitMapping] = [],
     ):
@@ -529,7 +532,7 @@ class ClinicalAssertionTrait(Model):
             f"ClinicalAssertionTrait.from_xml(inp={json.dumps(dictify(inp))})"
         )
 
-        trait_metadata = TraitMetadata.from_xml(inp, jsonify_content=jsonify_content)
+        trait_metadata = TraitMetadata.from_xml(inp)
 
         # Map submitted trait to normalized trait
         matching_trait = ClinicalAssertionTrait.find_matching_trait(
@@ -551,9 +554,6 @@ class ClinicalAssertionTrait(Model):
             xrefs=trait_metadata.xrefs,
             content=inp,
         )
-        if jsonify_content:
-            obj.content = json.dumps(obj.content)
-            obj.xrefs = [json.dumps(dictify(x)) for x in obj.xrefs]
         return obj
 
     def disassemble(self):
@@ -574,13 +574,16 @@ class ClinicalAssertionTraitSet(Model):
     traits: List[ClinicalAssertionTrait]
     content: dict
 
+    @staticmethod
+    def jsonifiable_fields() -> List[str]:
+        return ["content"]
+
     def __post_init__(self):
         self.entity_type = "clinical_assertion_trait_set"
 
     @staticmethod
     def from_xml(
         inp: dict,
-        jsonify_content=True,
         normalized_traits: List[Trait] = [],
         trait_mappings: List[TraitMapping] = [],
     ):
@@ -593,7 +596,6 @@ class ClinicalAssertionTraitSet(Model):
             traits=[
                 ClinicalAssertionTrait.from_xml(
                     t,
-                    jsonify_content=jsonify_content,
                     normalized_traits=normalized_traits,
                     trait_mappings=trait_mappings,
                 )
@@ -601,8 +603,6 @@ class ClinicalAssertionTraitSet(Model):
             ],
             content=inp,
         )
-        if jsonify_content:
-            obj.content = json.dumps(obj.content)
         return obj
 
     def disassemble(self):
@@ -626,11 +626,15 @@ class TraitMapping(Model):
     medgen_name: str
     medgen_id: str
 
+    @staticmethod
+    def jsonifiable_fields() -> List[str]:
+        return []
+
     def __post_init__(self):
         self.entity_type = "trait_mapping"
 
     @staticmethod
-    def from_xml(inp: dict, jsonify_content=True):
+    def from_xml(inp: dict):
         return TraitMapping(
             clinical_assertion_id=extract(inp, "@ClinicalAssertionID"),
             trait_type=extract(inp, "@TraitType"),

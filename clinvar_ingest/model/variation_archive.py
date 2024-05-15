@@ -41,12 +41,16 @@ class Submitter(Model):
     org_category: str
     content: dict
 
+    @staticmethod
+    def jsonifiable_fields() -> List[str]:
+        return ["content"]
+
     def __post_init__(self):
         self.entity_type = "submitter"
 
     @staticmethod
-    def from_xml(inp: dict, jsonify_content=True):
-        _logger.debug(f"Submitter.from_xml(inp={json.dumps(inp)}, {jsonify_content=})")
+    def from_xml(inp: dict):
+        _logger.debug(f"Submitter.from_xml(inp={json.dumps(inp)})")
         current_name = extract(inp, "@SubmitterName")
         current_abbrev = extract(inp, "@OrgAbbreviation")
         obj = Submitter(
@@ -58,8 +62,6 @@ class Submitter(Model):
             all_abbrevs=[] if not current_abbrev else [current_abbrev],
             content=inp,
         )
-        if jsonify_content:
-            obj.content = json.dumps(inp)
         return obj
 
     def disassemble(self):
@@ -74,18 +76,21 @@ class Submission(Model):
     submission_date: str
     content: dict
 
+    @staticmethod
+    def jsonifiable_fields() -> List[str]:
+        return ["content"]
+
     def __post_init__(self):
         self.entity_type = "submission"
 
     @staticmethod
     def from_xml(
         inp: dict,
-        jsonify_content=True,
         submitter: Submitter = {},
         additional_submitters: list = [Submitter],
     ):
         _logger.debug(
-            f"Submission.from_xml(inp={json.dumps(inp)}, {jsonify_content=}, {submitter=}, "
+            f"Submission.from_xml(inp={json.dumps(inp)}, {submitter=}, "
             f"{additional_submitters=})"
         )
         obj = Submission(
@@ -95,8 +100,6 @@ class Submission(Model):
             submission_date=sanitize_date(extract(inp, "@SubmissionDate")),
             content=inp,
         )
-        if jsonify_content:
-            obj.content = json.dumps(inp)
         return obj
 
     def disassemble(self):
@@ -111,14 +114,18 @@ class ClinicalAssertionObservation(Model):
     # This is redudant information, so don't inclue the whole TraitSet here, just the id
     # TODO this is actually referring to a TraitSet which can be nested under the ObservedIn element
     # That TraitSet should come out as a ClinicalAssertionTraitSet, and the id should go here
-    clinical_assertion_trait_set: ClinicalAssertionTraitSet
+    clinical_assertion_trait_set: ClinicalAssertionTraitSet | None
     content: dict
+
+    @staticmethod
+    def jsonifiable_fields() -> List[str]:
+        return ["content"]
 
     def __post_init__(self):
         self.entity_type = "clinical_assertion_observation"
 
     @staticmethod
-    def from_xml(inp: dict, jsonify_content=True):
+    def from_xml(inp: dict):
         raise NotImplementedError()
 
     def disassemble(self):
@@ -131,7 +138,7 @@ class ClinicalAssertionObservation(Model):
                 yield subobj
         else:
             setattr(self_copy, "clinical_assertion_trait_set_id", None)
-        yield self
+        yield self_copy
 
 
 @dataclasses.dataclass
@@ -154,7 +161,11 @@ class ClinicalAssertion(Model):
     content: dict
 
     clinical_assertion_observations: List[ClinicalAssertionObservation]
-    clinical_assertion_trait_set: ClinicalAssertionTraitSet
+    clinical_assertion_trait_set: ClinicalAssertionTraitSet | None
+
+    @staticmethod
+    def jsonifiable_fields() -> List[str]:
+        return ["content"]
 
     def __post_init__(self):
         self.entity_type = "clinical_assertion"
@@ -162,13 +173,10 @@ class ClinicalAssertion(Model):
     @staticmethod
     def from_xml(
         inp: dict,
-        jsonify_content=True,
         normalized_traits: List[Trait] = [],
         trait_mappings: List[TraitMapping] = [],
     ):
-        _logger.debug(
-            f"ClinicalAssertion.from_xml(inp={json.dumps(inp)}, {jsonify_content=})"
-        )
+        _logger.debug(f"ClinicalAssertion.from_xml(inp={json.dumps(inp)})")
         obj_id = extract(inp, "@ID")
         raw_accession = extract(inp, "ClinVarAccession")
         scv_accession = extract(raw_accession, "@Accession")
@@ -186,16 +194,13 @@ class ClinicalAssertion(Model):
             )
         )
         submitter = Submitter.from_xml(raw_accession)
-        submission = Submission.from_xml(
-            inp, jsonify_content, submitter, additional_submitters
-        )
+        submission = Submission.from_xml(inp, submitter, additional_submitters)
 
         trait_set_counter = make_counter()
         assertion_trait_set = extract(inp, "TraitSet")
         if assertion_trait_set is not None:
             assertion_trait_set = ClinicalAssertionTraitSet.from_xml(
                 assertion_trait_set,
-                jsonify_content=jsonify_content,
                 normalized_traits=normalized_traits,
                 trait_mappings=trait_mappings,
             )
@@ -212,7 +217,6 @@ class ClinicalAssertion(Model):
                 clinical_assertion_trait_set=(
                     ClinicalAssertionTraitSet.from_xml(
                         extract(o, "TraitSet"),
-                        jsonify_content=jsonify_content,
                         normalized_traits=normalized_traits,
                         trait_mappings=trait_mappings,
                     )
@@ -260,10 +264,6 @@ class ClinicalAssertion(Model):
             clinical_assertion_trait_set=assertion_trait_set,
             content=inp,
         )
-        if jsonify_content:
-            obj.content = json.dumps(inp)
-            for observation in obj.clinical_assertion_observations:
-                observation.content = json.dumps(observation.content)
         return obj
 
     def disassemble(self):
@@ -307,6 +307,10 @@ class Gene(Model):
     symbol: str
     full_name: str
 
+    @staticmethod
+    def jsonifiable_fields() -> List[str]:
+        return []
+
     def __post_init__(self):
         self.entity_type = "gene"
 
@@ -326,12 +330,16 @@ class GeneAssociation(Model):
     relationship_type: str
     content: dict
 
+    @staticmethod
+    def jsonifiable_fields() -> List[str]:
+        return ["content"]
+
     def __post_init__(self):
         self.gene_id = self.gene.id
         self.entity_type = "gene_association"
 
     @staticmethod
-    def from_xml(inp: dict, jsonify_content=True):
+    def from_xml(inp: dict):
         raise NotImplementedError()
 
     def disassemble(self):
@@ -358,12 +366,16 @@ class Variation(Model):
     child_ids: List[str]
     descendant_ids: List[str]
 
+    @staticmethod
+    def jsonifiable_fields() -> List[str]:
+        return ["content"]
+
     def __post_init__(self):
         self.entity_type = "variation"
 
     @staticmethod
-    def from_xml(inp: dict, jsonify_content=True):
-        _logger.debug(f"Variation.from_xml(inp={json.dumps(inp)}), {jsonify_content=}")
+    def from_xml(inp: dict):
+        _logger.debug(f"Variation.from_xml(inp={json.dumps(inp)})")
         descendant_tree = Variation.descendant_tree(inp)
         # _logger.info(f"descendant_tree: {descendant_tree}")
         child_ids = Variation.get_all_children(descendant_tree)
@@ -416,11 +428,6 @@ class Variation(Model):
             )
             for g in ensure_list(extract(extract(inp, "GeneList"), "Gene") or [])
         ]
-
-        if jsonify_content:
-            obj.content = json.dumps(inp)
-            for ga in obj.gene_associations:
-                ga.content = json.dumps(ga.content)
         return obj
 
     @staticmethod
@@ -488,7 +495,7 @@ class Variation(Model):
         return child_ids + grandchildren
 
     @staticmethod
-    def get_all_children(descendant_tree: tuple):
+    def get_all_children(descendant_tree: list):
         """
         Accepts a descendant_tree. Returns the first level children.
         """
@@ -525,13 +532,16 @@ class RcvAccession(Model):
 
     content: dict
 
+    @staticmethod
+    def jsonifiable_fields() -> List[str]:
+        return ["content"]
+
     def __post_init__(self):
         self.entity_type = "rcv_accession"
 
     @staticmethod
     def from_xml(
         inp: dict,
-        jsonify_content=True,
         variation_id: int = None,
         variation_archive_id=None,
     ) -> RcvAccession:
@@ -570,8 +580,6 @@ class RcvAccession(Model):
             interpretation=extract(inp, "@Interpretation"),
             content=inp,
         )
-        if jsonify_content:
-            obj.content = json.dumps(obj.content)
         return obj
 
     def disassemble(self):
@@ -604,21 +612,23 @@ class VariationArchive(Model):
 
     rcv_accessions: List[RcvAccession]
 
+    @staticmethod
+    def jsonifiable_fields() -> List[str]:
+        return ["content", "interp_content"]
+
     def __post_init__(self):
         self.variation_id = self.variation.id
         self.entity_type = "variation_archive"
 
     @staticmethod
-    def from_xml(inp: dict, jsonify_content=True):
-        _logger.debug(
-            f"VariationArchive.from_xml(inp={json.dumps(inp)}, {jsonify_content=})"
-        )
+    def from_xml(inp: dict):
+        _logger.debug(f"VariationArchive.from_xml(inp={json.dumps(inp)})")
         interp_record = inp.get("InterpretedRecord", inp.get("IncludedRecord"))
         interpretations = extract(interp_record, "Interpretations")
         interpretation = interpretations["Interpretation"]
-        variation = Variation.from_xml(interp_record, jsonify_content=jsonify_content)
+        variation = Variation.from_xml(interp_record)
         trait_mappings = [
-            TraitMapping.from_xml(tm, jsonify_content=jsonify_content)
+            TraitMapping.from_xml(tm)
             for tm in ensure_list(
                 extract(
                     extract(
@@ -631,7 +641,7 @@ class VariationArchive(Model):
             )
         ]
         trait_sets = [
-            TraitSet.from_xml(ts, jsonify_content=jsonify_content)
+            TraitSet.from_xml(ts)
             for ts in ensure_list(
                 extract(
                     interpretation,
@@ -650,7 +660,6 @@ class VariationArchive(Model):
             clinical_assertions=[
                 ClinicalAssertion.from_xml(
                     ca,
-                    jsonify_content,
                     normalized_traits=flatten1([ts.traits for ts in trait_sets]),
                     trait_mappings=trait_mappings,
                 )
@@ -683,7 +692,6 @@ class VariationArchive(Model):
             rcv_accessions=[
                 RcvAccession.from_xml(
                     r,
-                    jsonify_content=jsonify_content,
                     variation_id=variation.id,
                     variation_archive_id=_id,
                 )
@@ -694,9 +702,6 @@ class VariationArchive(Model):
             interp_content=interpretation,
             content=inp,
         )
-        if jsonify_content:
-            obj.content = json.dumps(inp)
-            obj.interp_content = json.dumps(interpretation)
         return obj
 
     def disassemble(self):
