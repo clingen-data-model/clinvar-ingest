@@ -428,8 +428,7 @@ class ClinicalAssertionTrait(Model):
 
     @staticmethod
     def jsonifiable_fields() -> List[str]:
-        # TODO xrefs?
-        return ["content"]
+        return ["content", "xrefs"]
 
     def __post_init__(self):
         self.entity_type = "clinical_assertion_trait"
