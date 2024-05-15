@@ -13,6 +13,14 @@ def parse_args(argv):
     parse_sp.add_argument("--input-filename", "-i", required=True, type=str)
     parse_sp.add_argument("--output-directory", "-o", required=True, type=str)
     parse_sp.add_argument(
+        "--gzip-output",
+        action="store_true",
+        help=(
+            "Compress output files with GZIP. "
+            "Set environment variable GZIP_COMPRESSLEVEL to set compression level (default: 9)"
+        ),
+    )
+    parse_sp.add_argument(
         "--disassemble",
         type=bool,
         default=True,

@@ -20,6 +20,7 @@ def run_parse(args):
     output_files = parse_and_write_files(
         args.input_filename,
         args.output_directory,
+        gzip_output=args.gzip_output,
         disassemble=args.disassemble,
         jsonify_content=args.jsonify_content == "true",
     )

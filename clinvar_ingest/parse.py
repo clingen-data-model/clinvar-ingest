@@ -1,6 +1,7 @@
 import gzip
 import json
 import logging
+import os
 import pathlib
 from typing import IO, Any, TextIO
 
@@ -11,6 +12,8 @@ from clinvar_ingest.reader import get_clinvar_xml_releaseinfo, read_clinvar_xml
 from clinvar_ingest.utils import make_progress_logger
 
 _logger = logging.getLogger("clinvar_ingest")
+
+GZIP_COMPRESSLEVEL = int(os.environ.get("GZIP_COMPRESSLEVEL", 9))
 
 
 def _st_size(filepath: str):
@@ -34,7 +37,7 @@ def _open(
 
         if filepath.endswith(".gz"):
             # wraps BlobReader in gzip.GzipFile, which implements .tell()
-            return gzip.open(f, mode=str(mode))
+            return gzip.open(f, mode=str(mode), compresslevel=GZIP_COMPRESSLEVEL)  # type: ignore
         else:
             # Need to wrap in a counter so we can track bytes read
             return ReadCounter(f)
@@ -64,7 +67,11 @@ def get_open_file_for_writing(
 
 
 def parse_and_write_files(
-    input_filename: str, output_directory: str, disassemble=True, jsonify_content=True
+    input_filename: str,
+    output_directory: str,
+    gzip_output=True,
+    disassemble=True,
+    jsonify_content=True,
 ) -> dict[str, str]:
     """
     Parses input file, writes outputs to output directory.
@@ -102,6 +109,7 @@ def parse_and_write_files(
                     open_output_files,
                     root_dir=output_release_directory,
                     label=entity_type,
+                    suffix=".ndjson" if not gzip_output else ".ndjson.gz",
                 )
                 obj_dict = dictify(obj)
                 assert isinstance(obj_dict, dict), obj_dict
