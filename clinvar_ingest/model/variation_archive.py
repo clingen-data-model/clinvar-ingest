@@ -96,7 +96,7 @@ class Submission(Model):
         obj = Submission(
             id=f"{submitter.id}",  # TODO - FIX w/ Date
             submitter_id=submitter.id,
-            additional_submitter_ids=list(filter("id", additional_submitters)),
+            additional_submitter_ids=[s.id for s in additional_submitters],
             submission_date=sanitize_date(extract(inp, "@SubmissionDate")),
             content=inp,
         )
@@ -187,7 +187,7 @@ class ClinicalAssertion(Model):
                 Submitter.from_xml,
                 ensure_list(
                     extract(
-                        raw_accession, "AdditionalSubmitters", "SubmitterDescription"
+                        inp, "AdditionalSubmitters", "SubmitterDescription"
                     )
                     or []
                 ),
