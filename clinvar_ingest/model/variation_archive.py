@@ -143,7 +143,8 @@ class ClinicalAssertionObservation(Model):
 
 @dataclasses.dataclass
 class ClinicalAssertion(Model):
-    assertion_id: str
+    internal_id: str
+    id: str
     title: str
     local_key: str
     assertion_accession: str
@@ -156,8 +157,12 @@ class ClinicalAssertion(Model):
     review_status: str
     interpretation_date_last_evaluated: str
     interpretation_description: str
+    interpretation_comments: str
     submitter: Submitter
+    submitter_id: str
     submission: Submission
+    submission_id: str
+    submission_names: List[str]
     content: dict
 
     clinical_assertion_observations: List[ClinicalAssertionObservation]
@@ -165,7 +170,7 @@ class ClinicalAssertion(Model):
 
     @staticmethod
     def jsonifiable_fields() -> List[str]:
-        return ["content"]
+        return ["content", "interpretation_comments"]
 
     def __post_init__(self):
         self.entity_type = "clinical_assertion"
@@ -186,10 +191,7 @@ class ClinicalAssertion(Model):
             map(
                 Submitter.from_xml,
                 ensure_list(
-                    extract(
-                        inp, "AdditionalSubmitters", "SubmitterDescription"
-                    )
-                    or []
+                    extract(inp, "AdditionalSubmitters", "SubmitterDescription") or []
                 ),
             )
         )
@@ -240,8 +242,21 @@ class ClinicalAssertion(Model):
                 for j, t in enumerate(obs_trait_set.traits):
                     t.id = f"{obs_trait_set.id}.{j}"
 
+        interpretation_comments_type = extract(interpretation, "Comment", "@Type")
+        interpretation_comments_text = extract(interpretation, "Comment", "$")
+        interpretation_comments = {}
+        if interpretation_comments_text is not None:
+            interpretation_comments["text"] = interpretation_comments_text
+            if interpretation_comments_type is not None:
+                interpretation_comments["type"] = interpretation_comments_type
+
+        submission_names = ensure_list(
+            extract(inp, "SubmissionNameList", "SubmissionName") or []
+        )
+
         obj = ClinicalAssertion(
-            assertion_id=obj_id,
+            internal_id=obj_id,
+            id=scv_accession,
             title=extract(clinvar_submission, "@title"),
             local_key=extract(clinvar_submission, "@localKey"),
             assertion_accession=scv_accession,
@@ -258,8 +273,12 @@ class ClinicalAssertion(Model):
             interpretation_description=extract(
                 extract(interpretation, "Description"), "$"
             ),
+            interpretation_comments=interpretation_comments,
             submitter=submitter,
+            submitter_id=submitter.id,
             submission=submission,
+            submission_id=submission.id,
+            submission_names=[sn["$"] for sn in submission_names],
             clinical_assertion_observations=observations,
             clinical_assertion_trait_set=assertion_trait_set,
             content=inp,

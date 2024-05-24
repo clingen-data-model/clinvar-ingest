@@ -90,7 +90,7 @@ def test_read_original_clinvar_variation_2():
 
     # SCVs - TODO build out further
     scv = list(filter(lambda o: isinstance(o, ClinicalAssertion), objects))[0]
-    assert scv.assertion_id == "20155"
+    assert scv.internal_id == "20155"
     submitter = list(filter(lambda o: isinstance(o, Submitter), objects))[0]
     assert submitter.id == "3"
     assert submitter.current_name == "OMIM"
@@ -108,7 +108,7 @@ def test_read_original_clinvar_variation_2():
     assert scv_trait_1.trait_id == "9580"
 
     scv = list(filter(lambda o: isinstance(o, ClinicalAssertion), objects))[1]
-    assert scv.assertion_id == "2865972"
+    assert scv.internal_id == "2865972"
     submitter = list(filter(lambda o: isinstance(o, Submitter), objects))[1]
     assert submitter.id == "507826"
     assert submitter.current_name == "Paris Brain Institute, Inserm - ICM"
@@ -244,7 +244,7 @@ def test_read_original_clinvar_variation_634266(log_conf):
     scv0: ClinicalAssertion = list(
         filter(lambda o: isinstance(o, ClinicalAssertion), objects)
     )[0]
-    assert scv0.assertion_id == "1801318"
+    assert scv0.internal_id == "1801318"
     submitter = list(filter(lambda o: isinstance(o, Submitter), objects))[0]
     assert submitter.id == "505961"
     assert (
@@ -256,7 +256,7 @@ def test_read_original_clinvar_variation_634266(log_conf):
 
     # SCV 2
     scv2 = list(filter(lambda o: isinstance(o, ClinicalAssertion), objects))[1]
-    assert scv2.assertion_id == "1801467"
+    assert scv2.internal_id == "1801467"
     submitter = list(filter(lambda o: isinstance(o, Submitter), objects))[1]
     assert submitter.id == "505961"
     assert (
@@ -268,7 +268,7 @@ def test_read_original_clinvar_variation_634266(log_conf):
 
     # SCV 3
     scv3 = list(filter(lambda o: isinstance(o, ClinicalAssertion), objects))[2]
-    assert scv3.assertion_id == "1802126"
+    assert scv3.internal_id == "1802126"
     submitter = list(filter(lambda o: isinstance(o, Submitter), objects))[2]
     assert submitter.id == "505961"
     assert (
@@ -280,7 +280,7 @@ def test_read_original_clinvar_variation_634266(log_conf):
 
     # SCV 4
     scv4 = list(filter(lambda o: isinstance(o, ClinicalAssertion), objects))[3]
-    assert scv4.assertion_id == "1802127"
+    assert scv4.internal_id == "1802127"
     submitter = list(filter(lambda o: isinstance(o, Submitter), objects))[3]
     assert submitter.id == "505961"
     assert (
@@ -416,7 +416,7 @@ def test_read_original_clinvar_variation_10():
         objects = list(read_clinvar_xml(f))
 
     scv372036 = [o for o in objects if isinstance(o, ClinicalAssertion)][0]
-    assert scv372036.assertion_id == "372036"
+    assert scv372036.internal_id == "372036"
     scv372036_trait_set = [
         o
         for o in objects
@@ -519,7 +519,7 @@ def test_read_original_clinvar_variation_10():
     scv = [
         o
         for o in objects
-        if isinstance(o, ClinicalAssertion) and o.assertion_id == "3442424"
+        if isinstance(o, ClinicalAssertion) and o.internal_id == "3442424"
     ]
     assert len(scv) == 1
     scv = scv[0]
