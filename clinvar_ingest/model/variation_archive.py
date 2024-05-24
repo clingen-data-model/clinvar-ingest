@@ -157,12 +157,14 @@ class ClinicalAssertion(Model):
     review_status: str
     interpretation_date_last_evaluated: str
     interpretation_description: str
-    interpretation_comments: str
+    interpretation_comments: dict
     submitter: Submitter
     submitter_id: str
     submission: Submission
     submission_id: str
     submission_names: List[str]
+    variation_id: str
+    variation_archive_id: str
     content: dict
 
     clinical_assertion_observations: List[ClinicalAssertionObservation]
@@ -180,6 +182,8 @@ class ClinicalAssertion(Model):
         inp: dict,
         normalized_traits: List[Trait] = [],
         trait_mappings: List[TraitMapping] = [],
+        variation_id: str = None,
+        variation_archive_id: str = None,
     ):
         _logger.debug(f"ClinicalAssertion.from_xml(inp={json.dumps(inp)})")
         obj_id = extract(inp, "@ID")
@@ -279,6 +283,8 @@ class ClinicalAssertion(Model):
             submission=submission,
             submission_id=submission.id,
             submission_names=[sn["$"] for sn in submission_names],
+            variation_id=variation_id,
+            variation_archive_id=variation_archive_id,
             clinical_assertion_observations=observations,
             clinical_assertion_trait_set=assertion_trait_set,
             content=inp,
@@ -681,6 +687,8 @@ class VariationArchive(Model):
                     ca,
                     normalized_traits=flatten1([ts.traits for ts in trait_sets]),
                     trait_mappings=trait_mappings,
+                    variation_id=variation.id,
+                    variation_archive_id=_id,
                 )
                 for ca in ensure_list(
                     extract(
