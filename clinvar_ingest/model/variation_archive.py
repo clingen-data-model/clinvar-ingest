@@ -588,10 +588,6 @@ class RcvAccession(Model):
         """
         # org.broadinstitute.monster.clinvar.parsers.VCV.scala : 259 : parseRawRcv
 
-        # TODO take the TraitSetID as given in the XML. If missing, ignore it, don't
-        # try to find the matching one in the ClinicalAssertion Traits
-        trait_set_id = get(inp, "InterpretedConditionList", "@TraitSetID")
-
         # TODO independentObservations always null?
         obj = RcvAccession(
             independent_observations=extract(inp, "@independentObservations"),
@@ -601,7 +597,7 @@ class RcvAccession(Model):
             date_last_evaluated=extract(inp, "@DateLastEvaluated"),
             version=int_or_none(extract(inp, "@Version")),
             title=extract(inp, "@Title"),
-            trait_set_id=trait_set_id,
+            trait_set_id=extract(inp, "InterpretedConditionList", "@TraitSetID"),
             review_status=extract(inp, "@ReviewStatus"),
             interpretation=extract(inp, "@Interpretation"),
             submission_count=int_or_none(extract(inp, "@SubmissionCount")),
