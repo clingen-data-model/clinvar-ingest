@@ -554,6 +554,7 @@ class RcvAccession(Model):
     trait_set_id: str
     review_status: str
     interpretation: str
+    submission_count: int
 
     content: dict
 
@@ -603,6 +604,7 @@ class RcvAccession(Model):
             trait_set_id=trait_set_id,
             review_status=extract(inp, "@ReviewStatus"),
             interpretation=extract(inp, "@Interpretation"),
+            submission_count=int_or_none(extract(inp, "@SubmissionCount")),
             content=inp,
         )
         return obj
