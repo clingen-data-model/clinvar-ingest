@@ -82,6 +82,7 @@ def test_read_original_clinvar_variation_2():
     assert gene.hgnc_id == "HGNC:22197"
     assert gene.symbol == "AP5Z1"
     assert gene.full_name == "adaptor related protein complex 5 subunit zeta 1"
+    assert gene.vcv_id == "VCV000000002"
 
     assert gene_association.source == "submitted"
     assert gene_association.relationship_type == "within single gene"

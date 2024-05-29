@@ -342,6 +342,7 @@ class Gene(Model):
     id: str
     symbol: str
     full_name: str
+    vcv_id: str
 
     @staticmethod
     def jsonifiable_fields() -> List[str]:
@@ -409,7 +410,7 @@ class Variation(Model):
         self.entity_type = "variation"
 
     @staticmethod
-    def from_xml(inp: dict):
+    def from_xml(inp: dict, variation_archive_id: str = None):
         _logger.debug(f"Variation.from_xml(inp={json.dumps(inp)})")
         descendant_tree = Variation.descendant_tree(inp)
         # _logger.info(f"descendant_tree: {descendant_tree}")
@@ -456,6 +457,7 @@ class Variation(Model):
                     id=extract(g, "@GeneID"),
                     symbol=extract(g, "@Symbol"),
                     full_name=extract(g, "@FullName"),
+                    vcv_id=variation_archive_id,
                 ),
                 relationship_type=extract(g, "@RelationshipType"),
                 content=g,
@@ -578,7 +580,7 @@ class RcvAccession(Model):
     def from_xml(
         inp: dict,
         variation_id: int = None,
-        variation_archive_id=None,
+        variation_archive_id: str = None,
     ) -> RcvAccession:
         """
         <RCVAccession
@@ -658,13 +660,11 @@ class VariationArchive(Model):
         interp_record = inp.get("InterpretedRecord", inp.get("IncludedRecord"))
         interpretations = extract(interp_record, "Interpretations")
         interpretation = interpretations["Interpretation"]
-        variation = Variation.from_xml(interp_record)
-        _id = extract(inp, "@Accession")
+        vcv_accession = extract(inp, "@Accession")
+        variation = Variation.from_xml(interp_record, vcv_accession)
         rcv_accessions = [
             RcvAccession.from_xml(
-                r,
-                variation_id=variation.id,
-                variation_archive_id=_id,
+                r, variation_id=variation.id, variation_archive_id=vcv_accession
             )
             for r in ensure_list(
                 extract(interp_record, "RCVList", "RCVAccession") or []
@@ -696,7 +696,7 @@ class VariationArchive(Model):
             )
         ]
         obj = VariationArchive(
-            id=_id,
+            id=vcv_accession,
             name=extract(inp, "@VariationName"),
             version=extract(inp, "@Version"),
             variation=variation,
@@ -706,7 +706,7 @@ class VariationArchive(Model):
                     normalized_traits=flatten1([ts.traits for ts in trait_sets]),
                     trait_mappings=trait_mappings,
                     variation_id=variation.id,
-                    variation_archive_id=_id,
+                    variation_archive_id=vcv_accession,
                 )
                 for ca in ensure_list(
                     extract(

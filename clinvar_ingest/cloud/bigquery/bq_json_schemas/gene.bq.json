@@ -18,5 +18,9 @@
   {
     "name": "full_name",
     "type": "STRING"
+  },
+  {
+    "name": "vcv_id",
+    "type": "STRING"
   }
 ]
