@@ -31,11 +31,12 @@ def test_trait_from_xml_32():
 
     release = root["ClinVarVariationRelease"]
     interp_record = release["VariationArchive"]["InterpretedRecord"]
+    rcv_id = interp_record["RCVList"]["RCVAccession"]["@Accession"]
     interp = interp_record["Interpretations"]["Interpretation"]
     interp_traitset = interp["ConditionList"]["TraitSet"]
     raw_trait = interp_traitset["Trait"]  # only 1 trait in this example
 
-    trait: Trait = Trait.from_xml(raw_trait)
+    trait: Trait = Trait.from_xml(raw_trait, rcv_id)
 
     assert trait.id == "9592"
     assert trait.type == "Disease"
@@ -49,6 +50,7 @@ def test_trait_from_xml_32():
     assert trait.gard_id == 10738
     assert trait.medgen_id == "C3150878"
     assert trait.public_definition is None
+    assert trait.rcv_id == "RCV000000049"
 
     assert trait.disease_mechanism == "loss of function"
     assert trait.disease_mechanism_id == 273
@@ -139,13 +141,15 @@ def test_trait_from_xml_6619():
     root = _parse_xml_document(content)
     release = root["ClinVarVariationRelease"]
     interp_record = release["VariationArchive"]["InterpretedRecord"]
+    rcv_id = interp_record["RCVList"]["RCVAccession"]["@Accession"]
     interp = interp_record["Interpretations"]["Interpretation"]
     interp_traitset = interp["ConditionList"]["TraitSet"]
     raw_trait = interp_traitset["Trait"]  # only 1 trait in this example
 
-    trait = Trait.from_xml(raw_trait)
+    trait = Trait.from_xml(raw_trait, rcv_id)
     assert trait.id == "6619"
     assert trait.name == "Arrhythmogenic right ventricular cardiomyopathy"
+    assert trait.rcv_id == "RCV000208233"
 
     # This trait has a preferred symbol
     assert trait.symbol == "ARVD"
@@ -219,12 +223,14 @@ def test_trait_from_xml_3510():
     root = _parse_xml_document(content)
     release = root["ClinVarVariationRelease"]
     interp_record = release["VariationArchive"]["InterpretedRecord"]
+    rcv_id = interp_record["RCVList"]["RCVAccession"]["@Accession"]
     interp = interp_record["Interpretations"]["Interpretation"]
     interp_traitset = interp["ConditionList"]["TraitSet"]
     raw_trait = interp_traitset["Trait"]  # only 1 trait in this example
 
-    trait = Trait.from_xml(raw_trait)
+    trait = Trait.from_xml(raw_trait, rcv_id)
     assert trait.id == "3510"
+    assert trait.rcv_id == "RCV000005175"
 
     # This trait has an attribute_content array because it has multiple GARD ids
     assert len(trait.attribute_content) == 1
@@ -245,12 +251,14 @@ def test_trait_from_xml_406155():
     root = _parse_xml_document(content)
     release = root["ClinVarVariationRelease"]
     interp_record = release["VariationArchive"]["InterpretedRecord"]
+    rcv_id = interp_record["RCVList"]["RCVAccession"]["@Accession"]
     interp = interp_record["Interpretations"]["Interpretation"]
     interp_traitset = interp["ConditionList"]["TraitSet"]
     raw_trait = interp_traitset["Trait"]  # only 1 trait in this example
 
-    trait = Trait.from_xml(raw_trait)
+    trait = Trait.from_xml(raw_trait, rcv_id)
     assert trait.id == "1150"
+    assert trait.rcv_id == "RCV000467463"
 
     # This trait has ghr_links
     assert trait.ghr_links == "MECP2-related severe neonatal encephalopathy"
@@ -275,10 +283,18 @@ def test_trait_set_from_xml_10():
     root = _parse_xml_document(content)
     release = root["ClinVarVariationRelease"]
     interp_record = release["VariationArchive"]["InterpretedRecord"]
+    rcv_accessions = interp_record["RCVList"]["RCVAccession"]
     interp = interp_record["Interpretations"]["Interpretation"]
     interp_traitset = ensure_list(interp["ConditionList"]["TraitSet"])
 
-    trait_sets = [TraitSet.from_xml(raw_traitset) for raw_traitset in interp_traitset]
+    trait_set_id_to_rcv_id = {
+        r["InterpretedConditionList"]["@TraitSetID"]: r["@Accession"]
+        for r in rcv_accessions
+    }
+    trait_sets = [
+        TraitSet.from_xml(raw_traitset, trait_set_id_to_rcv_id[raw_traitset["@ID"]])
+        for raw_traitset in interp_traitset
+    ]
     assert len(trait_sets) == 11
     assert [ts.id for ts in trait_sets] == [
         "55473",
@@ -292,6 +308,19 @@ def test_trait_set_from_xml_10():
         "1961",
         "52490",
         "16994",
+    ]
+    assert [ts.rcv_id for ts in trait_sets] == [
+        "RCV001248831",
+        "RCV000000026",
+        "RCV000763144",
+        "RCV000394716",
+        "RCV000175607",
+        "RCV000844708",
+        "RCV001731265",
+        "RCV002272003",
+        "RCV000991133",
+        "RCV002227011",
+        "RCV002251839",
     ]
     assert [ts.type for ts in trait_sets] == [
         "Disease",

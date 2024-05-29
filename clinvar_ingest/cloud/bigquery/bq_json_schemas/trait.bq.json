@@ -79,5 +79,9 @@
     "mode": "REPEATED",
     "name": "xrefs",
     "type": "STRING"
+  },
+  {
+    "name": "rcv_id",
+    "type": "STRING"
   }
 ]

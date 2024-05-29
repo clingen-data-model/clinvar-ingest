@@ -137,6 +137,7 @@ class Trait(Model):
     gene_reviews_short: str | None
     alternate_names: List[str]
     xrefs: List[str]
+    rcv_id: str
 
     content: dict
 
@@ -172,7 +173,7 @@ class Trait(Model):
         self.entity_type = "trait"
 
     @staticmethod
-    def from_xml(inp: dict) -> Trait:
+    def from_xml(inp: dict, rcv_id: str) -> Trait:
         _logger.debug(f"Trait.from_xml(inp={json.dumps(inp)})")
 
         trait_metadata = TraitMetadata.from_xml(inp)
@@ -370,6 +371,7 @@ class Trait(Model):
             gene_reviews_short=gene_reviews_short,
             xrefs=all_xrefs,
             attribute_content=attribute_set,
+            rcv_id=rcv_id,
             content=inp,
         )
         return obj
@@ -383,6 +385,7 @@ class TraitSet(Model):
     id: str
     type: str
     traits: List[Trait]
+    rcv_id: str
 
     content: dict
 
@@ -395,12 +398,15 @@ class TraitSet(Model):
         self.entity_type = "trait_set"
 
     @staticmethod
-    def from_xml(inp: dict):
+    def from_xml(inp: dict, rcv_id: str = None):
         _logger.debug(f"TraitSet.from_xml(inp={json.dumps(dictify(inp))})")
         obj = TraitSet(
             id=extract(inp, "@ID"),
             type=extract(inp, "@Type"),
-            traits=[Trait.from_xml(t) for t in ensure_list(extract(inp, "Trait"))],
+            traits=[
+                Trait.from_xml(t, rcv_id) for t in ensure_list(extract(inp, "Trait"))
+            ],
+            rcv_id=rcv_id,
             content=inp,
         )
 

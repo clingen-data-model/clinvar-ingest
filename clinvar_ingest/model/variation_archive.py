@@ -24,6 +24,7 @@ from clinvar_ingest.utils import (
     extract,
     extract_oneof,
     flatten1,
+    get,
     make_counter,
 )
 
@@ -658,6 +659,17 @@ class VariationArchive(Model):
         interpretations = extract(interp_record, "Interpretations")
         interpretation = interpretations["Interpretation"]
         variation = Variation.from_xml(interp_record)
+        _id = extract(inp, "@Accession")
+        rcv_accessions = [
+            RcvAccession.from_xml(
+                r,
+                variation_id=variation.id,
+                variation_archive_id=_id,
+            )
+            for r in ensure_list(
+                extract(interp_record, "RCVList", "RCVAccession") or []
+            )
+        ]
         trait_mappings = [
             TraitMapping.from_xml(tm)
             for tm in ensure_list(
@@ -671,8 +683,9 @@ class VariationArchive(Model):
                 or []
             )
         ]
+        trait_set_id_to_rcv_id = {r.trait_set_id: r.id for r in rcv_accessions}
         trait_sets = [
-            TraitSet.from_xml(ts)
+            TraitSet.from_xml(ts, trait_set_id_to_rcv_id[get(ts, "@ID")])
             for ts in ensure_list(
                 extract(
                     interpretation,
@@ -682,7 +695,6 @@ class VariationArchive(Model):
                 or []
             )
         ]
-        _id = extract(inp, "@Accession")
         obj = VariationArchive(
             id=_id,
             name=extract(inp, "@VariationName"),
@@ -722,16 +734,7 @@ class VariationArchive(Model):
             ),
             trait_sets=trait_sets,
             trait_mappings=trait_mappings,
-            rcv_accessions=[
-                RcvAccession.from_xml(
-                    r,
-                    variation_id=variation.id,
-                    variation_archive_id=_id,
-                )
-                for r in ensure_list(
-                    extract(interp_record, "RCVList", "RCVAccession") or []
-                )
-            ],
+            rcv_accessions=rcv_accessions,
             interp_content=interpretation,
             content=inp,
         )
