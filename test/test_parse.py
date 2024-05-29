@@ -94,9 +94,11 @@ def test_read_original_clinvar_variation_2():
     submitter = list(filter(lambda o: isinstance(o, Submitter), objects))[0]
     assert submitter.id == "3"
     assert submitter.current_name == "OMIM"
+    assert submitter.scv_id == "SCV000020155"
     submission = list(filter(lambda o: isinstance(o, Submission), objects))[0]
     assert submission.id == "3.2017-01-26"
     assert submission.submission_date == "2017-01-26"
+    assert submission.scv_id == "SCV000020155"
     # Verify SCV traits are linked to VCV traits
     scv_trait_0: ClinicalAssertionTrait = list(
         filter(lambda o: isinstance(o, ClinicalAssertionTrait), objects)
@@ -112,9 +114,11 @@ def test_read_original_clinvar_variation_2():
     submitter = list(filter(lambda o: isinstance(o, Submitter), objects))[1]
     assert submitter.id == "507826"
     assert submitter.current_name == "Paris Brain Institute, Inserm - ICM"
+    assert submitter.scv_id == "SCV001451119"
     submission = list(filter(lambda o: isinstance(o, Submission), objects))[1]
     assert submission.id == "507826.2020-11-14"
     assert submission.submission_date == "2020-11-14"
+    assert submission.scv_id == "SCV001451119"
 
     # Rcv
     rcv: RcvAccession = list(filter(lambda o: isinstance(o, RcvAccession), objects))[0]
@@ -250,9 +254,11 @@ def test_read_original_clinvar_variation_634266(log_conf):
     assert (
         submitter.current_name == "Clinical Pharmacogenetics Implementation Consortium"
     )
+    assert submitter.scv_id == "SCV000921753"
     submission = list(filter(lambda o: isinstance(o, Submission), objects))[0]
     assert submission.id == "505961.2018-03-01"
     assert submission.submission_date == "2018-03-01"
+    assert submission.scv_id == "SCV000921753"
 
     # SCV 2
     scv2 = list(filter(lambda o: isinstance(o, ClinicalAssertion), objects))[1]
@@ -262,9 +268,11 @@ def test_read_original_clinvar_variation_634266(log_conf):
     assert (
         submitter.current_name == "Clinical Pharmacogenetics Implementation Consortium"
     )
+    assert submitter.scv_id == "SCV000921902"
     submission = list(filter(lambda o: isinstance(o, Submission), objects))[1]
     assert submission.id == "505961.2018-03-01"
     assert submission.submission_date == "2018-03-01"
+    assert submission.scv_id == "SCV000921902"
 
     # SCV 3
     scv3 = list(filter(lambda o: isinstance(o, ClinicalAssertion), objects))[2]
@@ -274,9 +282,11 @@ def test_read_original_clinvar_variation_634266(log_conf):
     assert (
         submitter.current_name == "Clinical Pharmacogenetics Implementation Consortium"
     )
+    assert submitter.scv_id == "SCV000922561"
     submission = list(filter(lambda o: isinstance(o, Submission), objects))[2]
     assert submission.id == "505961.2018-03-01"
     assert submission.submission_date == "2018-03-01"
+    assert submission.scv_id == "SCV000922561"
 
     # SCV 4
     scv4 = list(filter(lambda o: isinstance(o, ClinicalAssertion), objects))[3]
@@ -286,9 +296,11 @@ def test_read_original_clinvar_variation_634266(log_conf):
     assert (
         submitter.current_name == "Clinical Pharmacogenetics Implementation Consortium"
     )
+    assert submitter.scv_id == "SCV000922562"
     submission = list(filter(lambda o: isinstance(o, Submission), objects))[3]
     assert submission.id == "505961.2018-03-01"
     assert submission.submission_date == "2018-03-01"
+    assert submission.scv_id == "SCV000922562"
 
     # Test a clinical_assertion_trait linked to a trait via medgen id
 

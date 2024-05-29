@@ -38,6 +38,7 @@ class Submitter(Model):
     all_names: List[str]
     all_abbrevs: List[str]
     org_category: str
+    scv_id: str
     content: dict
 
     @staticmethod
@@ -48,7 +49,10 @@ class Submitter(Model):
         self.entity_type = "submitter"
 
     @staticmethod
-    def from_xml(inp: dict):
+    def from_xml(
+        inp: dict,
+        scv_id: str = None,
+    ):
         _logger.debug(f"Submitter.from_xml(inp={json.dumps(inp)})")
         current_name = extract(inp, "@SubmitterName")
         current_abbrev = extract(inp, "@OrgAbbreviation")
@@ -59,6 +63,7 @@ class Submitter(Model):
             org_category=extract(inp, "@OrganizationCategory"),
             all_names=[] if not current_name else [current_name],
             all_abbrevs=[] if not current_abbrev else [current_abbrev],
+            scv_id=scv_id,
             content=inp,
         )
         return obj
@@ -73,6 +78,7 @@ class Submission(Model):
     submitter_id: str
     additional_submitter_ids: List[str]
     submission_date: str
+    scv_id: str
     content: dict
 
     @staticmethod
@@ -87,6 +93,7 @@ class Submission(Model):
         inp: dict,
         submitter: Submitter = {},
         additional_submitters: list = [Submitter],
+        scv_id: str = None,
     ):
         _logger.debug(
             f"Submission.from_xml(inp={json.dumps(inp)}, {submitter=}, "
@@ -98,6 +105,7 @@ class Submission(Model):
             submitter_id=submitter.id,
             additional_submitter_ids=[s.id for s in additional_submitters],
             submission_date=submission_date,
+            scv_id=scv_id,
             content=inp,
         )
         return obj
@@ -199,8 +207,10 @@ class ClinicalAssertion(Model):
                 ),
             )
         )
-        submitter = Submitter.from_xml(raw_accession)
-        submission = Submission.from_xml(inp, submitter, additional_submitters)
+        submitter = Submitter.from_xml(raw_accession, scv_accession)
+        submission = Submission.from_xml(
+            inp, submitter, additional_submitters, scv_accession
+        )
 
         trait_set_counter = make_counter()
         assertion_trait_set = extract(inp, "TraitSet")

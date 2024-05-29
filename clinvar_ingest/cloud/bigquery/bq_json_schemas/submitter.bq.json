@@ -28,5 +28,9 @@
   {
     "name": "org_category",
     "type": "STRING"
+  },
+  {
+    "name": "scv_id",
+    "type": "STRING"
   }
 ]
