@@ -24,7 +24,6 @@ from clinvar_ingest.utils import (
     extract,
     extract_oneof,
     flatten1,
-    get,
     make_counter,
 )
 
@@ -99,7 +98,6 @@ class Submission(Model):
             submitter_id=submitter.id,
             additional_submitter_ids=[s.id for s in additional_submitters],
             submission_date=submission_date,
-
             content=inp,
         )
         return obj
@@ -385,7 +383,6 @@ class Variation(Model):
     allele_id: str
     protein_change: List[str]
     num_chromosomes: int
-    num_copies: int
     gene_associations: List[GeneAssociation]
 
     content: dict
