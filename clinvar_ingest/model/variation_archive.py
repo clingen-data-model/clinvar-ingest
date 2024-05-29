@@ -433,7 +433,6 @@ class Variation(Model):
             protein_change=[
                 pc["$"] for pc in ensure_list(extract(inp, "ProteinChange") or [])
             ],
-            num_copies=int_or_none(extract(inp, "@NumberOfCopies")),
             num_chromosomes=int_or_none(extract(inp, "@NumberOfChromosomes")),
             gene_associations=[],
             child_ids=child_ids,
