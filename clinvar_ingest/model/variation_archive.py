@@ -93,11 +93,13 @@ class Submission(Model):
             f"Submission.from_xml(inp={json.dumps(inp)}, {submitter=}, "
             f"{additional_submitters=})"
         )
+        submission_date = sanitize_date(extract(inp, "@SubmissionDate"))
         obj = Submission(
-            id=f"{submitter.id}",  # TODO - FIX w/ Date
+            id=f"{submitter.id}.{submission_date}",
             submitter_id=submitter.id,
             additional_submitter_ids=[s.id for s in additional_submitters],
-            submission_date=sanitize_date(extract(inp, "@SubmissionDate")),
+            submission_date=submission_date,
+
             content=inp,
         )
         return obj
