@@ -19,5 +19,9 @@
   {
     "name": "submission_date",
     "type": "DATE"
+  },
+  {
+    "name": "scv_id",
+    "type": "STRING"
   }
 ]

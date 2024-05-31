@@ -42,10 +42,6 @@
     "type": "INTEGER"
   },
   {
-    "name": "num_copies",
-    "type": "INTEGER"
-  },
-  {
     "mode": "REPEATED",
     "name": "child_ids",
     "type": "STRING"

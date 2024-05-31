@@ -19,5 +19,9 @@
     "mode": "REPEATED",
     "name": "trait_ids",
     "type": "STRING"
+  },
+  {
+    "name": "rcv_id",
+    "type": "STRING"
   }
 ]
