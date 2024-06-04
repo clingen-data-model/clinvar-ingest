@@ -162,6 +162,7 @@ class ClinicalAssertion(Model):
 
     clinical_assertion_observations: List[ClinicalAssertionObservation]
     clinical_assertion_trait_set: ClinicalAssertionTraitSet | None
+    clinical_assertion_variations: List[ClinicalAssertionVariation]
 
     @staticmethod
     def jsonifiable_fields() -> List[str]:
@@ -269,6 +270,7 @@ class ClinicalAssertion(Model):
             submission=submission,
             clinical_assertion_observations=observations,
             clinical_assertion_trait_set=assertion_trait_set,
+            clinical_assertion_variations=submitted_variations,
             content=inp,
         )
         return obj
@@ -305,6 +307,12 @@ class ClinicalAssertion(Model):
         del self_copy.clinical_assertion_trait_set
 
         yield self_copy
+
+        # Yield variations after the assertion since they reference it, not the other way around
+        for variation in self_copy.clinical_assertion_variations:
+            for subobj in variation.disassemble():
+                yield subobj
+        del self_copy.clinical_assertion_variations
 
 
 @dataclasses.dataclass
@@ -377,11 +385,47 @@ class ClinicalAssertionVariation(Model):
     @staticmethod
     def extract_variations(inp: dict, assertion_accession: str):
         """
-        Accepts a ClinicalAssertion XML dict. Returns a list of ClinicalAssertionVariation objects.
+        Accepts a ClinicalAssertion XML dict. Returns a list of
+        ClinicalAssertionVariation objects, with child_ids and descendant_ids
+        filled in appropriately. Removes these variations from the ClinicalAssertion dict.
+        Generates synthetic ids for each variation, an index incremented for each and
+        appended to the assertion_accession.
+
+        e.g. a Genotype with 2 Haplotypes, each with 2 SimpleAlleles, on assertion SCV01
+        Genotype
+            Haplotype1
+                SimpleAllele1
+                SimpleAllele2
+            Haplotype2
+                SimpleAllele3
+                SimpleAllele4
+        ->
+        [
+            # Genotype
+            ClinicalAssertionVariation(
+                id=SCV01.1,
+                child_ids=[SCV01.2, SCV01.3],
+                descendant_ids=[SCV01.2, SCV01.3, SCV01.4, SCV01.5, SCV01.6, SCV01.7]),
+            # Haplotype1
+            ClinicalAssertionVariation(
+                id=SCV01.2,
+                child_ids=[SCV01.4, SCV01.5],
+                descendant_ids=[SCV01.4, SCV01.5]),
+            # SimpleAllele1
+            ClinicalAssertionVariation(id=SCV01.3, child_ids=[], descendant_ids=[]),
+            # SimpleAllele2
+            ClinicalAssertionVariation(id=SCV01.4, child_ids=[], descendant_ids=[]),
+            # Haplotype2
+            ClinicalAssertionVariation(
+                id=SCV01.5,
+                child_ids=[SCV01.6, SCV01.7],
+                descendant_ids=[SCV01.6, SCV01.7]),
+            # SimpleAllele3
+            ClinicalAssertionVariation(id=SCV01.6, child_ids=[], descendant_ids=[]),
+            # SimpleAllele4
+            ClinicalAssertionVariation(id=SCV01.7, child_ids=[], descendant_ids=[]),
+        ]
         """
-        # descendant_tree = Variation.descendant_tree(inp)
-        # descendant_ids = Variation.get_all_descendants(descendant_tree)
-        # child_ids = Variation.get_all_children(descendant_tree)
         buffer = []
 
         class Counter:
@@ -391,13 +435,6 @@ class ClinicalAssertionVariation(Model):
             def get_and_increment(self):
                 self.counter += 1
                 return self.counter
-
-            # # Dunder method for int conversion
-            # def __int__(self):
-            #     return self.counter
-
-            # def __str__(self):
-            #     return str(self.counter)
 
         counter = Counter()
 
@@ -413,15 +450,14 @@ class ClinicalAssertionVariation(Model):
                 inputs = [extract(inp, "Genotype")]
             else:
                 return []
-                # raise RuntimeError("Unknown variation type: " + json.dumps(inp))
 
             outputs = []
             for inp in inputs:
                 variation = ClinicalAssertionVariation(
                     id=f"{assertion_accession}.{counter.get_and_increment()}",
                     clinical_assertion_id=assertion_accession,
-                    variation_type=extract(inp, "VariantType", "$")
-                    or extract(inp, "VariationType", "$"),
+                    variation_type=extract(extract(inp, "VariantType"), "$")
+                    or extract(extract(inp, "VariationType"), "$"),
                     subclass_type=subclass_type,
                     descendant_ids=[],  # Fill in later
                     child_ids=[],  # Fill in later
@@ -430,49 +466,24 @@ class ClinicalAssertionVariation(Model):
                 children = extract_and_accumulate_descendants(inp)
                 variation.child_ids = [c.id for c in children]
                 direct_children = variation.child_ids
-                _logger.info(f"{direct_children=}")
+                _logger.debug(f"{direct_children=}")
                 non_child_descendants = flatten1([c.child_ids or [] for c in children])
-                _logger.info(f"{non_child_descendants=}")
+                _logger.debug(f"{non_child_descendants=}")
                 variation.descendant_ids = direct_children + non_child_descendants
+                variation.content = inp
 
                 buffer.append(variation)
                 outputs.append(variation)
             return outputs
 
         v = extract_and_accumulate_descendants(inp)
-        _logger.info(f"extract_and_accumulate_descendants returned: {v}")
-        assert len(v) <= 1, f"Expected 1 or fewer variations, got {len(v)}: {v}"
+        _logger.debug(f"extract_and_accumulate_descendants returned: {v}")
+        if len(v) > 1:
+            raise RuntimeError(f"Expected 1 or fewer variations, got {len(v)}: {v}")
         return buffer
 
-    # @staticmethod
-    # def from_xml(inp: dict, assertion_accession: str):
-    #     _logger.debug(f"ClinicalAssertionVariation.from_xml(inp={json.dumps(inp)})")
-    #     # descendant_tree = Variation.descendant_tree(inp)
-    #     # descendant_ids = Variation.get_all_descendants(descendant_tree)
-    #     # child_ids = Variation.get_all_children(descendant_tree)
-
-    #     if "SimpleAllele" in inp:
-    #         subclass_type = "SimpleAllele"
-    #         inp = extract(inp, "SimpleAllele")
-    #     elif "Haplotype" in inp:
-    #         subclass_type = "Haplotype"
-    #         inp = extract(inp, "Haplotype")
-    #     elif "Genotype" in inp:
-    #         subclass_type = "Genotype"
-    #         inp = extract(inp, "Genotype")
-    #     else:
-    #         raise RuntimeError("Unknown variation type: " + json.dumps(inp))
-
-    #     assertion_accession = extract(inp, "@Accession")
-    #     all_descendants = ClinicalAssertionVariation.extract_variations(
-    #         inp, assertion_accession
-    #     )
-
     def disassemble(self):
-        # self_copy = model_copy(self)
-        # yield self_copy
-        # TODO
-        raise NotImplementedError()
+        yield self
 
 
 @dataclasses.dataclass
