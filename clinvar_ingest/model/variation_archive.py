@@ -314,7 +314,7 @@ class ClinicalAssertion(Model):
         return obj
 
     def disassemble(self):
-        self_copy = model_copy(self)
+        self_copy: ClinicalAssertion = model_copy(self)
 
         for subobj in self_copy.submitter.disassemble():
             yield subobj
@@ -344,13 +344,17 @@ class ClinicalAssertion(Model):
             )
         del self_copy.clinical_assertion_trait_set
 
+        # Make a local reference to the variations and delete the field from the
+        # object since it is yielded before the variations
+        clinical_assertion_variations = self_copy.clinical_assertion_variations
+        del self_copy.clinical_assertion_variations
+
         yield self_copy
 
         # Yield variations after the assertion since they reference it, not the other way around
-        for variation in self_copy.clinical_assertion_variations:
+        for variation in clinical_assertion_variations:
             for subobj in variation.disassemble():
                 yield subobj
-        del self_copy.clinical_assertion_variations
 
 
 @dataclasses.dataclass
