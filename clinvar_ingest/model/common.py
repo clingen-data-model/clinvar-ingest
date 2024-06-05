@@ -9,7 +9,6 @@ _logger = logging.getLogger("clinvar_ingest")
 
 class Model(object, metaclass=ABCMeta):
     @staticmethod
-    @abstractmethod
     def from_xml(inp: dict):
         """
         Constructs an instance of this class using the XML structure parsed into a dict.
