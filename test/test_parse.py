@@ -8,6 +8,7 @@ from clinvar_ingest.model.trait import (
 from clinvar_ingest.model.variation_archive import (
     ClinicalAssertion,
     ClinicalAssertionObservation,
+    ClinicalAssertionVariation,
     Gene,
     GeneAssociation,
     RcvAccession,
@@ -28,7 +29,7 @@ def test_read_original_clinvar_variation_2():
         objects = list(read_clinvar_xml(f))
 
     # print("\n".join([str(dictify(o)) for o in objects]))
-    assert len(objects) == 21
+    assert len(objects) == 23
     expected_types = [
         Variation,
         Gene,
@@ -43,12 +44,14 @@ def test_read_original_clinvar_variation_2():
         ClinicalAssertionTrait,
         ClinicalAssertionTraitSet,
         ClinicalAssertion,
+        ClinicalAssertionVariation,
         Submitter,
         Submission,
         ClinicalAssertionObservation,
         ClinicalAssertionTrait,
         ClinicalAssertionTraitSet,
         ClinicalAssertion,
+        ClinicalAssertionVariation,
         RcvAccession,
         VariationArchive,
     ]
@@ -145,7 +148,7 @@ def test_read_original_clinvar_variation_634266(log_conf):
     with open(filename) as f:
         objects = list(read_clinvar_xml(f))
 
-    assert len(objects) == 42
+    assert len(objects) == 70
     expected_types = [
         Variation,
         TraitMapping,
@@ -166,24 +169,52 @@ def test_read_original_clinvar_variation_634266(log_conf):
         ClinicalAssertionTrait,
         ClinicalAssertionTraitSet,
         ClinicalAssertion,
+        ClinicalAssertionVariation,
+        ClinicalAssertionVariation,
+        ClinicalAssertionVariation,
+        ClinicalAssertionVariation,
+        ClinicalAssertionVariation,
+        ClinicalAssertionVariation,
+        ClinicalAssertionVariation,
         Submitter,
         Submission,
         ClinicalAssertionObservation,
         ClinicalAssertionTrait,
         ClinicalAssertionTraitSet,
         ClinicalAssertion,
+        ClinicalAssertionVariation,
+        ClinicalAssertionVariation,
+        ClinicalAssertionVariation,
+        ClinicalAssertionVariation,
+        ClinicalAssertionVariation,
+        ClinicalAssertionVariation,
+        ClinicalAssertionVariation,
         Submitter,
         Submission,
         ClinicalAssertionObservation,
         ClinicalAssertionTrait,
         ClinicalAssertionTraitSet,
         ClinicalAssertion,
+        ClinicalAssertionVariation,
+        ClinicalAssertionVariation,
+        ClinicalAssertionVariation,
+        ClinicalAssertionVariation,
+        ClinicalAssertionVariation,
+        ClinicalAssertionVariation,
+        ClinicalAssertionVariation,
         Submitter,
         Submission,
         ClinicalAssertionObservation,
-        ClinicalAssertionTrait,  # 30
+        ClinicalAssertionTrait,
         ClinicalAssertionTraitSet,
         ClinicalAssertion,
+        ClinicalAssertionVariation,
+        ClinicalAssertionVariation,
+        ClinicalAssertionVariation,
+        ClinicalAssertionVariation,
+        ClinicalAssertionVariation,
+        ClinicalAssertionVariation,
+        ClinicalAssertionVariation,
         RcvAccession,
         RcvAccession,
         RcvAccession,
