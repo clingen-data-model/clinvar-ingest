@@ -39,6 +39,7 @@ class Submitter(Model):
     all_names: List[str]
     all_abbrevs: List[str]
     org_category: str
+    scv_id: str
     content: dict
 
     @staticmethod
@@ -49,7 +50,10 @@ class Submitter(Model):
         self.entity_type = "submitter"
 
     @staticmethod
-    def from_xml(inp: dict):
+    def from_xml(
+        inp: dict,
+        scv_id: str = None,
+    ):
         _logger.debug(f"Submitter.from_xml(inp={json.dumps(inp)})")
         current_name = extract(inp, "@SubmitterName")
         current_abbrev = extract(inp, "@OrgAbbreviation")
@@ -60,6 +64,7 @@ class Submitter(Model):
             org_category=extract(inp, "@OrganizationCategory"),
             all_names=[] if not current_name else [current_name],
             all_abbrevs=[] if not current_abbrev else [current_abbrev],
+            scv_id=scv_id,
             content=inp,
         )
         return obj
@@ -74,6 +79,7 @@ class Submission(Model):
     submitter_id: str
     additional_submitter_ids: List[str]
     submission_date: str
+    scv_id: str
     content: dict
 
     @staticmethod
@@ -88,16 +94,19 @@ class Submission(Model):
         inp: dict,
         submitter: Submitter = {},
         additional_submitters: list = [Submitter],
+        scv_id: str = None,
     ):
         _logger.debug(
             f"Submission.from_xml(inp={json.dumps(inp)}, {submitter=}, "
             f"{additional_submitters=})"
         )
+        submission_date = sanitize_date(extract(inp, "@SubmissionDate"))
         obj = Submission(
-            id=f"{submitter.id}",  # TODO - FIX w/ Date
+            id=f"{submitter.id}.{submission_date}",
             submitter_id=submitter.id,
-            additional_submitter_ids=list(filter("id", additional_submitters)),
-            submission_date=sanitize_date(extract(inp, "@SubmissionDate")),
+            additional_submitter_ids=[s.id for s in additional_submitters],
+            submission_date=submission_date,
+            scv_id=scv_id,
             content=inp,
         )
         return obj
@@ -143,7 +152,8 @@ class ClinicalAssertionObservation(Model):
 
 @dataclasses.dataclass
 class ClinicalAssertion(Model):
-    assertion_id: str
+    internal_id: str
+    id: str
     title: str
     local_key: str
     assertion_accession: str
@@ -156,8 +166,14 @@ class ClinicalAssertion(Model):
     review_status: str
     interpretation_date_last_evaluated: str
     interpretation_description: str
+    interpretation_comments: dict
     submitter: Submitter
+    submitter_id: str
     submission: Submission
+    submission_id: str
+    submission_names: List[str]
+    variation_id: str
+    variation_archive_id: str
     content: dict
 
     clinical_assertion_observations: List[ClinicalAssertionObservation]
@@ -166,7 +182,7 @@ class ClinicalAssertion(Model):
 
     @staticmethod
     def jsonifiable_fields() -> List[str]:
-        return ["content"]
+        return ["content", "interpretation_comments"]
 
     def __post_init__(self):
         self.entity_type = "clinical_assertion"
@@ -176,6 +192,8 @@ class ClinicalAssertion(Model):
         inp: dict,
         normalized_traits: List[Trait] = [],
         trait_mappings: List[TraitMapping] = [],
+        variation_id: str = None,
+        variation_archive_id: str = None,
     ):
         _logger.debug(f"ClinicalAssertion.from_xml(inp={json.dumps(inp)})")
         obj_id = extract(inp, "@ID")
@@ -187,15 +205,14 @@ class ClinicalAssertion(Model):
             map(
                 Submitter.from_xml,
                 ensure_list(
-                    extract(
-                        raw_accession, "AdditionalSubmitters", "SubmitterDescription"
-                    )
-                    or []
+                    extract(inp, "AdditionalSubmitters", "SubmitterDescription") or []
                 ),
             )
         )
-        submitter = Submitter.from_xml(raw_accession)
-        submission = Submission.from_xml(inp, submitter, additional_submitters)
+        submitter = Submitter.from_xml(raw_accession, scv_accession)
+        submission = Submission.from_xml(
+            inp, submitter, additional_submitters, scv_accession
+        )
 
         trait_set_counter = make_counter()
         assertion_trait_set = extract(inp, "TraitSet")
@@ -248,8 +265,21 @@ class ClinicalAssertion(Model):
         )
         _logger.info(f"submitted_variations: {submitted_variations}")
 
+        interpretation_comments_type = extract(interpretation, "Comment", "@Type")
+        interpretation_comments_text = extract(interpretation, "Comment", "$")
+        interpretation_comments = {}
+        if interpretation_comments_text is not None:
+            interpretation_comments["text"] = interpretation_comments_text
+            if interpretation_comments_type is not None:
+                interpretation_comments["type"] = interpretation_comments_type
+
+        submission_names = ensure_list(
+            extract(inp, "SubmissionNameList", "SubmissionName") or []
+        )
+
         obj = ClinicalAssertion(
-            assertion_id=obj_id,
+            internal_id=obj_id,
+            id=scv_accession,
             title=extract(clinvar_submission, "@title"),
             local_key=extract(clinvar_submission, "@localKey"),
             assertion_accession=scv_accession,
@@ -266,8 +296,14 @@ class ClinicalAssertion(Model):
             interpretation_description=extract(
                 extract(interpretation, "Description"), "$"
             ),
+            interpretation_comments=interpretation_comments,
             submitter=submitter,
+            submitter_id=submitter.id,
             submission=submission,
+            submission_id=submission.id,
+            submission_names=[sn["$"] for sn in submission_names],
+            variation_id=variation_id,
+            variation_archive_id=variation_archive_id,
             clinical_assertion_observations=observations,
             clinical_assertion_trait_set=assertion_trait_set,
             clinical_assertion_variations=submitted_variations,
@@ -321,6 +357,7 @@ class Gene(Model):
     id: str
     symbol: str
     full_name: str
+    vcv_id: str
 
     @staticmethod
     def jsonifiable_fields() -> List[str]:
@@ -503,7 +540,6 @@ class Variation(Model):
     allele_id: str
     protein_change: List[str]
     num_chromosomes: int
-    num_copies: int
     gene_associations: List[GeneAssociation]
 
     content: dict
@@ -519,7 +555,7 @@ class Variation(Model):
         self.entity_type = "variation"
 
     @staticmethod
-    def from_xml(inp: dict):
+    def from_xml(inp: dict, variation_archive_id: str = None):
         _logger.debug(f"Variation.from_xml(inp={json.dumps(inp)})")
         descendant_tree = Variation.descendant_tree(inp)
         # _logger.info(f"descendant_tree: {descendant_tree}")
@@ -551,7 +587,6 @@ class Variation(Model):
             protein_change=[
                 pc["$"] for pc in ensure_list(extract(inp, "ProteinChange") or [])
             ],
-            num_copies=int_or_none(extract(inp, "@NumberOfCopies")),
             num_chromosomes=int_or_none(extract(inp, "@NumberOfChromosomes")),
             gene_associations=[],
             child_ids=child_ids,
@@ -567,6 +602,7 @@ class Variation(Model):
                     id=extract(g, "@GeneID"),
                     symbol=extract(g, "@Symbol"),
                     full_name=extract(g, "@FullName"),
+                    vcv_id=variation_archive_id,
                 ),
                 relationship_type=extract(g, "@RelationshipType"),
                 content=g,
@@ -674,6 +710,7 @@ class RcvAccession(Model):
     trait_set_id: str
     review_status: str
     interpretation: str
+    submission_count: int
 
     content: dict
 
@@ -688,7 +725,7 @@ class RcvAccession(Model):
     def from_xml(
         inp: dict,
         variation_id: int = None,
-        variation_archive_id=None,
+        variation_archive_id: str = None,
     ) -> RcvAccession:
         """
         <RCVAccession
@@ -707,10 +744,6 @@ class RcvAccession(Model):
         """
         # org.broadinstitute.monster.clinvar.parsers.VCV.scala : 259 : parseRawRcv
 
-        # TODO take the TraitSetID as given in the XML. If missing, ignore it, don't
-        # try to find the matching one in the ClinicalAssertion Traits
-        trait_set_id = get(inp, "InterpretedConditionList", "@TraitSetID")
-
         # TODO independentObservations always null?
         obj = RcvAccession(
             independent_observations=extract(inp, "@independentObservations"),
@@ -720,9 +753,10 @@ class RcvAccession(Model):
             date_last_evaluated=extract(inp, "@DateLastEvaluated"),
             version=int_or_none(extract(inp, "@Version")),
             title=extract(inp, "@Title"),
-            trait_set_id=trait_set_id,
+            trait_set_id=extract(inp, "InterpretedConditionList", "@TraitSetID"),
             review_status=extract(inp, "@ReviewStatus"),
             interpretation=extract(inp, "@Interpretation"),
+            submission_count=int_or_none(extract(inp, "@SubmissionCount")),
             content=inp,
         )
         return obj
@@ -771,7 +805,16 @@ class VariationArchive(Model):
         interp_record = inp.get("InterpretedRecord", inp.get("IncludedRecord"))
         interpretations = extract(interp_record, "Interpretations")
         interpretation = interpretations["Interpretation"]
-        variation = Variation.from_xml(interp_record)
+        vcv_accession = extract(inp, "@Accession")
+        variation = Variation.from_xml(interp_record, vcv_accession)
+        rcv_accessions = [
+            RcvAccession.from_xml(
+                r, variation_id=variation.id, variation_archive_id=vcv_accession
+            )
+            for r in ensure_list(
+                extract(interp_record, "RCVList", "RCVAccession") or []
+            )
+        ]
         trait_mappings = [
             TraitMapping.from_xml(tm)
             for tm in ensure_list(
@@ -785,8 +828,9 @@ class VariationArchive(Model):
                 or []
             )
         ]
+        trait_set_id_to_rcv_id = {r.trait_set_id: r.id for r in rcv_accessions}
         trait_sets = [
-            TraitSet.from_xml(ts)
+            TraitSet.from_xml(ts, trait_set_id_to_rcv_id[get(ts, "@ID")])
             for ts in ensure_list(
                 extract(
                     interpretation,
@@ -796,9 +840,8 @@ class VariationArchive(Model):
                 or []
             )
         ]
-        _id = extract(inp, "@Accession")
         obj = VariationArchive(
-            id=_id,
+            id=vcv_accession,
             name=extract(inp, "@VariationName"),
             version=extract(inp, "@Version"),
             variation=variation,
@@ -807,6 +850,8 @@ class VariationArchive(Model):
                     ca,
                     normalized_traits=flatten1([ts.traits for ts in trait_sets]),
                     trait_mappings=trait_mappings,
+                    variation_id=variation.id,
+                    variation_archive_id=vcv_accession,
                 )
                 for ca in ensure_list(
                     extract(
@@ -834,16 +879,7 @@ class VariationArchive(Model):
             ),
             trait_sets=trait_sets,
             trait_mappings=trait_mappings,
-            rcv_accessions=[
-                RcvAccession.from_xml(
-                    r,
-                    variation_id=variation.id,
-                    variation_archive_id=_id,
-                )
-                for r in ensure_list(
-                    extract(interp_record, "RCVList", "RCVAccession") or []
-                )
-            ],
+            rcv_accessions=rcv_accessions,
             interp_content=interpretation,
             content=inp,
         )
