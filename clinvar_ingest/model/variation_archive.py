@@ -433,8 +433,9 @@ class ClinicalAssertionVariation(Model):
                 self.counter = 0
 
             def get_and_increment(self):
+                v = self.counter
                 self.counter += 1
-                return self.counter
+                return v
 
         counter = Counter()
 
@@ -463,7 +464,16 @@ class ClinicalAssertionVariation(Model):
                     child_ids=[],  # Fill in later
                     content={},  # Fill in later
                 )
+                # Add to arrays first before recursing so that the variations
+                # are in the buffer in the order encountered, not the order finished
+                # (pre-order traversal order)
+                # This is works because later steps just update fields on the objects.
+                buffer.append(variation)
+                outputs.append(variation)
+
+                # Recursion
                 children = extract_and_accumulate_descendants(inp)
+                # Update fields based on accumulated descendants
                 variation.child_ids = [c.id for c in children]
                 direct_children = variation.child_ids
                 _logger.debug(f"{direct_children=}")
@@ -472,8 +482,6 @@ class ClinicalAssertionVariation(Model):
                 variation.descendant_ids = direct_children + non_child_descendants
                 variation.content = inp
 
-                buffer.append(variation)
-                outputs.append(variation)
             return outputs
 
         v = extract_and_accumulate_descendants(inp)
