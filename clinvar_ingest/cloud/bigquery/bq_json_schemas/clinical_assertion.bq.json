@@ -49,7 +49,6 @@
     "type": "STRING"
   },
   {
-    "mode": "REPEATED",
     "name": "interpretation_comments",
     "type": "STRING"
   },

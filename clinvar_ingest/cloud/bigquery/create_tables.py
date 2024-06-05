@@ -161,17 +161,39 @@ def create_internal_tables(
                 f"Destination table project must be {env.bq_dest_project}. Got: {dest_table.project}"
             )
 
+    def get_query_for_copy(
+        source_table_ref: bigquery.TableReference,
+        dest_table_ref: bigquery.TableReference,
+    ) -> str:
+        dedupe_queries = {
+            "gene": f"CREATE TABLE `{dest_table_ref}` AS SELECT a.* from `{source_table_ref}` a JOIN "
+            f"(SELECT id, max(vcv_id) AS max_vcv FROM  `{source_table_ref}` GROUP BY id) b "
+            f"ON a.id = b.id AND a.vcv_id = b.max_vcv",
+            "submission": f"CREATE TABLE `{dest_table_ref}` AS SELECT a.* from `{source_table_ref}` a JOIN "
+            f"(select id, max(scv_id) as max_scv from `{source_table_ref}` GROUP BY id) b "
+            f" on a.id = b.id and a.scv_id = b.max_scv",
+            "submitter": f"CREATE TABLE `{dest_table_ref}` AS SELECT a.* from `{source_table_ref}` a JOIN "
+            f"(select id, max(scv_id) as max_scv from `{source_table_ref}` GROUP BY id) b "
+            f" on a.id = b.id and a.scv_id = b.max_scv",
+            "trait": f"CREATE TABLE `{dest_table_ref}` AS SELECT a.* from `{source_table_ref}` a JOIN "
+            f"(select id, max(rcv_id) as max_rcv from `{source_table_ref}` GROUP BY id) b "
+            f" on a.id = b.id and a.rcv_id = b.max_rcv",
+            "trait_set": f"CREATE TABLE `{dest_table_ref}` AS SELECT a.* from `{source_table_ref}` a JOIN "
+            f"(select id, max(rcv_id) as max_rcv from `{source_table_ref}` GROUP BY id) b "
+            f" on a.id = b.id and a.rcv_id = b.max_rcv",
+        }
+        default_query = (
+            f"CREATE TABLE `{dest_table_ref}` AS SELECT * from `{source_table_ref}`"
+        )
+        return dedupe_queries.get(dest_table_ref.table_id, default_query)
+
     def ctas_copy(
         source_table_ref: bigquery.TableReference,
         dest_table_ref: bigquery.TableReference,
         bq_client: bigquery.Client,
     ) -> bigquery.QueryJob:
-        query = (
-            f"CREATE TABLE `{dest_table_ref}` " f"AS SELECT * from `{source_table_ref}`"
-        )
-        _logger.info(
-            f"Creating table {dest_table_ref} as select * from {source_table_ref}"
-        )
+        query = get_query_for_copy(source_table_ref, dest_table_ref)
+        _logger.info(f"Creating table {dest_table_ref} from {source_table_ref}")
         _logger.info(f"Query:\n{query}")
         query_job = bq_client.query(query)
         return query_job
