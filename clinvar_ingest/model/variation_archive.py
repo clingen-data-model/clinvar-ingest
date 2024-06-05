@@ -263,7 +263,9 @@ class ClinicalAssertion(Model):
         submitted_variations = ClinicalAssertionVariation.extract_variations(
             inp, scv_accession
         )
-        _logger.info(f"submitted_variations: {submitted_variations}")
+        _logger.debug(
+            f"scv {scv_accession} had submitted_variations: {submitted_variations}"
+        )
 
         interpretation_comments_type = extract(interpretation, "Comment", "@Type")
         interpretation_comments_text = extract(interpretation, "Comment", "$")
