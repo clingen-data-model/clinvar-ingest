@@ -167,8 +167,8 @@ class ClinicalAssertion(Model):
     interpretation_date_last_evaluated: str
     interpretation_description: str
     interpretation_comments: dict
-    submitter: Submitter
     submitter_id: str
+    submitters: List[Submitter]
     submission: Submission
     submission_id: str
     submission_names: List[str]
@@ -201,15 +201,15 @@ class ClinicalAssertion(Model):
         scv_accession = extract(raw_accession, "@Accession")
         clinvar_submission = extract(inp, "ClinVarSubmissionID")
         interpretation = extract(inp, "Interpretation")
-        additional_submitters = list(
-            map(
-                Submitter.from_xml,
-                ensure_list(
-                    extract(inp, "AdditionalSubmitters", "SubmitterDescription") or []
-                ),
+        additional_submitters = [
+            Submitter.from_xml(a, scv_accession)
+            for a in ensure_list(
+                extract(inp, "AdditionalSubmitters", "SubmitterDescription") or []
             )
-        )
+        ]
+
         submitter = Submitter.from_xml(raw_accession, scv_accession)
+        submitters = [submitter] + additional_submitters
         submission = Submission.from_xml(
             inp, submitter, additional_submitters, scv_accession
         )
@@ -299,8 +299,8 @@ class ClinicalAssertion(Model):
                 extract(interpretation, "Description"), "$"
             ),
             interpretation_comments=interpretation_comments,
-            submitter=submitter,
             submitter_id=submitter.id,
+            submitters=submitters,
             submission=submission,
             submission_id=submission.id,
             submission_names=[sn["$"] for sn in submission_names],
@@ -316,9 +316,10 @@ class ClinicalAssertion(Model):
     def disassemble(self):
         self_copy: ClinicalAssertion = model_copy(self)
 
-        for subobj in self_copy.submitter.disassemble():
-            yield subobj
-        del self_copy.submitter
+        for submitter in self_copy.submitters:
+            for subobj in submitter.disassemble():
+                yield subobj
+        del self_copy.submitters
 
         for subobj in self_copy.submission.disassemble():
             yield subobj
