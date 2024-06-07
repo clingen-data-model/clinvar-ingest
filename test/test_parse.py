@@ -1,3 +1,5 @@
+import html
+
 from clinvar_ingest.model.trait import (
     ClinicalAssertionTrait,
     ClinicalAssertionTraitSet,
@@ -612,6 +614,21 @@ def test_read_original_clinvar_variation_10():
         > 0
     ]
     assert len(traits_HP_0000836) == 8
+
+    # Check interpretation_comments
+    # SCV001251532
+    scv = [
+        o
+        for o in objects
+        if isinstance(o, ClinicalAssertion) and o.id == "SCV001251532"
+    ]
+    assert len(scv) == 1
+    scv001251532 = scv[0]
+    assert len(scv001251532.interpretation_comments) == 1
+    assert scv001251532.interpretation_comments[0]["text"] == html.unescape(
+        "The HFE c.187C&gt;G (p.H63D) variant is a pathogenic variant seen in 10.8% of the human population in gnomAD. Indviduals with the p.H63D variant are considered carriers of hemochromatosis, although this variant is associated with less severe iron overload and reduced penetrance compared to another pathogenic HFE variant, c.845G&gt;A, p.C282Y (PMID: 19159930; 20301613)."
+    )
+    assert "type" not in scv001251532.interpretation_comments[0]
 
 
 if __name__ == "__main__":
