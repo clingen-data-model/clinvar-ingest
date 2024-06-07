@@ -70,6 +70,8 @@ class Submitter(Model):
         return obj
 
     def disassemble(self):
+        if not self.content:
+            del self.content
         yield self
 
 
@@ -112,6 +114,8 @@ class Submission(Model):
         return obj
 
     def disassemble(self):
+        if not self.content:
+            del self.content
         yield self
 
 
@@ -139,6 +143,8 @@ class ClinicalAssertionObservation(Model):
 
     def disassemble(self):
         self_copy = model_copy(self)
+        if not self_copy.content:
+            del self_copy.content
         trait_set = self_copy.clinical_assertion_trait_set
         del self_copy.clinical_assertion_trait_set
         if trait_set is not None:
@@ -315,7 +321,8 @@ class ClinicalAssertion(Model):
 
     def disassemble(self):
         self_copy: ClinicalAssertion = model_copy(self)
-
+        if not self_copy.content:
+            del self_copy.content
         for subobj in self_copy.submitter.disassemble():
             yield subobj
         del self_copy.submitter
@@ -402,6 +409,8 @@ class GeneAssociation(Model):
 
     def disassemble(self):
         self_copy = model_copy(self)
+        if not self_copy.content:
+            del self_copy.content
         yield self_copy.gene
         del self_copy.gene
         yield self_copy
@@ -534,6 +543,8 @@ class ClinicalAssertionVariation(Model):
         return buffer
 
     def disassemble(self):
+        if not self.content:
+            del self.content
         yield self
 
 
@@ -693,6 +704,8 @@ class Variation(Model):
 
     def disassemble(self):
         self_copy = model_copy(self)
+        if not self_copy.content:
+            del self_copy.content
 
         # Yield self before gene associations since they refer to the variation
         gene_associations = self_copy.gene_associations
@@ -768,6 +781,8 @@ class RcvAccession(Model):
         return obj
 
     def disassemble(self):
+        if not self.content:
+            del self.content
         yield self
 
 
@@ -790,7 +805,7 @@ class VariationArchive(Model):
     interp_explanation: str
     interp_date_last_evaluated: str
     interp_content: dict
-    content: str
+    content: dict
 
     trait_sets: List[TraitSet]
     trait_mappings: List[TraitMapping]
@@ -893,6 +908,8 @@ class VariationArchive(Model):
 
     def disassemble(self):
         self_copy = model_copy(self)
+        if not self_copy.content:
+            del self_copy.content
         for val in self_copy.variation.disassemble():
             yield val
         del self_copy.variation

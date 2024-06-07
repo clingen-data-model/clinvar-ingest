@@ -377,6 +377,8 @@ class Trait(Model):
         return obj
 
     def disassemble(self):
+        if not self.content:
+            del self.content
         yield self
 
 
@@ -409,10 +411,11 @@ class TraitSet(Model):
             rcv_id=rcv_id,
             content=inp,
         )
-
         return obj
 
     def disassemble(self):
+        if not self.content:
+            del self.content
         for t in self.traits:
             for val in t.disassemble():
                 yield val
@@ -563,6 +566,8 @@ class ClinicalAssertionTrait(Model):
         return obj
 
     def disassemble(self):
+        if not self.content:
+            del self.content
         yield self
 
 
@@ -613,6 +618,8 @@ class ClinicalAssertionTraitSet(Model):
 
     def disassemble(self):
         self_copy = model_copy(self)
+        if not self_copy.content:
+            del self_copy.content
         for t in self_copy.traits:
             for val in t.disassemble():
                 yield val
