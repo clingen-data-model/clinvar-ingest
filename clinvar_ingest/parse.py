@@ -66,6 +66,16 @@ def get_open_file_for_writing(
     return d[label]
 
 
+def _jsonify_non_empties(obj) -> list | str | None:
+    """
+    Jsonify objects and lists of objects, but not if it's None, empty string, or an empty collection
+    """
+    if isinstance(obj, list):
+        return [_jsonify_non_empties(i) for i in obj]
+    elif obj:
+        return json.dumps(obj)
+
+
 def parse_and_write_files(
     input_filename: str,
     output_directory: str,
@@ -119,12 +129,7 @@ def parse_and_write_files(
                     if hasattr(type(obj), "jsonifiable_fields"):
                         for field in getattr(type(obj), "jsonifiable_fields")():
                             if field in obj_dict:
-                                if isinstance(obj_dict[field], list):
-                                    obj_dict[field] = [
-                                        json.dumps(i) for i in obj_dict[field]
-                                    ]
-                                else:
-                                    obj_dict[field] = json.dumps(obj_dict[field])
+                                obj_dict[field] = _jsonify_non_empties(obj_dict[field])
 
                 obj_dict["release_date"] = release_date
                 f_out.write(json.dumps(obj_dict).encode("utf-8"))
