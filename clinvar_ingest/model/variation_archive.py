@@ -166,7 +166,7 @@ class ClinicalAssertion(Model):
     review_status: str
     interpretation_date_last_evaluated: str
     interpretation_description: str
-    interpretation_comments: dict
+    interpretation_comments: List[dict]
     submitter: Submitter
     submitter_id: str
     submission: Submission
@@ -257,13 +257,12 @@ class ClinicalAssertion(Model):
                 for j, t in enumerate(obs_trait_set.traits):
                     t.id = f"{obs_trait_set.id}.{j}"
 
-        interpretation_comments_type = extract(interpretation, "Comment", "@Type")
-        interpretation_comments_text = extract(interpretation, "Comment", "$")
-        interpretation_comments = {}
-        if interpretation_comments_text is not None:
-            interpretation_comments["text"] = interpretation_comments_text
-            if interpretation_comments_type is not None:
-                interpretation_comments["type"] = interpretation_comments_type
+        interpretation_comments = []
+        for raw_comment in ensure_list(extract(interpretation, "Comment") or []):
+            comment = {"text": extract(raw_comment, "$")}
+            if "@Type" in raw_comment:
+                comment["type"] = extract(raw_comment, "@Type")
+            interpretation_comments.append(comment)
 
         submission_names = ensure_list(
             extract(inp, "SubmissionNameList", "SubmissionName") or []
