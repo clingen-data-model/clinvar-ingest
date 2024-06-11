@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-import time
 import json
-import requests
+import time
 
+import requests
 
 # pylint: disable=W0105
 """

@@ -1,17 +1,11 @@
 #!/usr/bin/env python3
-from pathlib import PurePosixPath
-import os
 import logging
+import os
+from pathlib import PurePosixPath
 
-from google.cloud.storage import Client as GCSClient
 from google.cloud import bigquery
+from google.cloud.storage import Client as GCSClient
 
-from clinvar_ingest.cloud.bigquery.create_tables import (
-    run_create_external_tables,
-    create_internal_tables,
-    drop_external_tables,
-)
-from clinvar_ingest.config import get_env
 from clinvar_ingest.api.model.requests import (
     ClinvarFTPWatcherRequest,
     CopyResponse,
@@ -22,7 +16,13 @@ from clinvar_ingest.api.model.requests import (
     ParseRequest,
     ParseResponse,
 )
+from clinvar_ingest.cloud.bigquery.create_tables import (
+    create_internal_tables,
+    drop_external_tables,
+    run_create_external_tables,
+)
 from clinvar_ingest.cloud.gcs import copy_file_to_bucket, http_download_requests
+from clinvar_ingest.config import get_env
 from clinvar_ingest.parse import parse_and_write_files
 from clinvar_ingest.slack import send_slack_message
 
@@ -89,7 +89,7 @@ wf_input = ClinvarFTPWatcherRequest(**os.environ)
 
 workflow_execution_id = create_execution_id(
     wf_input.release_date.isoformat().replace("-", "_"),
-    wf_input.released != wf_input.last_modified
+    wf_input.released != wf_input.last_modified,
 )
 workflow_id_message = f"Workflow Execution ID: {workflow_execution_id}"
 send_slack_message("Starting " + workflow_id_message)
@@ -230,7 +230,9 @@ try:
         f"Create Internal Tables request: {create_internal_tables_request.model_dump_json()}"
     )
 
-    create_internal_tables_response = create_internal_tables(create_internal_tables_request)
+    create_internal_tables_response = create_internal_tables(
+        create_internal_tables_request
+    )
     _logger.info(
         f"Create Internal Tables response: {create_internal_tables_response.model_dump_json()}"
     )
@@ -243,7 +245,9 @@ except Exception as e:
 ################################################################
 # Drop external tables
 try:
-    drop_external_tables_request = DropExternalTablesRequest(root=create_external_tables_response.root)
+    drop_external_tables_request = DropExternalTablesRequest(
+        root=create_external_tables_response.root
+    )
     _logger.info(
         f"Drop External Tables request: {drop_external_tables_request.model_dump_json()}"
     )

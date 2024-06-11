@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
+import logging
+import multiprocessing
 import time
 
-import asyncio
-import multiprocessing
-import logging
-from fastapi import BackgroundTasks, FastAPI, Request
-
 import requests
+from fastapi import BackgroundTasks, FastAPI, Request
 
 formatter = logging.Formatter(
     fmt="%(asctime)s %(levelname)-8s %(message)s",

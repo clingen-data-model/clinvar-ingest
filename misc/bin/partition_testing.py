@@ -11,22 +11,12 @@ BackgroundTasks are not active requests and make the container look idle.
 
 import gzip
 import logging
-from pathlib import Path
 import time
-from typing import Any, Iterator, TextIO, Tuple
-import urllib.request
-import requests
 import xml.etree.ElementTree as ET
+from pathlib import Path
+from typing import Any, Iterator, TextIO, Tuple
 
-from google.cloud import storage
 import xmltodict
-
-from clinvar_ingest.cloud.gcs import (
-    blob_writer,
-    http_upload,
-    http_download_curl,
-    http_download_requests,
-)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -175,9 +165,6 @@ def split_clinvar_xml(
         for _f in output_files:
             _f.write(f"</{ROOT_ELEMENT}>\n".encode("utf-8"))
             _f.close()
-
-
-import xml.etree.ElementTree as ET
 
 
 def write_element(file, element):
