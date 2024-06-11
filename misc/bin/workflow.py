@@ -99,7 +99,7 @@ _logger.info(workflow_id_message)
 # Run copy step. Copies a source XML file from an HTTP/FTP server to GCS
 
 
-def copy(payload: ClinvarFTPWatcherRequest) -> CopyResponse:
+def copy(payload: ClinvarFTPWatcherRequest, skip_existing: bool = True) -> CopyResponse:
     _logger.info(f"copy payload: {payload.model_dump_json()}")
     ftp_base = str(payload.host).strip("/")
     ftp_dir = PurePosixPath(payload.directory)
@@ -113,6 +113,22 @@ def copy(payload: ClinvarFTPWatcherRequest) -> CopyResponse:
     gcs_dir = PurePosixPath(env.bucket_staging_prefix)
     gcs_file = PurePosixPath(payload.name)
     gcs_path = f"{gcs_base}/{gcs_dir.relative_to(gcs_dir.anchor) / gcs_file}"
+
+    if skip_existing:
+        # If the blob already exists and the size matches the expected size
+        # from the `payload`, return early.
+        client = _get_gcs_client()
+        bucket = client.bucket(env.bucket_name)
+        # Remove the scheme and bucket name
+        gcs_blob_name = gcs_path[len(f"gs://{env.bucket_name}/") :]
+        # Retrieve blob metadata
+        blob = bucket.get_blob(gcs_blob_name)
+
+        if blob is not None and blob.size == ftp_file_size:
+            _logger.info(
+                f"Skipping copy, file already exists and size matches: {gcs_path}"
+            )
+            return CopyResponse(ftp_path=ftp_path, gcs_path=gcs_path)
 
     _logger.info(f"Copying {ftp_path} to {gcs_path}")
 
