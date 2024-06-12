@@ -54,14 +54,23 @@ released='2024-06-04T09:09:59'
 release_date='2024-06-03'
 
 # Smaller input
-# host=https://raw.githubusercontent.com
-# directory=/clingen-data-model/clinvar-ingest/main/test/data
+host=https://raw.githubusercontent.com
+directory=/clingen-data-model/clinvar-ingest/main/test/data
+name=OriginalTestDataSet.xml.gz
+size=46719
+last_modified=2023-10-07T15:47:16
+released=2023-10-07T15:47:16
+release_date=2023-10-07
+
+
+# Small test input in GCS
+# host=gs://clinvar-ingest
+# directory=test-data
 # name=OriginalTestDataSet.xml.gz
 # size=46719
 # last_modified=2023-10-07T15:47:16
 # released=2023-10-07T15:47:16
 # release_date=2023-10-07
-
 
 env_vars="CLINVAR_INGEST_BUCKET=$CLINVAR_INGEST_BUCKET"
 env_vars="$env_vars,CLINVAR_INGEST_SLACK_CHANNEL=$CLINVAR_INGEST_SLACK_CHANNEL"

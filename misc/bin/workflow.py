@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import logging
 import os
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 
 from google.cloud import bigquery
 from google.cloud.storage import Client as GCSClient
@@ -97,15 +97,11 @@ _logger.info(workflow_id_message)
 
 ################################################################
 # Run copy step. Copies a source XML file from an HTTP/FTP server to GCS
+# If the host is a GCS bucket, it will download from there rather than using HTTP
 
 
 def copy(payload: ClinvarFTPWatcherRequest, skip_existing: bool = True) -> CopyResponse:
     _logger.info(f"copy payload: {payload.model_dump_json()}")
-    ftp_base = str(payload.host).strip("/")
-    ftp_dir = PurePosixPath(payload.directory)
-    ftp_file = PurePosixPath(payload.name)
-    ftp_file_size = payload.size
-    ftp_path = f"{ftp_base}/{ftp_dir.relative_to(ftp_dir.anchor) / ftp_file}"
 
     gcs_base = (
         f"gs://{env.bucket_name}/{env.executions_output_prefix}/{workflow_execution_id}"
@@ -114,39 +110,58 @@ def copy(payload: ClinvarFTPWatcherRequest, skip_existing: bool = True) -> CopyR
     gcs_file = PurePosixPath(payload.name)
     gcs_path = f"{gcs_base}/{gcs_dir.relative_to(gcs_dir.anchor) / gcs_file}"
 
+    client = _get_gcs_client()
+
+    source_host = str(payload.host)
+    source_file_size = payload.size
+
+    source_base = str(payload.host).strip("/")
+    source_dir = PurePosixPath(payload.directory)
+    source_file = PurePosixPath(payload.name)
+    source_path = (
+        f"{source_base}/{source_dir.relative_to(source_dir.anchor) / source_file}"
+    )
+
     if skip_existing:
         # If the blob already exists and the size matches the expected size
         # from the `payload`, return early.
-        client = _get_gcs_client()
         bucket = client.bucket(env.bucket_name)
         # Remove the scheme and bucket name
         gcs_blob_name = gcs_path[len(f"gs://{env.bucket_name}/") :]
         # Retrieve blob metadata
         blob = bucket.get_blob(gcs_blob_name)
 
-        if blob is not None and blob.size == ftp_file_size:
+        if blob is not None and blob.size == source_file_size:
             _logger.info(
                 f"Skipping copy, file already exists and size matches: {gcs_path}"
             )
-            return CopyResponse(ftp_path=ftp_path, gcs_path=gcs_path)
+            return CopyResponse(ftp_path=source_path, gcs_path=gcs_path)
 
-    _logger.info(f"Copying {ftp_path} to {gcs_path}")
+    if source_host.split("://", maxsplit=1)[0] in ["http", "https", "ftp"]:
+        _logger.info(f"Copying {source_path} to {gcs_path}")
+        local_path = http_download_requests(
+            http_uri=source_path,
+            local_path=source_file,  # Just the file name, relative to current working directory
+            file_size=source_file_size,
+        )
+        _logger.info(f"Downloaded {source_path} to {local_path}")
 
-    # Download file
-    local_path = http_download_requests(
-        http_uri=ftp_path,
-        local_path=ftp_file,  # Just the file name, relative to current working directory
-        file_size=ftp_file_size,
-    )
-    _logger.info(f"Downloaded {ftp_path} to {local_path}")
+    elif source_host.startswith("gs://"):
+        _logger.info(f"Copying {source_path} to {gcs_path}")
+        with open(source_file, "wb") as f:
+            client.download_blob_to_file(source_path, f)
+        local_path = Path(source_file)
+        _logger.info(f"Downloaded {source_path} to {local_path}")
+
+    else:
+        raise ValueError(f"Unsupported host scheme: {source_host}")
 
     # Upload file to GCS
-    client = _get_gcs_client()
     copy_file_to_bucket(
-        local_file_uri=local_path, remote_blob_uri=gcs_path, client=client
+        local_file_uri=str(local_path), remote_blob_uri=gcs_path, client=client
     )
     _logger.info(f"Uploaded {local_path} to {gcs_path}")
-    return CopyResponse(ftp_path=ftp_path, gcs_path=gcs_path)
+    return CopyResponse(ftp_path=source_path, gcs_path=gcs_path)
 
 
 try:
