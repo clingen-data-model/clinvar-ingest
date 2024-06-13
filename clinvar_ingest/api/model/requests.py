@@ -200,16 +200,6 @@ class CreateInternalTablesRequest(BaseModel):
     Values are used by create_tables.run_create_internal_tables.
     """
 
-    replace_destination_tables: Optional[
-        Annotated[
-            bool,
-            Field(
-                description="If True, replace existing tables in the destination dataset. "
-                "If False, throws an error if the destination tables exist.",
-            ),
-        ]
-    ] = True
-
     source_dest_table_map: Annotated[
         dict[BigqueryFullTableId, Union[BigqueryFullTableId, BigqueryFullTableId]],
         "A map of source table IDs to destination table IDs."
