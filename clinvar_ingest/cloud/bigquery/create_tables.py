@@ -157,13 +157,15 @@ def create_internal_tables(
         dest_table_ref: bigquery.TableReference,
     ) -> tuple[str, bool]:
         dedupe_queries = {
-            "gene": f"CREATE TABLE `{dest_table_ref}` AS SELECT * from "
+            "gene": f"CREATE TABLE `{dest_table_ref}` AS "
+            f"SELECT * EXCEPT (vcv_id, row_num) from "
             f"(SELECT ge.*, ROW_NUMBER() OVER (PARTITION BY ge.id "
             f"ORDER BY vcv.date_last_updated DESC, vcv.id DESC) row_num "
             f"FROM `{source_table_ref}` AS ge "
             f"JOIN `{dest_table_ref.project}.{dest_table_ref.dataset_id}.variation_archive` AS vcv "
             f"ON ge.vcv_id = vcv.id) where row_num = 1",
-            "submission": f"CREATE TABLE `{dest_table_ref}` AS SELECT * from "
+            "submission": f"CREATE TABLE `{dest_table_ref}` AS "
+            f"SELECT * EXCEPT (scv_id, row_num) from "
             f"(SELECT se.*, ROW_NUMBER() OVER (PARTITION BY se.id "
             f"ORDER BY vcv.date_last_updated DESC, vcv.id DESC) row_num "
             f"FROM `{source_table_ref}` AS se "
@@ -172,7 +174,8 @@ def create_internal_tables(
             f"JOIN `{dest_table_ref.project}.{dest_table_ref.dataset_id}.variation_archive` AS vcv "
             f"ON scv.variation_archive_id = vcv.id) "
             f"where row_num = 1",
-            "submitter": f"CREATE TABLE `{dest_table_ref}` AS SELECT * from "
+            "submitter": f"CREATE TABLE `{dest_table_ref}` AS "
+            f"SELECT * EXCEPT (scv_id, row_num) from "
             f"(SELECT se.*, ROW_NUMBER() OVER (PARTITION BY se.id "
             f"ORDER BY vcv.date_last_updated DESC, vcv.id DESC) row_num "
             f"FROM `{source_table_ref}` AS se "
@@ -181,7 +184,8 @@ def create_internal_tables(
             f"JOIN `{dest_table_ref.project}.{dest_table_ref.dataset_id}.variation_archive` AS vcv "
             f"ON scv.variation_archive_id = vcv.id) "
             f"where row_num = 1",
-            "trait": f"CREATE TABLE `{dest_table_ref}` AS SELECT * from "
+            "trait": f"CREATE TABLE `{dest_table_ref}` AS "
+            f"SELECT * EXCEPT (rcv_id, row_num) from "
             f"(SELECT te.*, ROW_NUMBER() OVER (PARTITION BY te.id "
             f"ORDER BY vcv.date_last_updated DESC, vcv.id DESC) row_num "
             f"FROM `{source_table_ref}` AS te "
@@ -190,7 +194,8 @@ def create_internal_tables(
             f"JOIN `{dest_table_ref.project}.{dest_table_ref.dataset_id}.variation_archive` AS vcv "
             f"ON rcv.variation_archive_id = vcv.id) "
             f"where row_num = 1",
-            "trait_set": f"CREATE TABLE `{dest_table_ref}` AS SELECT * from "
+            "trait_set": f"CREATE TABLE `{dest_table_ref}` AS "
+            f"SELECT * EXCEPT (rcv_id, row_num) from "
             f"(SELECT tse.*, ROW_NUMBER() OVER (PARTITION BY tse.id "
             f"ORDER BY vcv.date_last_updated DESC, vcv.id DESC) row_num "
             f"FROM `{source_table_ref}` AS tse "
@@ -235,7 +240,7 @@ def create_internal_tables(
         dest_table_ref: bigquery.TableReference,
         bq_client: bigquery.Client,
     ) -> bigquery.QueryJob:
-        query = get_query_for_copy(source_table_ref, dest_table_ref)
+        query, _ = get_query_for_copy(source_table_ref, dest_table_ref)
         _logger.info(f"Creating table {dest_table_ref} from {source_table_ref}")
         _logger.info(f"Query:\n{query}")
         query_job = bq_client.query(query)
