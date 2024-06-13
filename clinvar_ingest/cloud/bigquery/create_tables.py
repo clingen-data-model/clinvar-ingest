@@ -7,6 +7,7 @@ Usable as a script or programmatic module.
 """
 
 import logging
+from collections import OrderedDict
 from pathlib import Path
 
 from google.api_core.exceptions import NotFound
@@ -150,49 +151,96 @@ def create_internal_tables(
     AS SELECT * from `clingen-dev.2023_10_07_2024_02_19T172113657352.variation_archive`
 
     """
-    env = get_env()
-    table_map = args.source_dest_table_map
-    # Initial validation
-    for source_table, dest_table in table_map.items():
-        dest_table = bigquery.TableReference.from_string(dest_table)
-        if dest_table.project != env.bq_dest_project:
-            raise ValueError(
-                f"Cross-project table copies not currently supported. "
-                f"Destination table project must be {env.bq_dest_project}. Got: {dest_table.project}"
-            )
 
     def get_query_for_copy(
         source_table_ref: bigquery.TableReference,
         dest_table_ref: bigquery.TableReference,
-    ) -> str:
+    ) -> tuple[str, bool]:
         dedupe_queries = {
-            "gene": f"CREATE TABLE `{dest_table_ref}` AS SELECT a.* from `{source_table_ref}` a JOIN "
-            f"(SELECT id, max(vcv_id) AS max_vcv FROM  `{source_table_ref}` GROUP BY id) b "
-            f"ON a.id = b.id AND a.vcv_id = b.max_vcv",
-            "submission": f"CREATE TABLE `{dest_table_ref}` AS SELECT a.* from `{source_table_ref}` a JOIN "
-            f"(select id, max(scv_id) as max_scv from `{source_table_ref}` GROUP BY id) b "
-            f" on a.id = b.id and a.scv_id = b.max_scv",
-            "submitter": f"CREATE TABLE `{dest_table_ref}` AS SELECT a.* from `{source_table_ref}` a JOIN "
-            f"(select id, max(scv_id) as max_scv from `{source_table_ref}` GROUP BY id) b "
-            f" on a.id = b.id and a.scv_id = b.max_scv",
-            "trait": f"CREATE TABLE `{dest_table_ref}` AS SELECT a.* from `{source_table_ref}` a JOIN "
-            f"(select id, max(rcv_id) as max_rcv from `{source_table_ref}` GROUP BY id) b "
-            f" on a.id = b.id and a.rcv_id = b.max_rcv",
-            "trait_set": f"CREATE TABLE `{dest_table_ref}` AS SELECT a.* from `{source_table_ref}` a JOIN "
-            f"(select id, max(rcv_id) as max_rcv from `{source_table_ref}` GROUP BY id) b "
-            f" on a.id = b.id and a.rcv_id = b.max_rcv",
+            "gene": f"CREATE TABLE `{dest_table_ref}` AS "
+            f"SELECT * EXCEPT (vcv_id, row_num) from "
+            f"(SELECT ge.*, ROW_NUMBER() OVER (PARTITION BY ge.id "
+            f"ORDER BY vcv.date_last_updated DESC, vcv.id DESC) row_num "
+            f"FROM `{source_table_ref}` AS ge "
+            f"JOIN `{dest_table_ref.project}.{dest_table_ref.dataset_id}.variation_archive` AS vcv "
+            f"ON ge.vcv_id = vcv.id) where row_num = 1",
+            "submission": f"CREATE TABLE `{dest_table_ref}` AS "
+            f"SELECT * EXCEPT (scv_id, row_num) from "
+            f"(SELECT se.*, ROW_NUMBER() OVER (PARTITION BY se.id "
+            f"ORDER BY vcv.date_last_updated DESC, vcv.id DESC) row_num "
+            f"FROM `{source_table_ref}` AS se "
+            f"JOIN `{dest_table_ref.project}.{dest_table_ref.dataset_id}.clinical_assertion` AS scv "
+            f"ON se.scv_id = scv.id "
+            f"JOIN `{dest_table_ref.project}.{dest_table_ref.dataset_id}.variation_archive` AS vcv "
+            f"ON scv.variation_archive_id = vcv.id) "
+            f"where row_num = 1",
+            "submitter": f"CREATE TABLE `{dest_table_ref}` AS "
+            f"SELECT * EXCEPT (scv_id, row_num) from "
+            f"(SELECT se.*, ROW_NUMBER() OVER (PARTITION BY se.id "
+            f"ORDER BY vcv.date_last_updated DESC, vcv.id DESC) row_num "
+            f"FROM `{source_table_ref}` AS se "
+            f"JOIN `{dest_table_ref.project}.{dest_table_ref.dataset_id}.clinical_assertion` AS scv "
+            f"ON se.scv_id = scv.id "
+            f"JOIN `{dest_table_ref.project}.{dest_table_ref.dataset_id}.variation_archive` AS vcv "
+            f"ON scv.variation_archive_id = vcv.id) "
+            f"where row_num = 1",
+            "trait": f"CREATE TABLE `{dest_table_ref}` AS "
+            f"SELECT * EXCEPT (rcv_id, row_num) from "
+            f"(SELECT te.*, ROW_NUMBER() OVER (PARTITION BY te.id "
+            f"ORDER BY vcv.date_last_updated DESC, vcv.id DESC) row_num "
+            f"FROM `{source_table_ref}` AS te "
+            f"JOIN `{dest_table_ref.project}.{dest_table_ref.dataset_id}.rcv_accession` AS rcv "
+            f"ON te.rcv_id = rcv.id "
+            f"JOIN `{dest_table_ref.project}.{dest_table_ref.dataset_id}.variation_archive` AS vcv "
+            f"ON rcv.variation_archive_id = vcv.id) "
+            f"where row_num = 1",
+            "trait_set": f"CREATE TABLE `{dest_table_ref}` AS "
+            f"SELECT * EXCEPT (rcv_id, row_num) from "
+            f"(SELECT tse.*, ROW_NUMBER() OVER (PARTITION BY tse.id "
+            f"ORDER BY vcv.date_last_updated DESC, vcv.id DESC) row_num "
+            f"FROM `{source_table_ref}` AS tse "
+            f"JOIN `{dest_table_ref.project}.{dest_table_ref.dataset_id}.rcv_accession` AS rcv "
+            f"ON tse.rcv_id = rcv.id "
+            f"JOIN `{dest_table_ref.project}.{dest_table_ref.dataset_id}.variation_archive` AS vcv "
+            f"ON rcv.variation_archive_id = vcv.id) "
+            f"where row_num = 1",
         }
         default_query = (
             f"CREATE TABLE `{dest_table_ref}` AS SELECT * from `{source_table_ref}`"
         )
-        return dedupe_queries.get(dest_table_ref.table_id, default_query)
+        query = dedupe_queries.get(dest_table_ref.table_id, default_query)
+        return query, query == default_query
+
+    env = get_env()
+    table_map = args.source_dest_table_map
+    # Initial validation
+    non_dedupe_tables = {}
+    dedupe_tables = {}
+    for source_table, dest_table in table_map.items():
+        source_table_ref = bigquery.TableReference.from_string(source_table)
+        dest_table_ref = bigquery.TableReference.from_string(dest_table)
+        if dest_table_ref.project != env.bq_dest_project:
+            raise ValueError(
+                f"Cross-project table copies not currently supported. "
+                f"Destination table project must be {env.bq_dest_project}. Got: {dest_table_ref.project}"
+            )
+        _, is_default_query = get_query_for_copy(source_table_ref, dest_table_ref)
+        if is_default_query:
+            non_dedupe_tables[source_table_ref] = dest_table_ref
+        else:
+            dedupe_tables[source_table_ref] = dest_table_ref
+    # since dedupe queries depend on other tables being in existence,
+    # we need to run them after the non-dedupe tables
+    ordered_tables = OrderedDict()
+    ordered_tables.update(non_dedupe_tables)
+    ordered_tables.update(dedupe_tables)
 
     def ctas_copy(
         source_table_ref: bigquery.TableReference,
         dest_table_ref: bigquery.TableReference,
         bq_client: bigquery.Client,
     ) -> bigquery.QueryJob:
-        query = get_query_for_copy(source_table_ref, dest_table_ref)
+        query, _ = get_query_for_copy(source_table_ref, dest_table_ref)
         _logger.info(f"Creating table {dest_table_ref} from {source_table_ref}")
         _logger.info(f"Query:\n{query}")
         query_job = bq_client.query(query)
@@ -200,10 +248,7 @@ def create_internal_tables(
 
     bq_client = bigquery.Client()
     # Copy each
-    for source_table, dest_table in table_map.items():
-        source_table_ref = bigquery.TableReference.from_string(source_table)
-        dest_table_ref = bigquery.TableReference.from_string(dest_table)
-
+    for source_table_ref, dest_table_ref in ordered_tables.items():
         # Verify source table exists
         try:
             _ = bq_client.get_table(source_table_ref)
