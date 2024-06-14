@@ -1,17 +1,11 @@
 #!/usr/bin/env python3
-from pathlib import PurePosixPath
-import os
 import logging
+import os
+from pathlib import Path, PurePosixPath
 
-from google.cloud.storage import Client as GCSClient
 from google.cloud import bigquery
+from google.cloud.storage import Client as GCSClient
 
-from clinvar_ingest.cloud.bigquery.create_tables import (
-    run_create_external_tables,
-    create_internal_tables,
-    drop_external_tables,
-)
-from clinvar_ingest.config import get_env
 from clinvar_ingest.api.model.requests import (
     ClinvarFTPWatcherRequest,
     CopyResponse,
@@ -22,7 +16,13 @@ from clinvar_ingest.api.model.requests import (
     ParseRequest,
     ParseResponse,
 )
+from clinvar_ingest.cloud.bigquery.create_tables import (
+    create_internal_tables,
+    drop_external_tables,
+    run_create_external_tables,
+)
 from clinvar_ingest.cloud.gcs import copy_file_to_bucket, http_download_requests
+from clinvar_ingest.config import get_env
 from clinvar_ingest.parse import parse_and_write_files
 from clinvar_ingest.slack import send_slack_message
 
@@ -89,7 +89,7 @@ wf_input = ClinvarFTPWatcherRequest(**os.environ)
 
 workflow_execution_id = create_execution_id(
     wf_input.release_date.isoformat().replace("-", "_"),
-    wf_input.released != wf_input.last_modified
+    wf_input.released != wf_input.last_modified,
 )
 workflow_id_message = f"Workflow Execution ID: {workflow_execution_id}"
 send_slack_message("Starting " + workflow_id_message)
@@ -97,15 +97,11 @@ _logger.info(workflow_id_message)
 
 ################################################################
 # Run copy step. Copies a source XML file from an HTTP/FTP server to GCS
+# If the host is a GCS bucket, it will download from there rather than using HTTP
 
 
-def copy(payload: ClinvarFTPWatcherRequest) -> CopyResponse:
+def copy(payload: ClinvarFTPWatcherRequest, skip_existing: bool = True) -> CopyResponse:
     _logger.info(f"copy payload: {payload.model_dump_json()}")
-    ftp_base = str(payload.host).strip("/")
-    ftp_dir = PurePosixPath(payload.directory)
-    ftp_file = PurePosixPath(payload.name)
-    ftp_file_size = payload.size
-    ftp_path = f"{ftp_base}/{ftp_dir.relative_to(ftp_dir.anchor) / ftp_file}"
 
     gcs_base = (
         f"gs://{env.bucket_name}/{env.executions_output_prefix}/{workflow_execution_id}"
@@ -114,23 +110,58 @@ def copy(payload: ClinvarFTPWatcherRequest) -> CopyResponse:
     gcs_file = PurePosixPath(payload.name)
     gcs_path = f"{gcs_base}/{gcs_dir.relative_to(gcs_dir.anchor) / gcs_file}"
 
-    _logger.info(f"Copying {ftp_path} to {gcs_path}")
+    client = _get_gcs_client()
 
-    # Download file
-    local_path = http_download_requests(
-        http_uri=ftp_path,
-        local_path=ftp_file,  # Just the file name, relative to current working directory
-        file_size=ftp_file_size,
+    source_host = str(payload.host)
+    source_file_size = payload.size
+
+    source_base = str(payload.host).strip("/")
+    source_dir = PurePosixPath(payload.directory)
+    source_file = PurePosixPath(payload.name)
+    source_path = (
+        f"{source_base}/{source_dir.relative_to(source_dir.anchor) / source_file}"
     )
-    _logger.info(f"Downloaded {ftp_path} to {local_path}")
+
+    if skip_existing:
+        # If the blob already exists and the size matches the expected size
+        # from the `payload`, return early.
+        bucket = client.bucket(env.bucket_name)
+        # Remove the scheme and bucket name
+        gcs_blob_name = gcs_path[len(f"gs://{env.bucket_name}/") :]
+        # Retrieve blob metadata
+        blob = bucket.get_blob(gcs_blob_name)
+
+        if blob is not None and blob.size == source_file_size:
+            _logger.info(
+                f"Skipping copy, file already exists and size matches: {gcs_path}"
+            )
+            return CopyResponse(ftp_path=source_path, gcs_path=gcs_path)
+
+    if source_host.split("://", maxsplit=1)[0] in ["http", "https", "ftp"]:
+        _logger.info(f"Copying {source_path} to {gcs_path}")
+        local_path = http_download_requests(
+            http_uri=source_path,
+            local_path=source_file,  # Just the file name, relative to current working directory
+            file_size=source_file_size,
+        )
+        _logger.info(f"Downloaded {source_path} to {local_path}")
+
+    elif source_host.startswith("gs://"):
+        _logger.info(f"Copying {source_path} to {gcs_path}")
+        with open(source_file, "wb") as f:
+            client.download_blob_to_file(source_path, f)
+        local_path = Path(source_file)
+        _logger.info(f"Downloaded {source_path} to {local_path}")
+
+    else:
+        raise ValueError(f"Unsupported host scheme: {source_host}")
 
     # Upload file to GCS
-    client = _get_gcs_client()
     copy_file_to_bucket(
-        local_file_uri=local_path, remote_blob_uri=gcs_path, client=client
+        local_file_uri=str(local_path), remote_blob_uri=gcs_path, client=client
     )
     _logger.info(f"Uploaded {local_path} to {gcs_path}")
-    return CopyResponse(ftp_path=ftp_path, gcs_path=gcs_path)
+    return CopyResponse(ftp_path=source_path, gcs_path=gcs_path)
 
 
 try:
@@ -230,7 +261,9 @@ try:
         f"Create Internal Tables request: {create_internal_tables_request.model_dump_json()}"
     )
 
-    create_internal_tables_response = create_internal_tables(create_internal_tables_request)
+    create_internal_tables_response = create_internal_tables(
+        create_internal_tables_request
+    )
     _logger.info(
         f"Create Internal Tables response: {create_internal_tables_response.model_dump_json()}"
     )
@@ -243,7 +276,9 @@ except Exception as e:
 ################################################################
 # Drop external tables
 try:
-    drop_external_tables_request = DropExternalTablesRequest(root=create_external_tables_response.root)
+    drop_external_tables_request = DropExternalTablesRequest(
+        root=create_external_tables_response.root
+    )
     _logger.info(
         f"Drop External Tables request: {drop_external_tables_request.model_dump_json()}"
     )

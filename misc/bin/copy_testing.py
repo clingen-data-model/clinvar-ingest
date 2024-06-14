@@ -1,16 +1,8 @@
 import logging
-from typing import Iterator
-import urllib.request
-import requests
 
 from google.cloud import storage
 
-from clinvar_ingest.cloud.gcs import (
-    blob_writer,
-    http_upload,
-    http_download_curl,
-    http_download_requests,
-)
+from clinvar_ingest.cloud.gcs import http_download_curl
 
 logging.basicConfig(
     level=logging.INFO,

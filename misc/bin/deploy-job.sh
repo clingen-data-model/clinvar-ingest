@@ -1,5 +1,30 @@
 #!/usr/bin/env bash
 
+####
+# This script is used to deploy a cloud run job from a local codebase, with
+# default global configurations like the service account, the bucket, the region, etc.
+
+# These variables must be set in the environment:
+# - release_tag:
+#       The name to call this release. By default the docker image and name of the
+#       cloud run job will be tagged with this name. This literal string is used in the
+#       bigquery dataset name, and must be alphanumeric and underscores.
+# - instance_name:
+#       The name of the cloud run job. By default, it will be set to 'clinvar-ingest-${release_tag}'.
+#       NOTE: The instance name must be alphanumeric and hyphens only. So if release_tag contains
+#       underscores, instance_name must be set explicitly, to remove the underscores.
+#
+# To avoid publishing slack status messages, set CLINVAR_INGEST_SLACK_CHANNEL to an empty string
+# Being set but empty will stop the default value from being used.
+#
+# Example:
+# This will build the local codebase and deploy it with an image tagged with 'local-dev'
+# and a cloud run job named 'clinvar-ingest-local-dev':
+#
+# release_tag=local_dev instance_name=clinvar-ingest-local-dev CLINVAR_INGEST_SLACK_CHANNEL='' bash deploy-job.sh
+#
+####
+
 set -xeo pipefail
 
 # if [ -z "$branch" ]; then
@@ -18,8 +43,31 @@ else
     echo "release_tag set in environment"
 fi
 
+# Check if release_tag is only alphanumeric and underscores
+if [[ "$release_tag" =~ [^a-zA-Z0-9_] ]]; then
+    echo "The release_tag contains characters other than alphanumeric and underscores."
+    exit 1
+fi
+
 if [ -z "$instance_name" ]; then
     instance_name="clinvar-ingest-${release_tag}"
+    # Check if the variable contains only alphanumeric characters and hyphens
+    if [[ "$instance_name" =~ [^a-zA-Z0-9-] ]]; then
+        echo "The instance_name contains characters other than alphanumeric and hyphens."
+        exit 1
+
+        # # Check if the violating characters are exclusively hyphens (or allowed characters)
+        # if [[ "$instance_name" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+        #     echo "The only non-alphanumeric/hyphen characters are underscores. Replacing them."
+
+        #     # Replace underscores with hyphens
+        #     instance_name="${instance_name//_/-}"
+        #     echo "Modified instance_name to $instance_name"
+        # else
+        #     echo "instance_name ${instance_name} contains other invalid characters as well."
+        #     exit 1
+        # fi
+    fi
 else
     echo "instance_name set in environment"
 fi
@@ -27,11 +75,12 @@ fi
 echo "Release tag: $release_tag"
 echo "Instance name: $instance_name"
 
+# Disallow unset variables after they've been validated
 set -u
 
 clinvar_ingest_bucket="clinvar-ingest"
 
-region="us-central1"
+region="us-east1"
 # project=$(gcloud config get project)
 image_tag=workflow-py-${release_tag}
 image=gcr.io/clingen-dev/clinvar-ingest:$image_tag
@@ -61,7 +110,7 @@ gcloud builds submit \
 
 ################################################################
 # Deploy job
-if gcloud run jobs list --region us-central1 | awk '{print $2}' | grep "^$instance_name$"  ; then
+if gcloud run jobs list --region $region | awk '{print $2}' | grep "^$instance_name$"  ; then
     echo "Cloud Run Job $instance_name already exists - updating it"
     command="update"
 else
