@@ -12,7 +12,13 @@ import json
 import logging
 from typing import List
 
-from clinvar_ingest.model.common import Model, int_or_none, model_copy, sanitize_date
+from clinvar_ingest.model.common import (
+    Model,
+    dictify,
+    int_or_none,
+    model_copy,
+    sanitize_date,
+)
 from clinvar_ingest.model.trait import (
     ClinicalAssertionTraitSet,
     Trait,
@@ -482,20 +488,26 @@ class ClinicalAssertionVariation(Model):
         counter = Counter()
 
         def extract_and_accumulate_descendants(inp: dict) -> List[Variation]:
+            _logger.debug(
+                f"extract_and_accumulate_descendants(inp={json.dumps(dictify(inp))})"
+            )
+            inputs = []
             if "SimpleAllele" in inp:
-                subclass_type = "SimpleAllele"
-                inputs = ensure_list(extract(inp, "SimpleAllele"))
-            elif "Haplotype" in inp:
-                subclass_type = "Haplotype"
-                inputs = ensure_list(extract(inp, "Haplotype"))
-            elif "Genotype" in inp:
-                subclass_type = "Genotype"
-                inputs = [extract(inp, "Genotype")]
-            else:
+                inputs += [
+                    ("SimpleAllele", o)
+                    for o in ensure_list(extract(inp, "SimpleAllele"))
+                ]
+            if "Haplotype" in inp:
+                inputs += [
+                    ("Haplotype", o) for o in ensure_list(extract(inp, "Haplotype"))
+                ]
+            if "Genotype" in inp:
+                inputs += [("Genotype", o) for o in [extract(inp, "Genotype")]]
+            if len(inputs) == 0:
                 return []
 
             outputs = []
-            for inp in inputs:
+            for subclass_type, inp in inputs:
                 variation = ClinicalAssertionVariation(
                     id=f"{assertion_accession}.{counter.get_and_increment()}",
                     clinical_assertion_id=assertion_accession,
