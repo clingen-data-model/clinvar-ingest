@@ -632,47 +632,50 @@ class Variation(Model):
     def descendant_tree(inp: dict):
         """
         Accepts xmltodict parsed XML for a SimpleAllele, Haplotype, or Genotype.
-        Returns a tuple tree of child ids.
+        Returns a tree of child ids. Each level is a list, where the first element
+        is the parent id, and the rest are children, each which is also a list following
+        the same layout. Any list with a single element is a leaf node.
 
-        (genotype_id,
-            (haplotype_id1,
-                (simpleallele_id11, None)
-                (simpleallele_id12, None)))
-            (haplotype_id2,
-                (simpleallele_id21, None))
+        [genotype_id,
+            [haplotype_id1,
+                [simpleallele_id11]
+                [simpleallele_id12]]
+            [haplotype_id2,
+                [simpleallele_id21]]]
         """
+        outputs = []
         if "SimpleAllele" in inp:
-            inp = inp["SimpleAllele"]
-            return [inp["@VariationID"]]
-        elif "Haplotype" in inp:
-            inp = inp["Haplotype"]
-            return [
-                inp["@VariationID"],
-                *[
-                    Variation.descendant_tree({"SimpleAllele": simple_allele})
-                    for simple_allele in ensure_list(inp["SimpleAllele"])
-                ],
-            ]
-        elif "Genotype" in inp:
-            inp = inp["Genotype"]
-            if "SimpleAllele" in inp:
-                return [
-                    inp["@VariationID"],
-                    *[
-                        Variation.descendant_tree({"SimpleAllele": simpleAllele})
-                        for simpleAllele in ensure_list(inp["SimpleAllele"])
-                    ],
-                ]
-            else:
-                return [
-                    inp["@VariationID"],
-                    *[
-                        Variation.descendant_tree({"Haplotype": haplotype})
-                        for haplotype in ensure_list(inp["Haplotype"])
-                    ],
-                ]
-        else:
-            raise RuntimeError("Unknown variation type: " + json.dumps(inp))
+            simple_alleles = ensure_list(inp["SimpleAllele"])
+            outputs.extend([[a["@VariationID"]] for a in simple_alleles])
+
+        if "Haplotype" in inp:
+            haplotypes = ensure_list(inp["Haplotype"])
+            # List of Haplotype IDs, and recursive call on each Haplotype object
+            for h in haplotypes:
+                node = [h["@VariationID"]]
+                desc_tree = Variation.descendant_tree(h)
+                if desc_tree:
+                    node.extend(desc_tree)
+                outputs.append(node)
+
+        if "Genotype" in inp:
+            genotypes = ensure_list(inp["Genotype"])
+            if len(genotypes) > 1:
+                _logger.error(f"Multiple genotypes not supported: {json.dumps(inp)}")
+                raise RuntimeError("Multiple genotypes not supported")
+            if len(outputs) > 0:
+                _logger.error(
+                    f"Genotype cannot coexist with other variation type: {json.dumps(inp)}"
+                )
+                raise RuntimeError("Genotype cannot coexist with other variation type")
+            g = genotypes[0]
+            node = [g["@VariationID"]]
+            desc_tree = Variation.descendant_tree(g)
+            if desc_tree:
+                node.extend(desc_tree)
+            outputs = node
+
+        return outputs
 
     @staticmethod
     def get_all_descendants(descendant_tree: list):

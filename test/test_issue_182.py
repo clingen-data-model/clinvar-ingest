@@ -77,9 +77,9 @@ def test_parse(log_conf):
     # Check the Variation objects have correct descendants and children too
     variation: Variation = [o for o in objects if isinstance(o, Variation)][0]
     assert variation.id == "424711"
-    assert variation.child_ids == ["187251", "189364"]
+    assert variation.child_ids == ["192373", "189364"]
     assert variation.descendant_ids == [
-        "187251",
+        "192373",
         "189364",
         "242614",
         "242615",
