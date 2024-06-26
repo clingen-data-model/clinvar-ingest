@@ -153,4 +153,6 @@ def parse_and_write_files(
         for f in open_output_files.values():
             f.close()
 
-    return {k: v._name for k, v in open_output_files.items()}
+    table_file_pairs = {k: v._name for k, v in open_output_files.items()}
+    _logger.info("Output files: %s", json.dumps(table_file_pairs))
+    return table_file_pairs
