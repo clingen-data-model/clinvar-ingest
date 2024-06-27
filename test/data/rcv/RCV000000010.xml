@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ReleaseSet xsi:noNamespaceSchemaLocation="http://ftp.ncbi.nlm.nih.gov/pub/clinvar/xsd_public/RCV/ClinVar_RCV_2.0.xsd" Dated="2024-06-10" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Type="full">
+
+<ClinVarSet ID="92147971">
+  <RecordStatus>current</RecordStatus>
+  <Title>NM_002036.4(ACKR1):c.286_299del (p.Trp96fs) AND DUFFY BLOOD GROUP SYSTEM, FY(a-b-) PHENOTYPE</Title>
+  <ReferenceClinVarAssertion ID="57513" DateLastUpdated="2022-04-23" DateCreated="2013-04-04">
+    <ClinVarAccession Acc="RCV000000010" DateUpdated="2022-04-23" DateCreated="2013-04-04" Version="3" Type="RCV"/>
+    <RecordStatus>current</RecordStatus>
+    <Classifications>
+      <GermlineClassification>
+        <ReviewStatus>no assertion criteria provided</ReviewStatus>
+        <Description DateLastEvaluated="2000-04-01" SubmissionCount="1">Pathogenic</Description>
+      </GermlineClassification>
+    </Classifications>
+    <Assertion Type="variation to disease"/>
+    <ObservedIn>
+      <Sample>
+        <Origin>germline</Origin>
+        <Species TaxonomyId="9606">human</Species>
+        <AffectedStatus>not provided</AffectedStatus>
+      </Sample>
+      <Method>
+        <MethodType>literature only</MethodType>
+      </Method>
+      <ObservedData ID="96878805">
+        <Attribute Type="Description">Mallinson et al. (1995) presented evidence for 2 different genetic backgrounds giving rise to the Fy(a-b-) phenotype. The most likely genetic mechanism in most individuals is downregulation of Duffy glycoprotein mRNA (see 613665.0002). However, the Duffy gene from a very rare Caucasian individual (AZ) with the Fy(a-b-) phenotype had a 14-bp deletion that resulted in a frameshift. In the Abstract and Results sections of their paper, Mallinson et al. (1995) reported that the deletion removed nucleotides 287 to 301 of DARC. However, their Figure 4 showed that the deletion involved nucleotides 292 to 305, which appeared to be correct. The DARC cDNA sequence used by Mallinson et al. (1995) was identical to that of the minor DARC variant reported by Chaudhuri et al. (1993). The frameshift resulting from the deletion introduced a stop codon 23 amino acids downstream and produced a putative truncated 118-amino acid protein. The occurrence of this mutation in an apparently healthy individual raised questions about the functional importance of the Duffy glycoprotein, not only in normal erythrocytes, but also in all human cells and tissues. The only known examples of the Fy(a-b-) phenotype in Caucasians were AZ and Czech gypsies.</Attribute>
+        <Citation Type="general">
+          <ID Source="PubMed">7669660</ID>
+        </Citation>
+        <Citation Type="general">
+          <ID Source="PubMed">8248172</ID>
+        </Citation>
+      </ObservedData>
+      <ObservedData ID="96878805">
+        <Attribute Type="Description">Using the sequence of the major DARC variant reported by Iwamoto et al. (1996), as was recommended by Pogo and Chaudhuri (2000), this 14-bp deletion occurs at nucleotide 286.</Attribute>
+        <Citation Type="general">
+          <ID Source="PubMed">8547665</ID>
+        </Citation>
+        <Citation Type="general">
+          <ID Source="PubMed">10791881</ID>
+        </Citation>
+      </ObservedData>
+    </ObservedIn>
+    <MeasureSet Type="Variant" ID="18397" Acc="VCV000018397" Version="1">
+      <Measure Type="Deletion" ID="33436">
+        <Name>
+          <ElementValue Type="Preferred">NM_002036.4(ACKR1):c.286_299del (p.Trp96fs)</ElementValue>
+        </Name>
+        <Name>
+          <ElementValue Type="Alternate">ACKR1, 14-BP DEL, NT286</ElementValue>
+          <XRef Type="Allelic variant" ID="613665.0004" DB="OMIM"/>
+        </Name>
+        <CanonicalSPDI>NC_000001.11:159205718:CCTGGCTGGCCTGTCCTGGC:CCTGGC</CanonicalSPDI>
+        <AttributeSet>
+          <Attribute Accession="LRG_801t1" Type="HGVS, coding, LRG">LRG_801t1:c.286_299del</Attribute>
+        </AttributeSet>
+        <AttributeSet>
+          <Attribute Accession="NM_002036" Version="4" Change="c.286_299del" Type="HGVS, coding, RefSeq" MANESelect="true">NM_002036.4:c.286_299del</Attribute>
+        </AttributeSet>
+        <AttributeSet>
+          <Attribute Accession="NM_001122951" Version="3" Change="c.292_305del" Type="HGVS, coding, RefSeq">NM_001122951.3:c.292_305del</Attribute>
+        </AttributeSet>
+        <AttributeSet>
+          <Attribute Accession="LRG_801" Type="HGVS, genomic, LRG">LRG_801:g.6713_6726del</Attribute>
+        </AttributeSet>
+        <AttributeSet>
+          <Attribute Accession="NG_011626" Version="3" Change="g.6713_6726del" Type="HGVS, genomic, RefSeqGene">NG_011626.3:g.6713_6726del</Attribute>
+        </AttributeSet>
+        <AttributeSet>
+          <Attribute Accession="NC_000001" Version="11" Change="g.159205725_159205738del" Type="HGVS, genomic, top level" integerValue="38">NC_000001.11:g.159205725_159205738del</Attribute>
+        </AttributeSet>
+        <AttributeSet>
+          <Attribute Accession="NC_000001" Version="10" Change="g.159175515_159175528del" Type="HGVS, genomic, top level, previous" integerValue="37">NC_000001.10:g.159175515_159175528del</Attribute>
+        </AttributeSet>
+        <AttributeSet>
+          <Attribute Accession="NM_002036" Version="3" Change="c.286_299del" Type="HGVS, previous">NM_002036.3:c.286_299del</Attribute>
+        </AttributeSet>
+        <AttributeSet>
+          <Attribute Type="HGVS, protein"/>
+        </AttributeSet>
+        <AttributeSet>
+          <Attribute Accession="LRG_801p1" Change="p.Trp96fs" Type="HGVS, protein">LRG_801p1:p.Trp96fs</Attribute>
+        </AttributeSet>
+        <AttributeSet>
+          <Attribute Accession="NP_002027" Version="2" Change="p.Trp96fs" Type="HGVS, protein, RefSeq">NP_002027.2:p.Trp96fs</Attribute>
+        </AttributeSet>
+        <AttributeSet>
+          <Attribute Accession="NP_001116423" Version="1" Change="p.Trp98fs" Type="HGVS, protein, RefSeq">NP_001116423.1:p.Trp98fs</Attribute>
+        </AttributeSet>
+        <AttributeSet>
+          <Attribute Type="MolecularConsequence">frameshift variant</Attribute>
+          <XRef ID="SO:0001589" DB="Sequence Ontology"/>
+          <XRef ID="NM_001122951.3:c.292_305del" DB="RefSeq"/>
+        </AttributeSet>
+        <AttributeSet>
+          <Attribute Type="MolecularConsequence">frameshift variant</Attribute>
+          <XRef ID="SO:0001589" DB="Sequence Ontology"/>
+          <XRef ID="NM_002036.4:c.286_299del" DB="RefSeq"/>
+        </AttributeSet>
+        <AttributeSet>
+          <Attribute Type="ProteinChange1LetterCode">W96fs</Attribute>
+        </AttributeSet>
+        <AttributeSet>
+          <Attribute Type="ProteinChange1LetterCode">W98fs</Attribute>
+        </AttributeSet>
+        <CytogeneticLocation>1q23.2</CytogeneticLocation>
+        <SequenceLocation Assembly="GRCh38" AssemblyAccessionVersion="GCF_000001405.38" AssemblyStatus="current" Chr="1" Accession="NC_000001.11" start="159205719" stop="159205732" display_start="159205719" display_stop="159205732" variantLength="14" positionVCF="159205718" referenceAlleleVCF="CCCTGGCTGGCCTGT" alternateAlleleVCF="C"/>
+        <SequenceLocation Assembly="GRCh37" AssemblyAccessionVersion="GCF_000001405.25" AssemblyStatus="previous" Chr="1" Accession="NC_000001.10" start="159175509" stop="159175522" display_start="159175509" display_stop="159175522" variantLength="14" positionVCF="159175508" referenceAlleleVCF="CCCTGGCTGGCCTGT" alternateAlleleVCF="C"/>
+        <MeasureRelationship Type="within single gene">
+          <Name>
+            <ElementValue Type="Preferred">atypical chemokine receptor 1 (Duffy blood group)</ElementValue>
+          </Name>
+          <Symbol>
+            <ElementValue Type="Preferred">ACKR1</ElementValue>
+          </Symbol>
+          <SequenceLocation Assembly="GRCh38" AssemblyAccessionVersion="GCF_000001405.38" AssemblyStatus="current" Chr="1" Accession="NC_000001.11" start="159204875" stop="159206500" display_start="159204875" display_stop="159206500" Strand="+"/>
+          <SequenceLocation Assembly="GRCh37" AssemblyAccessionVersion="GCF_000001405.25" AssemblyStatus="previous" Chr="1" Accession="NC_000001.10" start="159173802" stop="159176289" display_start="159173802" display_stop="159176289" variantLength="2488" Strand="+"/>
+          <XRef ID="2532" DB="Gene"/>
+          <XRef Type="MIM" ID="613665" DB="OMIM"/>
+          <XRef ID="HGNC:4035" DB="HGNC"/>
+        </MeasureRelationship>
+        <XRef Type="Allelic variant" ID="613665.0004" DB="OMIM"/>
+        <XRef Type="rs" ID="587776507" DB="dbSNP"/>
+      </Measure>
+      <Name>
+        <ElementValue Type="Preferred">NM_002036.4(ACKR1):c.286_299del (p.Trp96fs)</ElementValue>
+      </Name>
+      <XRef ID="CA113791" DB="ClinGen"/>
+    </MeasureSet>
+    <TraitSet Type="Disease" ID="6212">
+      <Trait ID="15692" Type="BloodGroup">
+        <Name>
+          <ElementValue Type="Preferred">DUFFY BLOOD GROUP SYSTEM, FY(a-b-) PHENOTYPE</ElementValue>
+          <XRef Type="Allelic variant" ID="613665.0002" DB="OMIM"/>
+          <XRef Type="Allelic variant" ID="613665.0004" DB="OMIM"/>
+        </Name>
+        <Name>
+          <ElementValue Type="Alternate">DUFFY NULL; Fy(a-b-)</ElementValue>
+        </Name>
+      </Trait>
+    </TraitSet>
+  </ReferenceClinVarAssertion>
+  <ClinVarAssertion ID="20153">
+    <ClinVarSubmissionID localKey="613665.0004_DUFFY BLOOD GROUP SYSTEM, FY(a-b-) PHENOTYPE" submitter="OMIM" submitterDate="2015-08-10" title="ACKR1, 14-BP DEL, NT286_DUFFY BLOOD GROUP SYSTEM, FY(a-b-) PHENOTYPE"/>
+    <ClinVarAccession Acc="SCV000020153" DateCreated="2013-04-04" DateUpdated="2015-08-12" Version="2" Type="SCV" OrgID="3" OrganizationCategory="resource" OrgType="primary"/>
+    <RecordStatus>current</RecordStatus>
+    <Classification DateLastEvaluated="2000-04-01">
+      <ReviewStatus>no assertion criteria provided</ReviewStatus>
+      <GermlineClassification>Pathogenic</GermlineClassification>
+    </Classification>
+    <Assertion Type="variation to disease"/>
+    <ExternalID DB="OMIM" ID="613665.0004" Type="Allelic variant"/>
+    <ObservedIn>
+      <Sample>
+        <Origin>germline</Origin>
+        <Species>human</Species>
+        <AffectedStatus>not provided</AffectedStatus>
+      </Sample>
+      <Method>
+        <MethodType>literature only</MethodType>
+      </Method>
+      <ObservedData>
+        <Attribute Type="Description">Mallinson et al. (1995) presented evidence for 2 different genetic backgrounds giving rise to the Fy(a-b-) phenotype. The most likely genetic mechanism in most individuals is downregulation of Duffy glycoprotein mRNA (see 613665.0002). However, the Duffy gene from a very rare Caucasian individual (AZ) with the Fy(a-b-) phenotype had a 14-bp deletion that resulted in a frameshift. In the Abstract and Results sections of their paper, Mallinson et al. (1995) reported that the deletion removed nucleotides 287 to 301 of DARC. However, their Figure 4 showed that the deletion involved nucleotides 292 to 305, which appeared to be correct. The DARC cDNA sequence used by Mallinson et al. (1995) was identical to that of the minor DARC variant reported by Chaudhuri et al. (1993). The frameshift resulting from the deletion introduced a stop codon 23 amino acids downstream and produced a putative truncated 118-amino acid protein. The occurrence of this mutation in an apparently healthy individual raised questions about the functional importance of the Duffy glycoprotein, not only in normal erythrocytes, but also in all human cells and tissues. The only known examples of the Fy(a-b-) phenotype in Caucasians were AZ and Czech gypsies.</Attribute>
+        <Citation>
+          <ID Source="PubMed">7669660</ID>
+        </Citation>
+        <Citation>
+          <ID Source="PubMed">8248172</ID>
+        </Citation>
+      </ObservedData>
+      <ObservedData>
+        <Attribute Type="Description">Using the sequence of the major DARC variant reported by Iwamoto et al. (1996), as was recommended by Pogo and Chaudhuri (2000), this 14-bp deletion occurs at nucleotide 286.</Attribute>
+        <Citation>
+          <ID Source="PubMed">8547665</ID>
+        </Citation>
+        <Citation>
+          <ID Source="PubMed">10791881</ID>
+        </Citation>
+      </ObservedData>
+    </ObservedIn>
+    <MeasureSet Type="Variant">
+      <Measure Type="Variation">
+        <Name>
+          <ElementValue Type="Preferred">ACKR1, 14-BP DEL, NT286</ElementValue>
+        </Name>
+        <AttributeSet>
+          <Attribute Type="NonHGVS">14-BP DEL, NT286</Attribute>
+        </AttributeSet>
+        <MeasureRelationship Type="variant in gene">
+          <Symbol>
+            <ElementValue Type="Preferred">ACKR1</ElementValue>
+          </Symbol>
+        </MeasureRelationship>
+        <XRef DB="OMIM" ID="613665.0004" Type="Allelic variant"/>
+      </Measure>
+    </MeasureSet>
+    <TraitSet Type="Disease">
+      <Trait Type="Disease">
+        <Name>
+          <ElementValue Type="Preferred">DUFFY BLOOD GROUP SYSTEM, FY(a-b-) PHENOTYPE</ElementValue>
+        </Name>
+      </Trait>
+    </TraitSet>
+  </ClinVarAssertion>
+</ClinVarSet>
+</ReleaseSet>
