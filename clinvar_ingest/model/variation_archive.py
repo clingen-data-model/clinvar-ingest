@@ -10,6 +10,7 @@ from __future__ import annotations
 import dataclasses
 import json
 import logging
+import re
 from typing import List
 
 from clinvar_ingest.model.common import (
@@ -228,11 +229,9 @@ class ClinicalAssertion(Model):
                 normalized_traits=normalized_traits,
                 trait_mappings=trait_mappings,
             )
-            # The ClinicalAssertion TraitSet and Traits have synthetic ids.
-            # Replace them with just the accession.<index>
-            assertion_trait_set.id = f"{scv_accession}.{next(trait_set_counter)}"
+            assertion_trait_set.id = scv_accession
             for i, t in enumerate(assertion_trait_set.traits):
-                t.id = f"{scv_accession}.{i + 1}"
+                t.id = f"{scv_accession}.{i}"
 
         observed_ins = ensure_list(extract(inp, "ObservedInList", "ObservedIn") or [])
         observations = [
@@ -345,7 +344,7 @@ class ClinicalAssertion(Model):
             setattr(
                 self_copy,
                 "clinical_assertion_trait_set_id",
-                self_copy.clinical_assertion_trait_set.id,
+                re.split(r"\.", self_copy.clinical_assertion_trait_set.id)[0],
             )
         del self_copy.clinical_assertion_trait_set
 
