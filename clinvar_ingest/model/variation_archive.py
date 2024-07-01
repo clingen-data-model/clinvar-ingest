@@ -834,8 +834,21 @@ class VariationArchive(Model):
                 extract(interp_record, "RCVList", "RCVAccession") or []
             )
         ]
+        raw_clinical_assertions = ensure_list(
+            extract(
+                extract(interp_record, "ClinicalAssertionList"),
+                "ClinicalAssertion",
+            )
+            or []
+        )
+        clinical_assertion_id_to_accession = {
+            clinical_assertion["@ID"]: clinical_assertion["ClinVarAccession"][
+                "@Accession"
+            ]
+            for clinical_assertion in raw_clinical_assertions
+        }
         trait_mappings = [
-            TraitMapping.from_xml(tm)
+            TraitMapping.from_xml(tm, clinical_assertion_id_to_accession)
             for tm in ensure_list(
                 extract(
                     extract(
@@ -872,13 +885,7 @@ class VariationArchive(Model):
                     variation_id=variation.id,
                     variation_archive_id=vcv_accession,
                 )
-                for ca in ensure_list(
-                    extract(
-                        extract(interp_record, "ClinicalAssertionList"),
-                        "ClinicalAssertion",
-                    )
-                    or []
-                )
+                for ca in raw_clinical_assertions
             ],
             date_created=sanitize_date(extract(inp, "@DateCreated")),
             date_last_updated=sanitize_date(extract(inp, "@DateLastUpdated")),
