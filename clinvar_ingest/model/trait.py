@@ -463,7 +463,7 @@ class ClinicalAssertionTrait(Model):
 
         # Try to match by MedGen ID
         for t in reference_traits:
-            if me.medgen_id == t.medgen_id:
+            if t.medgen_id is not None and me.medgen_id == t.medgen_id:
                 _logger.debug("Matched by MedGen ID: %s", me.medgen_id)
                 return t
 
