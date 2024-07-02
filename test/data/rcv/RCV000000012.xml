@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ReleaseSet xsi:noNamespaceSchemaLocation="http://ftp.ncbi.nlm.nih.gov/pub/clinvar/xsd_public/RCV/ClinVar_RCV_2.0.xsd" Dated="2024-06-10" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Type="full">
+
+<ClinVarSet ID="92147973">
+  <RecordStatus>current</RecordStatus>
+  <Title>NM_014855.3(AP5Z1):c.80_83delinsTGCTGTAAACTGTAACTGTAAA (p.Arg27_Ile28delinsLeuLeuTer) AND Hereditary spastic paraplegia 48</Title>
+  <ReferenceClinVarAssertion ID="57515" DateLastUpdated="2022-04-23" DateCreated="2013-04-04">
+    <ClinVarAccession Acc="RCV000000012" DateUpdated="2022-04-23" DateCreated="2013-04-04" Version="5" Type="RCV"/>
+    <RecordStatus>current</RecordStatus>
+    <Classifications>
+      <GermlineClassification>
+        <ReviewStatus>criteria provided, single submitter</ReviewStatus>
+        <Description SubmissionCount="2">Pathogenic</Description>
+      </GermlineClassification>
+    </Classifications>
+    <Assertion Type="variation to disease"/>
+    <ObservedIn>
+      <Sample>
+        <Origin>germline</Origin>
+        <Species TaxonomyId="9606">human</Species>
+        <AffectedStatus>not provided</AffectedStatus>
+      </Sample>
+      <Method>
+        <MethodType>literature only</MethodType>
+      </Method>
+      <ObservedData ID="95765984">
+        <Attribute Type="Description">In 2 French sibs with autosomal recessive spastic paraplegia-48 (SPG48; 613647), Slabicki et al. (2010) identified a homozygous complex insertion/deletion mutation in exon 2 of the KIAA0415 gene. The mutation comprised a 4-bp deletion (80del4) and a 22-bp insertion (84ins22), resulting in a frameshift and premature stop codon following residue 29. The insertion was found to be an imperfect quadruplication of a sequence, suggesting DNA polymerase slippage during DNA synthesis as the pathogenetic mechanism. The patients presented with progressive spastic paraplegia associated with urinary incontinence from ages 50 and 49 years, respectively. One had a normal cerebral MRI, whereas the other had spinal hyperintensities in the cervical spine. The unaffected parents were not known to be consanguineous, but they originated from 2 neighboring villages. The mutation was not found in 156 Caucasian or 242 North African control chromosomes. Studies of lymphoblastoid cells derived from 1 patient showed increased sensitivity to DNA-damaging drugs. The findings suggested a link between this form of spastic paraplegia, which could be considered a neurodegenerative disease, and defects in DNA repair.</Attribute>
+        <Citation Type="general">
+          <ID Source="PubMed">20613862</ID>
+        </Citation>
+      </ObservedData>
+    </ObservedIn>
+    <ObservedIn>
+      <Sample>
+        <Origin>unknown</Origin>
+        <Species TaxonomyId="9606">human</Species>
+        <AffectedStatus>yes</AffectedStatus>
+      </Sample>
+      <Method>
+        <MethodType>clinical testing</MethodType>
+      </Method>
+      <ObservedData ID="96902448">
+        <Attribute integerValue="2" Type="VariantAlleles"/>
+      </ObservedData>
+    </ObservedIn>
+    <MeasureSet Type="Variant" ID="2" Acc="VCV000000002" Version="3">
+      <Measure Type="Indel" ID="15041">
+        <Name>
+          <ElementValue Type="Preferred">NM_014855.3(AP5Z1):c.80_83delinsTGCTGTAAACTGTAACTGTAAA (p.Arg27_Ile28delinsLeuLeuTer)</ElementValue>
+        </Name>
+        <Name>
+          <ElementValue Type="Alternate">AP5Z1, 4-BP DEL/22-BP INS, NT80</ElementValue>
+          <XRef Type="Allelic variant" ID="613653.0001" DB="OMIM"/>
+        </Name>
+        <CanonicalSPDI>NC_000007.14:4781212:GGAT:TGCTGTAAACTGTAACTGTAAA</CanonicalSPDI>
+        <AttributeSet>
+          <Attribute Accession="LRG_1247t1" Change="c.80_83delinsTGCTGTAAACTGTAACTGTAAA" Type="HGVS, coding, LRG">LRG_1247t1:c.80_83delinsTGCTGTAAACTGTAACTGTAAA</Attribute>
+        </AttributeSet>
+        <AttributeSet>
+          <Attribute Accession="NM_001364858" Version="1" Change="c.-202_-199delinsTGCTGTAAACTGTAACTGTAAA" Type="HGVS, coding, RefSeq">NM_001364858.1:c.-202_-199delinsTGCTGTAAACTGTAACTGTAAA</Attribute>
+        </AttributeSet>
+        <AttributeSet>
+          <Attribute Accession="NM_014855" Version="3" Change="c.80_83delinsTGCTGTAAACTGTAACTGTAAA" Type="HGVS, coding, RefSeq" MANESelect="true">NM_014855.3:c.80_83delinsTGCTGTAAACTGTAACTGTAAA</Attribute>
+        </AttributeSet>
+        <AttributeSet>
+          <Attribute Accession="LRG_1247" Change="g.10583_10586delinsTGCTGTAAACTGTAACTGTAAA" Type="HGVS, genomic, LRG">LRG_1247:g.10583_10586delinsTGCTGTAAACTGTAACTGTAAA</Attribute>
+        </AttributeSet>
+        <AttributeSet>
+          <Attribute Accession="NG_028111" Version="1" Change="g.10583_10586delinsTGCTGTAAACTGTAACTGTAAA" Type="HGVS, genomic, RefSeqGene">NG_028111.1:g.10583_10586delinsTGCTGTAAACTGTAACTGTAAA</Attribute>
+        </AttributeSet>
+        <AttributeSet>
+          <Attribute Accession="NC_000007" Version="14" Change="g.4781213_4781216delinsTGCTGTAAACTGTAACTGTAAA" Type="HGVS, genomic, top level" integerValue="38">NC_000007.14:g.4781213_4781216delinsTGCTGTAAACTGTAACTGTAAA</Attribute>
+        </AttributeSet>
+        <AttributeSet>
+          <Attribute Accession="NC_000007" Version="13" Change="g.4820844_4820847delinsTGCTGTAAACTGTAACTGTAAA" Type="HGVS, genomic, top level, previous" integerValue="37">NC_000007.13:g.4820844_4820847delinsTGCTGTAAACTGTAACTGTAAA</Attribute>
+        </AttributeSet>
+        <AttributeSet>
+          <Attribute Accession="NR_157345" Version="1" Change="n.173_176delinsTGCTGTAAACTGTAACTGTAAA" Type="HGVS, non-coding">NR_157345.1:n.173_176delinsTGCTGTAAACTGTAACTGTAAA</Attribute>
+        </AttributeSet>
+        <AttributeSet>
+          <Attribute Accession="NM_014855" Version="2" Change="c.80_83delGGATinsTGCTGTAAACTGTAACTGTAAA" Type="HGVS, previous">NM_014855.2:c.80_83delGGATinsTGCTGTAAACTGTAACTGTAAA</Attribute>
+        </AttributeSet>
+        <AttributeSet>
+          <Attribute Accession="LRG_1247p1" Change="p.Arg27_Ile28delinsLeuLeuTer" Type="HGVS, protein">LRG_1247p1:p.Arg27_Ile28delinsLeuLeuTer</Attribute>
+        </AttributeSet>
+        <AttributeSet>
+          <Attribute Accession="NP_055670" Version="1" Change="p.Arg27_Ile28delinsLeuLeuTer" Type="HGVS, protein, RefSeq">NP_055670.1:p.Arg27_Ile28delinsLeuLeuTer</Attribute>
+        </AttributeSet>
+        <AttributeSet>
+          <Attribute Type="MolecularConsequence">5 prime UTR variant</Attribute>
+          <XRef ID="SO:0001623" DB="Sequence Ontology"/>
+          <XRef ID="NM_001364858.1:c.-202_-199delinsTGCTGTAAACTGTAACTGTAAA" DB="RefSeq"/>
+        </AttributeSet>
+        <AttributeSet>
+          <Attribute Type="MolecularConsequence">non-coding transcript variant</Attribute>
+          <XRef ID="SO:0001619" DB="Sequence Ontology"/>
+          <XRef ID="NR_157345.1:n.173_176delinsTGCTGTAAACTGTAACTGTAAA" DB="RefSeq"/>
+        </AttributeSet>
+        <AttributeSet>
+          <Attribute Type="MolecularConsequence">nonsense</Attribute>
+          <XRef ID="SO:0001587" DB="Sequence Ontology"/>
+          <XRef ID="NM_014855.3:c.80_83delinsTGCTGTAAACTGTAACTGTAAA" DB="RefSeq"/>
+        </AttributeSet>
+        <CytogeneticLocation>7p22.1</CytogeneticLocation>
+        <SequenceLocation Assembly="GRCh38" AssemblyAccessionVersion="GCF_000001405.38" AssemblyStatus="current" Chr="7" Accession="NC_000007.14" start="4781213" stop="4781216" display_start="4781213" display_stop="4781216" variantLength="22" positionVCF="4781213" referenceAlleleVCF="GGAT" alternateAlleleVCF="TGCTGTAAACTGTAACTGTAAA"/>
+        <SequenceLocation Assembly="GRCh37" AssemblyAccessionVersion="GCF_000001405.25" AssemblyStatus="previous" Chr="7" Accession="NC_000007.13" start="4820844" stop="4820847" display_start="4820844" display_stop="4820847" variantLength="22" positionVCF="4820844" referenceAlleleVCF="GGAT" alternateAlleleVCF="TGCTGTAAACTGTAACTGTAAA"/>
+        <MeasureRelationship Type="within single gene">
+          <Name>
+            <ElementValue Type="Preferred">adaptor related protein complex 5 subunit zeta 1</ElementValue>
+          </Name>
+          <Symbol>
+            <ElementValue Type="Preferred">AP5Z1</ElementValue>
+          </Symbol>
+          <SequenceLocation Assembly="GRCh38" AssemblyAccessionVersion="GCF_000001405.38" AssemblyStatus="current" Chr="7" Accession="NC_000007.14" start="4775623" stop="4794397" display_start="4775623" display_stop="4794397" Strand="+"/>
+          <SequenceLocation Assembly="GRCh37" AssemblyAccessionVersion="GCF_000001405.25" AssemblyStatus="previous" Chr="7" Accession="NC_000007.13" start="4815261" stop="4834025" display_start="4815261" display_stop="4834025" variantLength="18765" Strand="+"/>
+          <XRef ID="9907" DB="Gene"/>
+          <XRef Type="MIM" ID="613653" DB="OMIM"/>
+          <XRef ID="HGNC:22197" DB="HGNC"/>
+        </MeasureRelationship>
+        <Citation Type="general">
+          <ID Source="PubMed">20613862</ID>
+        </Citation>
+        <XRef Type="Allelic variant" ID="613653.0001" DB="OMIM"/>
+        <XRef Type="rs" ID="397704705" DB="dbSNP"/>
+      </Measure>
+      <Name>
+        <ElementValue Type="Preferred">NM_014855.3(AP5Z1):c.80_83delinsTGCTGTAAACTGTAACTGTAAA (p.Arg27_Ile28delinsLeuLeuTer)</ElementValue>
+      </Name>
+      <XRef ID="CA215070" DB="ClinGen"/>
+    </MeasureSet>
+    <TraitSet Type="Disease" ID="2">
+      <Trait ID="9580" Type="Disease">
+        <Name>
+          <ElementValue Type="Preferred">Hereditary spastic paraplegia 48</ElementValue>
+          <XRef ID="MONDO:0013342" DB="MONDO"/>
+        </Name>
+        <Name>
+          <ElementValue Type="Alternate">Spastic paraplegia 48, autosomal recessive</ElementValue>
+          <XRef ID="Spastic+paraplegia+48%2C+autosomal+recessive/9323" DB="Genetic Alliance"/>
+        </Name>
+        <Name>
+          <ElementValue Type="Alternate">Spastic paraplegia 48</ElementValue>
+        </Name>
+        <Symbol>
+          <ElementValue Type="Alternate">SPG48</ElementValue>
+          <XRef Type="MIM" ID="613647" DB="OMIM"/>
+        </Symbol>
+        <XRef ID="MONDO:0013342" DB="MONDO"/>
+        <XRef ID="C3150901" DB="MedGen"/>
+        <XRef ID="306511" DB="Orphanet"/>
+        <XRef Type="MIM" ID="613647" DB="OMIM"/>
+      </Trait>
+    </TraitSet>
+  </ReferenceClinVarAssertion>
+  <ClinVarAssertion ID="20155">
+    <ClinVarSubmissionID localKey="613653.0001_SPASTIC PARAPLEGIA 48, AUTOSOMAL RECESSIVE" submitter="OMIM" submitterDate="2017-01-26" title="AP5Z1, 4-BP DEL/22-BP INS, NT80_SPASTIC PARAPLEGIA 48, AUTOSOMAL RECESSIVE"/>
+    <ClinVarAccession Acc="SCV000020155" DateCreated="2013-04-04" DateUpdated="2017-01-30" Version="3" Type="SCV" OrgID="3" OrganizationCategory="resource" OrgType="primary"/>
+    <RecordStatus>current</RecordStatus>
+    <Classification DateLastEvaluated="2010-06-29">
+      <ReviewStatus>no assertion criteria provided</ReviewStatus>
+      <GermlineClassification>Pathogenic</GermlineClassification>
+    </Classification>
+    <Assertion Type="variation to disease"/>
+    <ExternalID DB="OMIM" ID="613653.0001" Type="Allelic variant"/>
+    <ObservedIn>
+      <Sample>
+        <Origin>germline</Origin>
+        <Species>human</Species>
+        <AffectedStatus>not provided</AffectedStatus>
+      </Sample>
+      <Method>
+        <MethodType>literature only</MethodType>
+      </Method>
+      <ObservedData>
+        <Attribute Type="Description">In 2 French sibs with autosomal recessive spastic paraplegia-48 (SPG48; 613647), Slabicki et al. (2010) identified a homozygous complex insertion/deletion mutation in exon 2 of the KIAA0415 gene. The mutation comprised a 4-bp deletion (80del4) and a 22-bp insertion (84ins22), resulting in a frameshift and premature stop codon following residue 29. The insertion was found to be an imperfect quadruplication of a sequence, suggesting DNA polymerase slippage during DNA synthesis as the pathogenetic mechanism. The patients presented with progressive spastic paraplegia associated with urinary incontinence from ages 50 and 49 years, respectively. One had a normal cerebral MRI, whereas the other had spinal hyperintensities in the cervical spine. The unaffected parents were not known to be consanguineous, but they originated from 2 neighboring villages. The mutation was not found in 156 Caucasian or 242 North African control chromosomes. Studies of lymphoblastoid cells derived from 1 patient showed increased sensitivity to DNA-damaging drugs. The findings suggested a link between this form of spastic paraplegia, which could be considered a neurodegenerative disease, and defects in DNA repair.</Attribute>
+        <Citation>
+          <ID Source="PubMed">20613862</ID>
+        </Citation>
+        <XRef DB="OMIM" ID="613647" Type="MIM"/>
+      </ObservedData>
+    </ObservedIn>
+    <MeasureSet Type="Variant">
+      <Measure Type="Variation">
+        <Name>
+          <ElementValue Type="Preferred">AP5Z1, 4-BP DEL/22-BP INS, NT80</ElementValue>
+        </Name>
+        <AttributeSet>
+          <Attribute Type="NonHGVS">4-BP DEL/22-BP INS, NT80</Attribute>
+        </AttributeSet>
+        <MeasureRelationship Type="variant in gene">
+          <Symbol>
+            <ElementValue Type="Preferred">AP5Z1</ElementValue>
+          </Symbol>
+        </MeasureRelationship>
+        <XRef DB="OMIM" ID="613653.0001" Type="Allelic variant"/>
+      </Measure>
+    </MeasureSet>
+    <TraitSet Type="Disease">
+      <Trait Type="Disease">
+        <Name>
+          <ElementValue Type="Preferred">SPASTIC PARAPLEGIA 48, AUTOSOMAL RECESSIVE</ElementValue>
+        </Name>
+      </Trait>
+    </TraitSet>
+  </ClinVarAssertion>
+  <ClinVarAssertion ID="2865972" SubmissionName="SUB8526155">
+    <ClinVarSubmissionID localKey="NM_014855.3:c.80_83delinsTGCTGTAAACTGTAACTGTAAA|OMIM:613647" submittedAssembly="GRCh37" submitter="Paris Brain Institute, Inserm - ICM" submitterDate="2020-11-14"/>
+    <ClinVarAccession Acc="SCV001451119" DateCreated="2021-05-16" DateUpdated="2021-05-16" Version="1" Type="SCV" OrgID="507826" OrganizationCategory="laboratory" OrgType="primary"/>
+    <RecordStatus>current</RecordStatus>
+    <Classification>
+      <ReviewStatus>criteria provided, single submitter</ReviewStatus>
+      <GermlineClassification>Pathogenic</GermlineClassification>
+    </Classification>
+    <Assertion Type="variation to disease"/>
+    <AttributeSet>
+      <Attribute Type="AssertionMethod">ACMG Guidelines, 2015</Attribute>
+      <Citation>
+        <ID Source="PubMed">25741868</ID>
+      </Citation>
+    </AttributeSet>
+    <ObservedIn>
+      <Sample>
+        <Origin>unknown</Origin>
+        <Species TaxonomyId="9606">human</Species>
+        <AffectedStatus>yes</AffectedStatus>
+      </Sample>
+      <Method>
+        <MethodType>clinical testing</MethodType>
+      </Method>
+      <ObservedData>
+        <Attribute Type="VariantAlleles" integerValue="2"/>
+      </ObservedData>
+    </ObservedIn>
+    <MeasureSet Type="Variant">
+      <Measure Type="Variation">
+        <AttributeSet>
+          <Attribute Type="HGVS">NM_014855.3:c.80_83delinsTGCTGTAAACTGTAACTGTAAA</Attribute>
+        </AttributeSet>
+      </Measure>
+    </MeasureSet>
+    <TraitSet Type="Disease">
+      <Trait Type="Disease">
+        <XRef DB="OMIM" ID="613647" Type="MIM"/>
+      </Trait>
+    </TraitSet>
+  </ClinVarAssertion>
+</ClinVarSet>
+</ReleaseSet>
