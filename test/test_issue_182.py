@@ -1,5 +1,5 @@
 from clinvar_ingest.model.variation_archive import ClinicalAssertionVariation, Variation
-from clinvar_ingest.reader import read_clinvar_xml
+from clinvar_ingest.reader import read_clinvar_vcv_xml
 
 
 def test_parse(log_conf):
@@ -9,7 +9,7 @@ def test_parse(log_conf):
     """
     filename = "test/data/original-clinvar-variation-424711.xml"
     with open(filename, "r", encoding="utf-8") as f:
-        objects = list(read_clinvar_xml(f))
+        objects = list(read_clinvar_vcv_xml(f))
 
     assert len(objects) == 17
 

@@ -3,12 +3,18 @@ import json
 import logging
 import os
 import pathlib
+from enum import StrEnum
 from typing import IO, Any, TextIO
 
 from clinvar_ingest.cloud.gcs import blob_reader, blob_size, blob_writer
 from clinvar_ingest.fs import BinaryOpenMode, ReadCounter, fs_open
 from clinvar_ingest.model.common import dictify
-from clinvar_ingest.reader import get_clinvar_xml_releaseinfo, read_clinvar_xml
+from clinvar_ingest.reader import (
+    get_clinvar_rcv_xml_releaseinfo,
+    get_clinvar_vcv_xml_releaseinfo,
+    read_clinvar_rcv_xml,
+    read_clinvar_vcv_xml,
+)
 from clinvar_ingest.utils import make_progress_logger
 
 _logger = logging.getLogger("clinvar_ingest")
@@ -76,12 +82,18 @@ def _jsonify_non_empties(obj) -> list | str | None:
         return json.dumps(obj)
 
 
+class ClinVarIngestFileFormat(StrEnum):
+    VCV = "vcv"
+    RCV = "rcv"
+
+
 def parse_and_write_files(
     input_filename: str,
     output_directory: str,
     gzip_output=True,
     disassemble=True,
     jsonify_content=True,
+    file_format: ClinVarIngestFileFormat = ClinVarIngestFileFormat.VCV,
 ) -> dict[str, str]:
     """
     Parses input file, writes outputs to output directory.
@@ -90,9 +102,15 @@ def parse_and_write_files(
     """
     open_output_files = {}
     with _open(input_filename) as f_in:  # type: ignore
-        releaseinfo = get_clinvar_xml_releaseinfo(f_in)
+        match file_format:
+            case ClinVarIngestFileFormat.VCV:
+                releaseinfo = get_clinvar_vcv_xml_releaseinfo(f_in)
+            case ClinVarIngestFileFormat.RCV:
+                releaseinfo = get_clinvar_rcv_xml_releaseinfo(f_in)
+            case _:
+                raise ValueError(f"Unknown file format: {file_format}")
         release_date = releaseinfo["release_date"]
-        _logger.debug(f"Parsing release date: {release_date}")
+        _logger.info(f"Parsing release date: {release_date}")
 
     # Release directory is within the output directory
     output_release_directory = f"{output_directory}/{release_date}"
@@ -108,12 +126,19 @@ def parse_and_write_files(
         fmt="Read {elapsed_value} VariationArchives in {elapsed:.2f}s. Total VariationArchives read: {current_value}.",
     )
 
+    reader_fn = (
+        read_clinvar_vcv_xml
+        if file_format == ClinVarIngestFileFormat.VCV
+        else read_clinvar_rcv_xml
+    )
+    _logger.info(f"Reading file format: {file_format} with reader: {reader_fn}")
+
     try:
         with _open(input_filename) as f_in:  # type: ignore
             byte_log_progress(0)  # initialize
             vcv_log_progress(0)  # initialize
 
-            for obj in read_clinvar_xml(f_in, disassemble=disassemble):
+            for obj in reader_fn(f_in, disassemble=disassemble):
                 entity_type = obj.entity_type
                 f_out = get_open_file_for_writing(
                     open_output_files,

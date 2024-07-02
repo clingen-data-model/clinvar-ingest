@@ -19,7 +19,7 @@ from clinvar_ingest.model.variation_archive import (
     Variation,
     VariationArchive,
 )
-from clinvar_ingest.reader import read_clinvar_xml
+from clinvar_ingest.reader import read_clinvar_vcv_xml
 
 
 def test_read_original_clinvar_variation_2():
@@ -28,7 +28,7 @@ def test_read_original_clinvar_variation_2():
     """
     filename = "test/data/original-clinvar-variation-2.xml"
     with open(filename) as f:
-        objects = list(read_clinvar_xml(f))
+        objects = list(read_clinvar_vcv_xml(f))
 
     # print("\n".join([str(dictify(o)) for o in objects]))
     assert len(objects) == 23
@@ -148,7 +148,7 @@ def test_read_original_clinvar_variation_634266(log_conf):
     """
     filename = "test/data/original-clinvar-variation-634266.xml"
     with open(filename) as f:
-        objects = list(read_clinvar_xml(f))
+        objects = list(read_clinvar_vcv_xml(f))
 
     assert len(objects) == 70
     expected_types = [
@@ -438,7 +438,7 @@ def test_read_original_clinvar_variation_1264328():
     """
     filename = "test/data/original-clinvar-variation-1264328.xml"
     with open(filename) as f:
-        objects = list(read_clinvar_xml(f))
+        objects = list(read_clinvar_vcv_xml(f))
 
     assert 6 == len(objects)
     assert isinstance(objects[0], Variation)
@@ -459,7 +459,7 @@ def test_read_original_clinvar_variation_10():
     # filename = "test/data/original-clinvar-variation-10.xml"
     filename = "test/data/original-clinvar-variation-10.xml"
     with open(filename) as f:
-        objects = list(read_clinvar_xml(f))
+        objects = list(read_clinvar_vcv_xml(f))
 
     scv372036 = [o for o in objects if isinstance(o, ClinicalAssertion)][0]
     assert scv372036.internal_id == "372036"

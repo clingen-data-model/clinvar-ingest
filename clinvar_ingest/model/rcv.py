@@ -2,20 +2,23 @@ import dataclasses
 from typing import List
 
 from clinvar_ingest.model.common import Model
+from clinvar_ingest.utils import ensure_list
 
 
 @dataclasses.dataclass
 class RcvMapping(Model):
-    rcv_accession: str
-    scv_accession: str
-    trait_set_id: str
+    """
+    Represents a RCV -(1..N)-> SCV Mapping parsed from ClinVar's RCV XML format.
+    One RCV can be associated with multiple SCVs.
+    """
 
-    scv_trait_set: dict
-    rcv_trait_set: dict
+    rcv_accession: str
+    scv_accessions: List[str]
+    trait_set_id: str
 
     @staticmethod
     def jsonifiable_fields() -> List[str]:
-        return ["scv_trait_set", "rcv_trait_set"]
+        return []
 
     def __post_init__(self):
         self.entity_type = "rcv_mapping"
@@ -23,21 +26,18 @@ class RcvMapping(Model):
     @staticmethod
     def from_xml(inp: dict):
         """
-        Accepts a ClinVarSet XML node and returns a RcvScvMap object
+        Accepts a ClinVarSet XML node and returns a RcvMapping object
         """
         rcv = inp["ReferenceClinVarAssertion"]
         rcv_accession = rcv["ClinVarAccession"]["@Acc"]
         rcv_trait_set = rcv["TraitSet"]
-        scv = inp["ClinVarAssertion"]
-        scv_accession = scv["ClinVarAccession"]["@Acc"]
-        scv_trait_set = scv["TraitSet"]
+        scvs = ensure_list(inp["ClinVarAssertion"])
+        scv_accessions = [scv["ClinVarAccession"]["@Acc"] for scv in scvs]
 
         return RcvMapping(
             rcv_accession=rcv_accession,
-            scv_accession=scv_accession,
+            scv_accessions=scv_accessions,
             trait_set_id=rcv_trait_set["@ID"],
-            rcv_trait_set=rcv_trait_set,
-            scv_trait_set=scv_trait_set,
         )
 
     def disassemble(self):
