@@ -19,6 +19,7 @@ from clinvar_ingest.model.variation_archive import (
     Variation,
     VariationArchive,
 )
+from clinvar_ingest.parse import clean_object
 from clinvar_ingest.reader import read_clinvar_xml
 
 
@@ -629,6 +630,50 @@ def test_read_original_clinvar_variation_10():
         "The HFE c.187C&gt;G (p.H63D) variant is a pathogenic variant seen in 10.8% of the human population in gnomAD. Indviduals with the p.H63D variant are considered carriers of hemochromatosis, although this variant is associated with less severe iron overload and reduced penetrance compared to another pathogenic HFE variant, c.845G&gt;A, p.C282Y (PMID: 19159930; 20301613)."
     )
     assert "type" not in scv001251532.interpretation_comments[0]
+
+
+def test_clean_object():
+    # dictionaries
+    obj = {}
+    assert clean_object(obj) is None
+
+    obj = {"key": "value"}
+    assert clean_object(obj) == {"key": "value"}
+
+    obj = {"key": None, "empty_list": [], "empty_dict": {}, "empty_string": ""}
+    assert clean_object(obj) is None
+
+    obj = {"key": "value", "empty_list": [], "empty_dict": {}, "empty_string": ""}
+    assert clean_object(obj) == {"key": "value"}
+
+    # lists
+    obj = []
+    assert clean_object(obj) is None
+
+    obj = [1, 2, 3]
+    assert clean_object(obj) == [1, 2, 3]
+
+    obj = [1, 2, None]
+    assert clean_object(obj) == [1, 2]
+
+    obj = ["", {}, None]
+    assert clean_object(obj) is None
+
+    obj = [{"key": "value"}, {}, None]
+    assert clean_object(obj) == [{"key": "value"}]
+
+    obj = [[[[[[[[[[[[[[[[[[[[[[[[{"key": [{}]}]]]]]]]]]]]]]]]]]]]]]]]]
+    assert clean_object(obj) is None
+
+    # strings
+    obj = "string"
+    assert clean_object(obj) == "string"
+
+    obj = ""
+    assert clean_object(obj) is None
+
+    obj = None
+    assert clean_object(obj) is None
 
 
 if __name__ == "__main__":

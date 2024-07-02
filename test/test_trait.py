@@ -359,18 +359,27 @@ def test_trait_mapping_10():
     root = _parse_xml_document(content)
     release = root["ClinVarVariationRelease"]
     interp_record = release["VariationArchive"]["InterpretedRecord"]
+    clinical_assertion_id_to_accession = {
+        clinical_assertion["@ID"]: clinical_assertion["ClinVarAccession"]["@Accession"]
+        for clinical_assertion in ensure_list(
+            interp_record["ClinicalAssertionList"]["ClinicalAssertion"]
+        )
+    }
     trait_mappings_raw = ensure_list(interp_record["TraitMappingList"]["TraitMapping"])
     assert len(trait_mappings_raw) == 344
 
     trait_mappings_raw_distinct = distinct_dict_set(trait_mappings_raw)
     assert len(trait_mappings_raw_distinct) == 175
 
-    trait_mappings = [TraitMapping.from_xml(raw) for raw in trait_mappings_raw_distinct]
+    trait_mappings = [
+        TraitMapping.from_xml(raw, clinical_assertion_id_to_accession)
+        for raw in trait_mappings_raw_distinct
+    ]
 
     tm0 = [
         tm
         for tm in trait_mappings
-        if tm.clinical_assertion_id == "1174366"
+        if tm.clinical_assertion_id == "SCV000607203"
         and tm.trait_type == "Finding"
         and tm.mapping_type == "XRef"
         and tm.mapping_value == "HP:0002087"
