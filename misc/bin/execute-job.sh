@@ -32,7 +32,7 @@ job_name=$instance_name
 region="us-east1"
 
 # Global Variables
-CLINVAR_INGEST_BUCKET="clinvar-ingest"
+CLINVAR_INGEST_BUCKET="clinvar-ingest-dev"
 
 
 # Larger input
@@ -43,6 +43,7 @@ size=3298023159
 last_modified="2024-01-07T15:47:16"
 released="2024-02-01T15:47:16"
 release_date="2024-02-01"
+file_format=vcv
 
 # Larger input 2024-06-03
 host="https://ftp.ncbi.nlm.nih.gov"
@@ -52,6 +53,7 @@ size=3910466672
 last_modified='2024-06-04T09:09:59'
 released='2024-06-04T09:09:59'
 release_date='2024-06-03'
+file_format=vcv
 
 # Smaller input
 host=https://raw.githubusercontent.com
@@ -61,7 +63,18 @@ size=46719
 last_modified=2023-10-07T15:47:16
 released=2023-10-07T15:47:16
 release_date=2023-10-07
+file_format=vcv
 
+# RCV 2024-06-10 input in GCS
+# gs://clinvar-ingest/test-data/ClinVarRCVRelease_2024-0610.xml.gz
+host=gs://clinvar-ingest
+directory=/test-data
+name=ClinVarRCVRelease_2024-0610.xml.gz
+size=4342574098
+last_modified=2024-06-10T12:00:00
+released=2024-06-10T12:00:00
+release_date=2024-06-10
+file_format=rcv
 
 # Small test input in GCS
 # host=gs://clinvar-ingest
@@ -81,6 +94,7 @@ env_vars="$env_vars,size=$size"
 env_vars="$env_vars,last_modified=$last_modified"
 env_vars="$env_vars,released=$released"
 env_vars="$env_vars,release_date=$release_date"
+env_vars="$env_vars,file_format=$file_format"
 
 gcloud run jobs execute $job_name \
     --region $region \
