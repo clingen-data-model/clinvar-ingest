@@ -78,7 +78,7 @@ echo "Instance name: $instance_name"
 # Disallow unset variables after they've been validated
 set -u
 
-clinvar_ingest_bucket="clinvar-ingest"
+clinvar_ingest_bucket="clinvar-ingest-dev"
 
 region="us-east1"
 # project=$(gcloud config get project)

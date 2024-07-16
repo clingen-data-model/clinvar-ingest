@@ -22,6 +22,11 @@ _logger = logging.getLogger("clinvar_ingest")
 GZIP_COMPRESSLEVEL = int(os.environ.get("GZIP_COMPRESSLEVEL", 9))
 
 
+class ClinVarIngestFileFormat(StrEnum):
+    VCV = "vcv"
+    RCV = "rcv"
+
+
 def _st_size(filepath: str):
     if filepath.startswith("gs://"):
         return blob_size(filepath)
@@ -82,11 +87,6 @@ def _jsonify_non_empties(obj) -> list | str | None:
         return json.dumps(obj)
 
 
-class ClinVarIngestFileFormat(StrEnum):
-    VCV = "vcv"
-    RCV = "rcv"
-
-
 def parse_and_write_files(
     input_filename: str,
     output_directory: str,
@@ -94,6 +94,7 @@ def parse_and_write_files(
     disassemble=True,
     jsonify_content=True,
     file_format: ClinVarIngestFileFormat = ClinVarIngestFileFormat.VCV,
+    limit: None | int = None,
 ) -> dict[str, str]:
     """
     Parses input file, writes outputs to output directory.
@@ -105,8 +106,10 @@ def parse_and_write_files(
         match file_format:
             case ClinVarIngestFileFormat.VCV:
                 releaseinfo = get_clinvar_vcv_xml_releaseinfo(f_in)
+                iterate_type = "variation_archive"
             case ClinVarIngestFileFormat.RCV:
                 releaseinfo = get_clinvar_rcv_xml_releaseinfo(f_in)
+                iterate_type = "rcv_mapping"
             case _:
                 raise ValueError(f"Unknown file format: {file_format}")
         release_date = releaseinfo["release_date"]
@@ -116,14 +119,18 @@ def parse_and_write_files(
     output_release_directory = f"{output_directory}/{release_date}"
 
     # input_file_size = _st_size(input_filename)
-    vcv_count = 0
+    object_count = 0
     byte_log_progress = make_progress_logger(
         logger=_logger,
         fmt="Read {elapsed_value} bytes in {elapsed:.2f}s. Total bytes read: {current_value}.",
     )
-    vcv_log_progress = make_progress_logger(
+    object_log_progress = make_progress_logger(
         logger=_logger,
-        fmt="Read {elapsed_value} VariationArchives in {elapsed:.2f}s. Total VariationArchives read: {current_value}.",
+        fmt=(
+            "Read {elapsed_value} "
+            + iterate_type
+            + " in {elapsed:.2f}s. Total VariationArchives read: {current_value}."
+        ),
     )
 
     reader_fn = (
@@ -136,7 +143,7 @@ def parse_and_write_files(
     try:
         with _open(input_filename) as f_in:  # type: ignore
             byte_log_progress(0)  # initialize
-            vcv_log_progress(0)  # initialize
+            object_log_progress(0)  # initialize
 
             for obj in reader_fn(f_in, disassemble=disassemble):
                 entity_type = obj.entity_type
@@ -162,13 +169,17 @@ def parse_and_write_files(
 
                 # Log offset and count for monitoring
                 byte_log_progress(f_in.tell())
-                if entity_type == "variation_archive":
-                    vcv_count += 1
-                    vcv_log_progress(vcv_count)
+                if entity_type == iterate_type:
+                    object_count += 1
+                    object_log_progress(object_count)
+
+                if limit and object_count >= limit:
+                    _logger.info("Hard limit reached: %d", limit)
+                    break
 
             # Log final status
             byte_log_progress(f_in.tell(), force=True)
-            vcv_log_progress(vcv_count, force=True)
+            object_log_progress(object_count, force=True)
 
     except Exception as e:
         _logger.critical("Exception caught in parse_and_write_files")
