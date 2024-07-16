@@ -123,6 +123,7 @@ def parse_and_write_files(
     byte_log_progress = make_progress_logger(
         logger=_logger,
         fmt="Read {elapsed_value} bytes in {elapsed:.2f}s. Total bytes read: {current_value}.",
+        interval=60,
     )
     object_log_progress = make_progress_logger(
         logger=_logger,
@@ -131,6 +132,7 @@ def parse_and_write_files(
             + iterate_type
             + " in {elapsed:.2f}s. Total: {current_value}."
         ),
+        interval=60,
     )
 
     reader_fn = (
