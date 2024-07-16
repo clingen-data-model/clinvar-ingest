@@ -129,7 +129,7 @@ def parse_and_write_files(
         fmt=(
             "Read {elapsed_value} "
             + iterate_type
-            + " in {elapsed:.2f}s. Total VariationArchives read: {current_value}."
+            + " in {elapsed:.2f}s. Total: {current_value}."
         ),
     )
 
