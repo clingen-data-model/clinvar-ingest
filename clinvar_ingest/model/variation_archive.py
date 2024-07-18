@@ -628,7 +628,7 @@ class Variation(Model):
         return obj
 
     @staticmethod
-    def descendant_tree(inp: dict):
+    def descendant_tree(inp: dict, caller: str = None):
         """
         Accepts xmltodict parsed XML for a SimpleAllele, Haplotype, or Genotype.
         Returns a tree of child ids. Each level is a list, where the first element
@@ -652,10 +652,25 @@ class Variation(Model):
             # List of Haplotype IDs, and recursive call on each Haplotype object
             for h in haplotypes:
                 node = [h["@VariationID"]]
-                desc_tree = Variation.descendant_tree(h)
+                desc_tree = Variation.descendant_tree(h, "Haplotype")
                 if desc_tree:
                     node.extend(desc_tree)
-                outputs.append(node)
+                # When processing a single haplotype with alleles and no owning genotype,
+                # the caller is None here, and we return as a list
+                #      [haplotype_id1,
+                #          [simpleallele_id11]
+                #          [simpleallele_id12]]
+                # When the caller is not None, we are in the context of a Genotype and
+                # are returning dependents, so we return a list of lists
+                #      [[haplotype_id1,
+                #           [simpleallele_id11]
+                #           [simpleallele_id12]]
+                #        [haplotype_id2,
+                #           [simpleallele_id21]]]
+                if caller is None:
+                    outputs.extend(node)
+                else:
+                    outputs.append(node)
 
         if "Genotype" in inp:
             genotypes = ensure_list(inp["Genotype"])
@@ -669,7 +684,7 @@ class Variation(Model):
                 raise RuntimeError("Genotype cannot coexist with other variation type")
             g = genotypes[0]
             node = [g["@VariationID"]]
-            desc_tree = Variation.descendant_tree(g)
+            desc_tree = Variation.descendant_tree(g, "Genotype")
             if desc_tree:
                 node.extend(desc_tree)
             outputs = node
