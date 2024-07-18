@@ -104,6 +104,16 @@ class ClinvarFTPWatcherRequest(BaseModel):
     last_modified: datetime
     release_date: date
 
+    file_format: Annotated[
+        Optional[Literal["vcv", "rcv"]],
+        Field(
+            description=(
+                "Type of file this request refers to. "
+                "When run via workflow, if set, this overrides the default 'vcv' mode."
+            )
+        ),
+    ] = None
+
     @field_validator("released", "last_modified", mode="before")
     @classmethod
     def _validate_datetime(cls, v, info: ValidationInfo) -> datetime:

@@ -27,16 +27,6 @@
 
 set -xeo pipefail
 
-# if [ -z "$branch" ]; then
-#     branch=$(git rev-parse --abbrev-ref HEAD)
-# else
-#     echo "branch set in environment"
-# fi
-# if [ -z "$commit" ]; then
-#     commit=$(git rev-parse HEAD)
-# else
-#     echo "commit set in environment"
-# fi
 if [ -z "$release_tag" ]; then
     release_tag="missing_release_tag" # ensure underscore separators for BQ naming
 else
@@ -55,18 +45,6 @@ if [ -z "$instance_name" ]; then
     if [[ "$instance_name" =~ [^a-zA-Z0-9-] ]]; then
         echo "The instance_name contains characters other than alphanumeric and hyphens."
         exit 1
-
-        # # Check if the violating characters are exclusively hyphens (or allowed characters)
-        # if [[ "$instance_name" =~ ^[a-zA-Z0-9_-]+$ ]]; then
-        #     echo "The only non-alphanumeric/hyphen characters are underscores. Replacing them."
-
-        #     # Replace underscores with hyphens
-        #     instance_name="${instance_name//_/-}"
-        #     echo "Modified instance_name to $instance_name"
-        # else
-        #     echo "instance_name ${instance_name} contains other invalid characters as well."
-        #     exit 1
-        # fi
     fi
 else
     echo "instance_name set in environment"
@@ -78,7 +56,7 @@ echo "Instance name: $instance_name"
 # Disallow unset variables after they've been validated
 set -u
 
-clinvar_ingest_bucket="clinvar-ingest"
+clinvar_ingest_bucket="clinvar-ingest-dev"
 
 region="us-east1"
 # project=$(gcloud config get project)
@@ -117,6 +95,12 @@ else
     echo "Cloud Run Job $instance_name doesn't exist - creating it"
     command="create"
 fi
+
+env_vars="CLINVAR_INGEST_BUCKET=$clinvar_ingest_bucket,CLINVAR_INGEST_RELEASE_TAG=${release_tag}"
+if [ -n "$file_format" ]; then
+    env_vars="$env_vars,file_format=${file_format}"
+fi
+
 gcloud run jobs $command $instance_name \
     --cpu=2 \
     --memory=8Gi \

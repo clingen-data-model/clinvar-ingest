@@ -23,7 +23,7 @@ from clinvar_ingest.cloud.bigquery.create_tables import (
 )
 from clinvar_ingest.cloud.gcs import copy_file_to_bucket, http_download_requests
 from clinvar_ingest.config import get_env
-from clinvar_ingest.parse import parse_and_write_files
+from clinvar_ingest.parse import ClinVarIngestFileFormat, parse_and_write_files
 from clinvar_ingest.slack import send_slack_message
 
 logging.basicConfig(
@@ -65,11 +65,13 @@ _logger = logging.getLogger("clinvar-ingest-workflow")
 # }
 
 
-def create_execution_id(seed: str, reprocessed: bool = False) -> str:
+def create_execution_id(
+    seed: str, file_format: ClinVarIngestFileFormat, reprocessed: bool = False
+) -> str:
     if env.release_tag is None:
         raise RuntimeError("Must specify 'release_tag' in the environment")
     repro = "_reprocessed" if reprocessed else ""
-    return f"clinvar_{seed}_{env.release_tag}{repro}"
+    return f"clinvar_{file_format}_{seed}_{env.release_tag}{repro}"
 
 
 def _get_gcs_client() -> GCSClient:
@@ -85,10 +87,11 @@ def _get_gcs_client() -> GCSClient:
 env = get_env()
 
 # Workflow specific input (which also comes from the env)
-wf_input = ClinvarFTPWatcherRequest(**os.environ)
+wf_input = ClinvarFTPWatcherRequest(**os.environ)  # type: ignore
 
 workflow_execution_id = create_execution_id(
     wf_input.release_date.isoformat().replace("-", "_"),
+    ClinVarIngestFileFormat(wf_input.file_format),
     wf_input.released != wf_input.last_modified,
 )
 workflow_id_message = f"Workflow Execution ID: {workflow_execution_id}"
@@ -178,8 +181,12 @@ except Exception as e:
 # Reads an XML file from GCS, parses it, and writes the parsed data to GCS
 
 
-def parse(payload: ParseRequest) -> ParseResponse:
+def parse(payload: ParseRequest, limit=None) -> ParseResponse:
     _logger.info(f"parse payload: {payload.model_dump_json()}")
+    parse_format_mode = ClinVarIngestFileFormat(
+        wf_input.file_format or env.file_format_mode
+    )
+    _logger.info(f"Parsing file using mode: {parse_format_mode}")
     execution_prefix = f"{env.executions_output_prefix}/{workflow_execution_id}"
     parse_output_path = (
         f"gs://{env.bucket_name}/{execution_prefix}/{env.parse_output_prefix}"
@@ -189,6 +196,8 @@ def parse(payload: ParseRequest) -> ParseResponse:
         parse_output_path,
         disassemble=payload.disassemble,
         jsonify_content=payload.jsonify_content,
+        file_format=parse_format_mode,
+        limit=limit,
     )
     return ParseResponse(parsed_files=output_files)
 

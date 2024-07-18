@@ -32,6 +32,12 @@ def parse_args(argv):
         default="true",
         help="JSON encode content fields (default: true)",
     )
+    parse_sp.add_argument(
+        "--file-format",
+        choices=["vcv", "rcv"],
+        default="vcv",
+        help="Format of input file (default: vcv)",
+    )
 
     # UPLOAD
     upload_sp = subparsers.add_parser("upload")

@@ -1,5 +1,6 @@
 import logging
 import sys
+from argparse import Namespace
 
 import coloredlogs
 
@@ -13,7 +14,7 @@ from clinvar_ingest.parse import parse_and_write_files
 _logger = logging.getLogger("clinvar_ingest")
 
 
-def run_parse(args):
+def run_parse(args: Namespace):
     """
     Primary entrypoint function. Takes CLI arg vector excluding program name.
     """
@@ -23,11 +24,12 @@ def run_parse(args):
         gzip_output=args.gzip_output,
         disassemble=args.disassemble,
         jsonify_content=args.jsonify_content == "true",
+        file_format=args.file_format,
     )
     print(output_files)
 
 
-def run_upload(args):
+def run_upload(args: Namespace):
     print(f"Uploading files to bucket: {args.destination_bucket}")
 
     file_paths = find_files(args.source_directory)
@@ -42,7 +44,7 @@ def run_upload(args):
         copy_file_to_bucket(s, d)
 
 
-def run_cli(argv):
+def run_cli(argv: list[str]):
     """
     Primary entrypoint function for CLI args. Takes argv vector excluding program name.
     """
@@ -69,4 +71,4 @@ def main(argv=sys.argv[1:]):
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

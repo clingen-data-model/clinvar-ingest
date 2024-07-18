@@ -11,6 +11,7 @@ from typing import Any, Iterator, TextIO, Tuple
 import xmltodict
 
 from clinvar_ingest.model.common import Model
+from clinvar_ingest.model.rcv import RcvMapping
 from clinvar_ingest.model.variation_archive import VariationArchive
 
 _logger = logging.getLogger("clinvar_ingest")
@@ -23,6 +24,9 @@ def construct_model(tag, item):
     if tag == "VariationArchive":
         _logger.debug("Returning new VariationArchive")
         return VariationArchive.from_xml(item)
+    elif tag == "ClinVarSet":
+        _logger.debug("Returning new ClinVarSet")
+        return RcvMapping.from_xml(item)
     else:
         raise ValueError(f"Unexpected tag: {tag} {item=}")
 
@@ -67,7 +71,26 @@ class ElementTreeEvent(StrEnum):
     END_NS = "end-ns"
 
 
-def get_clinvar_xml_releaseinfo(file) -> dict:
+def get_clinvar_rcv_xml_releaseinfo(file) -> dict:
+    """
+    Parses top level release info from RCV XML file.
+    Returns dict with {"release_date"} key.
+    """
+    release_date = None
+    _logger.debug(f"{file=}")
+    for event, elem in ET.iterparse(
+        file, events=[ElementTreeEvent.START, ElementTreeEvent.END]
+    ):
+        if event == ElementTreeEvent.START and elem.tag == "ReleaseSet":
+            release_date = elem.attrib["Dated"]
+        else:
+            break
+    if release_date is None:
+        raise ValueError("Root element ReleaseSet not found!")
+    return {"release_date": release_date}
+
+
+def get_clinvar_vcv_xml_releaseinfo(file) -> dict:
     """
     Parses top level release info from file.
     Returns dict with {"release_date"} key.
@@ -109,7 +132,19 @@ def _parse_xml_document(doc_str: str | bytes):
     return xmltodict.parse(doc_str, postprocessor=_handle_text_nodes)
 
 
-def read_clinvar_xml(reader: TextIO, disassemble=True) -> Iterator[Model]:
+def read_clinvar_rcv_xml(reader: TextIO, disassemble=True) -> Iterator[Model]:
+    tag_we_care_about = "ClinVarSet"
+    return _read_clinvar_xml(reader, tag_we_care_about, disassemble)
+
+
+def read_clinvar_vcv_xml(reader: TextIO, disassemble=True) -> Iterator[Model]:
+    tag_we_care_about = "VariationArchive"
+    return _read_clinvar_xml(reader, tag_we_care_about, disassemble)
+
+
+def _read_clinvar_xml(
+    reader: TextIO, tag_we_care_about: str, disassemble=True
+) -> Iterator[Model]:
     """
     Generator function that reads a ClinVar Variation XML file and outputs objects.
     Accepts `reader` as a readable TextIO/BytesIO object, or a filename.
@@ -129,13 +164,10 @@ def read_clinvar_xml(reader: TextIO, disassemble=True) -> Iterator[Model]:
         else:
             raise ValueError(f"Unexpected event: {event}. Element: {ET.tostring(elem)}")
 
-        if event == "start" and elem.tag == "ClinVarVariationRelease":
-            release_date = elem.attrib["ReleaseDate"]
-            _logger.info(f"Parsing release date: {release_date}")
-        elif event == "end" and elem.tag == "VariationArchive":
+        if event == "end" and elem.tag == tag_we_care_about:
             if unclosed != 1:
                 _logger.warning(
-                    f"Found a VariationArchive at a depth other than 1:"
+                    f"Found a {tag_we_care_about} at a depth other than 1:"
                     f" {unclosed}, element: {ET.tostring(elem)}"
                 )
             else:

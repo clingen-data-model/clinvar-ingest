@@ -1,5 +1,6 @@
 import os
 import pathlib
+from typing import Literal
 
 from dotenv import dotenv_values
 from pydantic import BaseModel, field_validator
@@ -30,6 +31,7 @@ class Env(BaseModel):
     slack_token: str
     slack_channel: str
     release_tag: str
+    file_format_mode: Literal["vcv", "rcv"] = "vcv"
 
     @field_validator("bucket_name")
     @classmethod

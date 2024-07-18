@@ -1,15 +1,13 @@
-import xmltodict
-
-from clinvar_ingest.reader import _handle_text_nodes
+from clinvar_ingest.reader import _parse_xml_document
 
 
 def test_handle_text_nodes():
     inp = "<foo>bar</foo>"
-    out = xmltodict.parse(inp, postprocessor=_handle_text_nodes)
+    out = _parse_xml_document(inp)
     expected = {"foo": {"$": "bar"}}
     assert expected == out
 
     inp = "<foo bar='baz'>qux</foo>"
-    out = xmltodict.parse(inp, postprocessor=_handle_text_nodes)
+    out = _parse_xml_document(inp)
     expected = {"foo": {"@bar": "baz", "$": "qux"}}
     assert expected == out
