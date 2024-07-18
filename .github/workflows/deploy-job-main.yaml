@@ -33,8 +33,10 @@ jobs:
         run: |
           export release_tag=${{ github.ref_name }}
           export instance_name=clinvar-vcv-ingest
+          export file_format=vcv
           echo "instance_name=$instance_name" >> $GITHUB_ENV
           echo "release_tag=$release_tag" >> $GITHUB_ENV
+          echo "file_format=$file_format" >> $GITHUB_ENV
 
       - name: build and deploy
         run: |
@@ -51,8 +53,10 @@ jobs:
         run: |
           export release_tag=${{ github.ref_name }}
           export instance_name=clinvar-rcv-ingest
+          export file_format=rcv
           echo "instance_name=$instance_name" >> $GITHUB_ENV
           echo "release_tag=$release_tag" >> $GITHUB_ENV
+          echo "file_format=$file_format" >> $GITHUB_ENV
 
       - name: build and deploy
         run: |

@@ -95,6 +95,12 @@ else
     echo "Cloud Run Job $instance_name doesn't exist - creating it"
     command="create"
 fi
+
+env_vars="CLINVAR_INGEST_BUCKET=$clinvar_ingest_bucket,CLINVAR_INGEST_RELEASE_TAG=${release_tag}"
+if [ -n "$file_format" ]; then
+    env_vars="$env_vars,file_format=${file_format}"
+fi
+
 gcloud run jobs $command $instance_name \
     --cpu=2 \
     --memory=8Gi \
