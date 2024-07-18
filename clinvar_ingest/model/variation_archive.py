@@ -655,13 +655,14 @@ class Variation(Model):
                 desc_tree = Variation.descendant_tree(h, "Haplotype")
                 if desc_tree:
                     node.extend(desc_tree)
-                # When processing a single haplotype with alleles and no owning genotype,
-                # the caller is None here, and we return as a list
+                # When processing a single haplotype with alleles and no owning context,
+                # the caller is None, and we return as a list
                 #      [haplotype_id1,
                 #          [simpleallele_id11]
                 #          [simpleallele_id12]]
-                # When the caller is not None, we are in the context of a Genotype and
-                # are returning dependents, so we return a list of lists
+                #
+                # When the caller is not None, we are in a dependent context,
+                # and we return a list of lists
                 #      [[haplotype_id1,
                 #           [simpleallele_id11]
                 #           [simpleallele_id12]]
