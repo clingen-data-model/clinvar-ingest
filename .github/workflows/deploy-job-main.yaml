@@ -27,10 +27,30 @@ jobs:
       - name: setup gcloud sdk
         uses: google-github-actions/setup-gcloud@v2
 
+
+      ## Deploy + test VCV pipeline
       - name: set env vars
         run: |
           export release_tag=${{ github.ref_name }}
-          export instance_name=clinvar-ingest
+          export instance_name=clinvar-vcv-ingest
+          echo "instance_name=$instance_name" >> $GITHUB_ENV
+          echo "release_tag=$release_tag" >> $GITHUB_ENV
+
+      - name: build and deploy
+        run: |
+          bash misc/bin/deploy-job.sh
+
+      - name: run test pipeline
+        run: |
+          export JOB_WAIT=1
+          echo "JOB_WAIT=$JOB_WAIT" >> $GITHUB_ENV
+          bash misc/bin/execute-job.sh
+
+      ## Deploy + test RCV pipeline
+      - name: set env vars
+        run: |
+          export release_tag=${{ github.ref_name }}
+          export instance_name=clinvar-rcv-ingest
           echo "instance_name=$instance_name" >> $GITHUB_ENV
           echo "release_tag=$release_tag" >> $GITHUB_ENV
 
