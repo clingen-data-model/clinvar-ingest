@@ -1,0 +1,19 @@
+[
+  {
+    "name": "rcv_accession",
+    "type": "STRING"
+  },
+  {
+    "name": "scv_accessions",
+    "type": "STRING",
+    "mode": "REPEATED"
+  },
+  {
+    "name": "trait_set_id",
+    "type": "STRING"
+  },
+  {
+    "name": "release_date",
+    "type": "DATE"
+  }
+]
