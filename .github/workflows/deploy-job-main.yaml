@@ -46,7 +46,7 @@ jobs:
         run: |
           export JOB_WAIT=1
           echo "JOB_WAIT=$JOB_WAIT" >> $GITHUB_ENV
-          bash misc/bin/execute-job.sh
+          bash misc/bin/execute-job.sh vcv-small
 
       ## Deploy + test RCV pipeline
       - name: set env vars
@@ -66,4 +66,4 @@ jobs:
         run: |
           export JOB_WAIT=1
           echo "JOB_WAIT=$JOB_WAIT" >> $GITHUB_ENV
-          bash misc/bin/execute-job.sh
+          bash misc/bin/execute-job.sh rcv-small

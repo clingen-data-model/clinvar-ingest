@@ -26,8 +26,6 @@ else
     wait_opt="--async" # the default
 fi
 
-set -u
-
 job_name=$instance_name
 region="us-east1"
 
@@ -40,6 +38,8 @@ if [ -z "$1" ]; then
 else
     input_flag=$1
 fi
+
+set -u
 
 if [ "$input_flag" == "vcv-small" ]; then
     host="https://raw.githubusercontent.com"
