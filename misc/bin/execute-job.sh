@@ -43,7 +43,7 @@ if [ "$input_flag" == "vcv-small" ]; then
     host="https://raw.githubusercontent.com"
     directory="/clingen-data-model/clinvar-ingest/main/test/data"
     name="OriginalTestDataSet.xml.gz"
-    size=46719
+    size=50735
     last_modified="2023-10-07T15:47:16"
     released="2023-10-07T15:47:16"
     release_date="2023-10-07"
