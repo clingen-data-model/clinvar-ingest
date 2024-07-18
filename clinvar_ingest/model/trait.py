@@ -463,7 +463,7 @@ class ClinicalAssertionTrait(Model):
 
         # Try to match by MedGen ID
         for t in reference_traits:
-            if me.medgen_id == t.medgen_id:
+            if t.medgen_id is not None and me.medgen_id == t.medgen_id:
                 _logger.debug("Matched by MedGen ID: %s", me.medgen_id)
                 return t
 
@@ -640,9 +640,11 @@ class TraitMapping(Model):
         self.entity_type = "trait_mapping"
 
     @staticmethod
-    def from_xml(inp: dict):
+    def from_xml(inp: dict, clinical_assertion_id_to_accession: dict = None):
         return TraitMapping(
-            clinical_assertion_id=extract(inp, "@ClinicalAssertionID"),
+            clinical_assertion_id=clinical_assertion_id_to_accession[
+                extract(inp, "@ClinicalAssertionID")
+            ],
             trait_type=extract(inp, "@TraitType"),
             mapping_type=extract(inp, "@MappingType"),
             mapping_value=extract(inp, "@MappingValue"),

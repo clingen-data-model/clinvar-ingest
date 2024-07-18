@@ -77,14 +77,67 @@ def get_open_file_for_writing(
     return d[label]
 
 
-def _jsonify_non_empties(obj) -> list | str | None:
+def clean_list(input_list: list) -> list | None:
+    output = []
+    for item in input_list:
+        if isinstance(item, dict):
+            val = clean_dict(item)
+            if val is not None:
+                output.append(val)
+        elif isinstance(item, list):
+            val = clean_list(item)
+            if val is not None:
+                output.append(val)
+        else:
+            if item not in [None, ""]:
+                output.append(item)
+    return output if output != [] else None
+
+
+def clean_dict(input_dict: dict) -> dict | None:
+    output = {}
+    for k, v in input_dict.items():
+        if isinstance(v, dict):
+            val = clean_dict(v)
+            if val is not None:
+                output[k] = val
+        elif isinstance(v, list):
+            val = clean_list(v)
+            if val is not None:
+                output[k] = val
+        else:
+            if v is not None and len(v) > 0:
+                output[k] = v
+    return output if output != {} else None
+
+
+def clean_object(obj: list | dict | str | None) -> dict | list | str | None:
+    if isinstance(obj, dict):
+        cleaned = clean_dict(obj)
+        return cleaned if cleaned is not None else None
+    elif isinstance(obj, list):
+        cleaned = clean_list(obj)
+        return cleaned if cleaned is not None else None
+    else:
+        return obj if obj not in [None, ""] else None
+
+
+def _jsonify_non_empties(obj: list | dict | str) -> dict | list | str | None:
     """
     Jsonify objects and lists of objects, but not if it's None, empty string, or an empty collection
     """
-    if isinstance(obj, list):
-        return [_jsonify_non_empties(i) for i in obj]
-    elif obj:
-        return json.dumps(obj)
+    if isinstance(obj, dict):
+        cleaned = clean_object(obj)
+        return json.dumps(cleaned) if cleaned is not None else None
+    elif isinstance(obj, list):
+        output = []
+        for o in obj:
+            cleaned = clean_object(o)
+            if cleaned is not None:
+                output.append(json.dumps(cleaned))
+        return output
+    else:
+        return json.dumps(obj) if obj not in [None, ""] else None
 
 
 def parse_and_write_files(
