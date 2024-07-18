@@ -39,8 +39,6 @@ else
     input_flag=$1
 fi
 
-set -u
-
 if [ "$input_flag" == "vcv-small" ]; then
     host="https://raw.githubusercontent.com"
     directory="/clingen-data-model/clinvar-ingest/main/test/data"
@@ -116,8 +114,11 @@ fi
 # released=2023-10-07T15:47:16
 # release_date=2023-10-07
 
+
 env_vars="CLINVAR_INGEST_BUCKET=$CLINVAR_INGEST_BUCKET"
-env_vars="$env_vars,CLINVAR_INGEST_SLACK_CHANNEL=$CLINVAR_INGEST_SLACK_CHANNEL"
+if [[ -v "$CLINVAR_INGEST_SLACK_CHANNEL" ]]; then
+    env_vars="$env_vars,CLINVAR_INGEST_SLACK_CHANNEL=$CLINVAR_INGEST_SLACK_CHANNEL"
+fi
 env_vars="$env_vars,host=$host"
 env_vars="$env_vars,directory=$directory"
 env_vars="$env_vars,name=$name"
