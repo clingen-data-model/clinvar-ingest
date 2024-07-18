@@ -628,7 +628,7 @@ class Variation(Model):
         return obj
 
     @staticmethod
-    def descendant_tree(inp: dict, caller: str = None):
+    def descendant_tree(inp: dict, caller: bool = None):
         """
         Accepts xmltodict parsed XML for a SimpleAllele, Haplotype, or Genotype.
         Returns a tree of child ids. Each level is a list, where the first element
@@ -652,7 +652,7 @@ class Variation(Model):
             # List of Haplotype IDs, and recursive call on each Haplotype object
             for h in haplotypes:
                 node = [h["@VariationID"]]
-                desc_tree = Variation.descendant_tree(h, "Haplotype")
+                desc_tree = Variation.descendant_tree(h, True)
                 if desc_tree:
                     node.extend(desc_tree)
                 # When processing a single haplotype with alleles and no owning context,
@@ -685,7 +685,7 @@ class Variation(Model):
                 raise RuntimeError("Genotype cannot coexist with other variation type")
             g = genotypes[0]
             node = [g["@VariationID"]]
-            desc_tree = Variation.descendant_tree(g, "Genotype")
+            desc_tree = Variation.descendant_tree(g, True)
             if desc_tree:
                 node.extend(desc_tree)
             outputs = node
