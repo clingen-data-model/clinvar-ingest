@@ -3,7 +3,7 @@ import xmltodict
 from clinvar_ingest.model.variation_archive import ClinicalAssertionVariation, Variation
 
 
-def test_variation_descendant_tree():
+def test_variation_descendant_tree_genotype_with_haplotypes():
     """
     Test the Variation.descendant_tree method.
 
@@ -20,6 +20,27 @@ def test_variation_descendant_tree():
         "634266",
         ["633847", ["634864"], ["634875"], ["634882"]],
         ["633853", ["633853"]],
+    ]
+    assert expected_tree == descendant_tree
+
+
+def test_variation_descendant_tree_haploytpe_with_alleles():
+    """
+    Test the Variation.descendant_tree method.
+
+    Generates a tree of Variation objects, and then tests that the
+    descendant_tree method returns the expected tree.
+    """
+    with open("test/data/original-clinvar-variation-40200.xml") as inp:
+        inp_xml = inp.read()
+    inp = xmltodict.parse(inp_xml)
+    inp = inp["ClinVarVariationRelease"]["VariationArchive"]["InterpretedRecord"]
+
+    descendant_tree = Variation.descendant_tree(inp)
+    expected_tree = [
+        "40200",
+        ["7169"],
+        ["440459"],
     ]
     assert expected_tree == descendant_tree
 
