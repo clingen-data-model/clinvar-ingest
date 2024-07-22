@@ -628,7 +628,7 @@ class Variation(Model):
         return obj
 
     @staticmethod
-    def descendant_tree(inp: dict, caller: bool = None):
+    def descendant_tree(inp: dict, caller: bool = False):
         """
         Accepts xmltodict parsed XML for a SimpleAllele, Haplotype, or Genotype.
         Returns a tree of child ids. Each level is a list, where the first element
@@ -645,7 +645,12 @@ class Variation(Model):
         outputs = []
         if "SimpleAllele" in inp:
             simple_alleles = ensure_list(inp["SimpleAllele"])
-            outputs.extend([[a["@VariationID"]] for a in simple_alleles])
+            for sa in simple_alleles:
+                node = [sa["@VariationID"]]
+                if caller:
+                    outputs.append(node)
+                else:
+                    outputs.extend(node)
 
         if "Haplotype" in inp:
             haplotypes = ensure_list(inp["Haplotype"])
@@ -668,10 +673,10 @@ class Variation(Model):
                 #           [simpleallele_id12]]
                 #        [haplotype_id2,
                 #           [simpleallele_id21]]]
-                if caller is None:
-                    outputs.extend(node)
-                else:
+                if caller:
                     outputs.append(node)
+                else:
+                    outputs.extend(node)
 
         if "Genotype" in inp:
             genotypes = ensure_list(inp["Genotype"])

@@ -24,6 +24,78 @@ def test_variation_descendant_tree_genotype_with_haplotypes():
     assert expected_tree == descendant_tree
 
 
+def test_simple_test_descendant_tree_all_types():
+    simple_allele1 = {
+        "@VariationID": "SimpleAllele1",
+    }
+    simple_allele2 = {
+        "@VariationID": "SimpleAllele2",
+    }
+    simple_allele3 = {
+        "@VariationID": "SimpleAllele3",
+    }
+    haplotype1 = {
+        "@VariationID": "Haplotype1",
+        "SimpleAllele": [simple_allele1, simple_allele2],
+    }
+    haplotype2 = {
+        "@VariationID": "Haplotype2",
+        "SimpleAllele": [simple_allele3],
+    }
+    genotype = {
+        "@VariationID": "Genotype1",
+        "Haplotype": [haplotype1, haplotype2],
+    }
+    genotype_descendant_tree = Variation.descendant_tree({"Genotype": genotype})
+    expected_genotype_descendant_tree = [
+        "Genotype1",
+        ["Haplotype1", ["SimpleAllele1"], ["SimpleAllele2"]],
+        ["Haplotype2", ["SimpleAllele3"]],
+    ]
+    assert expected_genotype_descendant_tree == genotype_descendant_tree
+
+    expected_genotype_only_descendant_tree = ["Genotype2"]
+    genotype_only_descendant_tree = Variation.descendant_tree(
+        {
+            "Genotype": {
+                "@VariationID": "Genotype2",
+            }
+        }
+    )
+    assert expected_genotype_only_descendant_tree == genotype_only_descendant_tree
+
+    haplotype1_descendant_tree = Variation.descendant_tree({"Haplotype": haplotype1})
+    expected_haplotype1_descendant_tree = [
+        "Haplotype1",
+        ["SimpleAllele1"],
+        ["SimpleAllele2"],
+    ]
+    assert expected_haplotype1_descendant_tree == haplotype1_descendant_tree
+
+    expected_haplotype_only_descendant_tree = ["Haplotype3"]
+    haplotype_only_descendant_tree = Variation.descendant_tree(
+        {
+            "Haplotype": {
+                "@VariationID": "Haplotype3",
+            }
+        }
+    )
+    assert expected_haplotype_only_descendant_tree == haplotype_only_descendant_tree
+
+    haplotype2_descendant_tree = Variation.descendant_tree({"Haplotype": haplotype2})
+    expected_haplotype2_descendant_tree = [
+        "Haplotype2",
+        ["SimpleAllele3"],
+    ]
+    assert expected_haplotype2_descendant_tree == haplotype2_descendant_tree
+
+    simple_allele1_descendant_tree = Variation.descendant_tree(
+        {"SimpleAllele": simple_allele1}
+    )
+    expected_simple_allele1_descendant_tree = ["SimpleAllele1"]
+    assert expected_simple_allele1_descendant_tree == simple_allele1_descendant_tree
+
+
 def test_variation_descendant_tree_haploytpe_with_alleles():
     """
     Test the Variation.descendant_tree method.
