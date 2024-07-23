@@ -53,6 +53,19 @@ fi
 echo "Release tag: $release_tag"
 echo "Instance name: $instance_name"
 
+if [ -n "$clinvar_ingest_cmd" ]; then
+    echo "clinvar_ingest_cmd set in environment"
+else
+    clinvar_ingest_cmd="" # Resets it to the default in the docker image
+fi
+
+if [ -n "$file_format" ]; then
+    echo "file_format set in environment"
+else
+    file_format=""
+fi
+
+
 # Disallow unset variables after they've been validated
 set -u
 
@@ -107,6 +120,7 @@ gcloud run jobs $command $instance_name \
     --task-timeout=10h \
     --image=$image \
     --region=$region \
+    --command="$clinvar_ingest_cmd" \
     --service-account=$pipeline_service_account \
     --set-env-vars=CLINVAR_INGEST_BUCKET=$clinvar_ingest_bucket,CLINVAR_INGEST_RELEASE_TAG=${release_tag} \
     --set-secrets=CLINVAR_INGEST_SLACK_TOKEN=clinvar-ingest-slack-token:latest

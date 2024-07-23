@@ -67,3 +67,23 @@ jobs:
           export JOB_WAIT=1
           echo "JOB_WAIT=$JOB_WAIT" >> $GITHUB_ENV
           bash misc/bin/execute-job.sh rcv-small
+
+      ## Deploy copy-only pipeline
+      - name: set env vars
+        run: |
+          export release_tag=${{ github.ref_name }}
+          export instance_name=clinvar-ingest-copy-only
+          export clinvar_ingest_cmd=python,/app/workflow-copy-only.py
+          echo "instance_name=$instance_name" >> $GITHUB_ENV
+          echo "release_tag=$release_tag" >> $GITHUB_ENV
+          echo "clinvar_ingest_cmd=$clinvar_ingest_cmd" >> $GITHUB_ENV
+
+      - name: build and deploy
+        run: |
+          bash misc/bin/deploy-job.sh
+
+      # - name: run test pipeline
+      #   run: |
+      #     export JOB_WAIT=1
+      #     echo "JOB_WAIT=$JOB_WAIT" >> $GITHUB_ENV
+      #     bash misc/bin/execute-job.sh rcv-small
