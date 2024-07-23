@@ -4,11 +4,27 @@
     "type": "DATE"
   },
   {
-    "name": "processing_date",
+    "name": "release_tag",
+    "type": "STRING"
+  },
+  {
+    "name": "processed",
+    "type": "BOOL"
+  },
+  {
+    "name": "vcv_release_date",
     "type": "DATE"
   },
   {
-    "name": "pipeline_version",
+    "name": "rcv_release_date",
+    "type": "DATE"
+  },
+  {
+    "name": "vcv_bucket_dir",
+    "type": "STRING"
+  },
+  {
+    "name": "rcv_bucket_dir",
     "type": "STRING"
   }
 ]
