@@ -47,7 +47,7 @@ def ensure_dataset_exists(
     return dataset
 
 
-def schema_file_path_for_table(table_name: str) -> str:
+def schema_file_path_for_table(table_name: str) -> Path:
     """
     Returns the path to the BigQuery schema file for the given table name.
     """
@@ -98,9 +98,12 @@ def run_create_external_tables(
                 "gcloud client project is None and --project arg not provided"
             )
         destination_project = bq_client.project
-        _logger.info("Using default project from gcloud environment: %s", args.project)
+        _logger.info(
+            "Using default project from gcloud environment: %s", bq_client.project
+        )
 
     source_buckets = set()
+    bucket_location = None
     for table_name, gcs_blob_path in args.source_table_paths.items():
         parsed_blob = parse_blob_uri(gcs_blob_path.root, gcs_client)
         _logger.info(
@@ -122,7 +125,7 @@ def run_create_external_tables(
         bq_client,
         project=destination_project,
         dataset_id=args.destination_dataset,
-        location=bucket_location,
+        location=bucket_location,  # type: ignore
     )
     if not dataset_obj:
         raise RuntimeError(f"Didn't get a dataset object back. run_create args: {args}")
