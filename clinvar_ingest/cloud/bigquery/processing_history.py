@@ -40,6 +40,12 @@ def ensure_initialized(
     project configured through the dotenv or environment variables.
 
     Returns the processing_history `bigquery.Table` object.
+
+    Example:
+    client = bigquery.Client()
+    storage_client = storage.Client()
+    table = ensure_initialized(client=client, storage_client=storage_client)
+    print(str(table))
     """
     env: Env = get_env()
     dataset_name = env.bq_meta_dataset  # The last part of <project>.<dataset_name>
@@ -82,11 +88,15 @@ def write_vcv_started(
     """
     Writes the status of the VCV processing to the processing_history table.
 
-    -- ADD VCV JOB LOG
-    INSERT INTO `clingen-dev.clinvar_ingest.processing_history`
-    (release_date, vcv_pipeline_version, vcv_processing_started, vcv_release_date, vcv_bucket_dir)
-    VALUES
-    (NULL, "kf_dev_tag", CURRENT_TIMESTAMP(), "2024-07-23", "clinvar_vcv_2024_07_23_kf_dev_tag");
+    Example:
+    write_vcv_started(
+        processing_history_table=table,
+        release_date="2024-07-23",
+        release_tag="kf_dev",
+        vcv_bucket_dir="clinvar_vcv_2024_07_23_kf_dev",
+        client=client,
+    )
+
 
     TODO might consider using the client.insert_rows method instead of a query
     since it returns the rows inserted.
@@ -129,12 +139,6 @@ def write_vcv_finished(
     release_tag: str,
     client: bigquery.Client | None = None,
 ):
-    """
-    UPDATE `clingen-dev.clinvar_ingest.processing_history`
-    SET vcv_processing_finished = CURRENT_TIMESTAMP()
-    WHERE vcv_pipeline_version = "kf_dev_tag"
-    AND vcv_release_date = "2024-07-23";
-    """
     sql = f"""
     UPDATE {processing_history_table}
     SET vcv_processing_finished = CURRENT_TIMESTAMP()
