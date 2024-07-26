@@ -73,10 +73,12 @@ jobs:
         run: |
           export release_tag=${{ github.ref_name }}
           export instance_name=clinvar-ingest-copy-only
+          export file_format=vcv
           export clinvar_ingest_cmd=python,/app/workflow-copy-only.py
           echo "instance_name=$instance_name" >> $GITHUB_ENV
           echo "release_tag=$release_tag" >> $GITHUB_ENV
           echo "clinvar_ingest_cmd=$clinvar_ingest_cmd" >> $GITHUB_ENV
+          echo "file_format=$file_format" >> $GITHUB_ENV
 
       - name: build and deploy
         run: |
