@@ -91,7 +91,7 @@ wf_input = ClinvarFTPWatcherRequest(**os.environ)  # type: ignore
 
 workflow_execution_id = create_execution_id(
     wf_input.release_date.isoformat().replace("-", "_"),
-    ClinVarIngestFileFormat(wf_input.file_format),
+    ClinVarIngestFileFormat(wf_input.file_format or env.file_format_mode),
     wf_input.released != wf_input.last_modified,
 )
 workflow_id_message = f"Workflow Execution ID: {workflow_execution_id}"
