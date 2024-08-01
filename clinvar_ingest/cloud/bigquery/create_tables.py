@@ -287,3 +287,94 @@ def drop_external_tables(
     bq_client.query(drop_tables_query)
 
     return args
+
+
+def update_processing_history_table():
+    """
+    Update the processing_history table with the current timestamp.
+    """
+    env = get_env()
+    bq_client = bigquery.Client()
+    processing_history_table_ref = bigquery.TableReference.from_string(
+        f"{env.bq_dest_project}.clinvar_ingest.processing_history"
+    )
+
+    # Try to update the processing_history table that has the SAME release_date (YYYY-MM-DD) as
+    # the vcv_release_date or rcv_release_date (which ever is currently being processed)
+    # and the vcv_release_date or rcv_release_date (which ever is currently being processed) is NULL
+    query_with_same_release_date = f"""
+        UPDATE `{processing_history_table_ref}` 
+        SET 
+            {env.file_format_mode}_release_date = "{env.release_date}",
+            {env.file_format_mode}_pipeline_version = "{env.release_tag}",
+            {env.file_format_mode}_bucket_dir = "{env.bucket_name}"
+        WHERE release_date = "{env.release_date}" 
+        AND {env.file_format_mode}_release_date IS NULL
+        """
+
+    # Try to update the processing_history table that has a release_date (YYYY-MM-DD) one day EARLIER than
+    # the vcv_release_date or rcv_release_date (which ever is currently being processed)
+    # and the vcv_release_date or rcv_release_date (which ever is currently being processed) is NULL
+    query_with_release_date_one_back = f"""
+            UPDATE `{processing_history_table_ref}` 
+            SET 
+                {env.file_format_mode}_release_date = "{env.release_date}",
+                {env.file_format_mode}_pipeline_version = "{env.release_tag}",
+                {env.file_format_mode}_bucket_dir = "{env.bucket_name}"
+            WHERE release_date = DATE_SUB("{env.release_date}", INTERVAL 1 DAY) 
+            AND {env.file_format_mode}_release_date IS NULL
+            """
+
+    # Try to update the processing_history table that has a release_date (YYYY-MM-DD) one day LATER than
+    # the vcv_release_date or rcv_release_date (which ever is currently being processed)
+    # and the vcv_release_date or rcv_release_date (which ever is currently being processed) is NULL
+    query_with_release_date_one_forward = f"""
+            UPDATE `{processing_history_table_ref}` 
+            SET 
+                {env.file_format_mode}_release_date = "{env.release_date}",
+                {env.file_format_mode}_pipeline_version = "{env.release_tag}",
+                {env.file_format_mode}_bucket_dir = "{env.bucket_name}"
+            WHERE release_date = DATE_ADD("{env.release_date}", INTERVAL 1 DAY) 
+            AND {env.file_format_mode}_release_date IS NULL
+            """
+
+    # Insert a new row into the processing_history table with the current release_date (YYYY-MM-DD)
+    # equal to the vcv_release_date or the rcv_release_date (which ever is currently being processed)
+    insert_query = f"""
+        INSERT INTO `{processing_history_table_ref}` 
+            (release_date, {env.file_format_mode}_release_date, {env.file_format_mode}_pipeline_version, {env.file_format_mode}_bucket_dir, processed)
+            VALUES ("{env.release_date}", "{env.release_date}","{env.release_tag}", "{env.bucket_name}", FALSE) 
+        """
+
+    queries = [
+        query_with_same_release_date,
+        query_with_release_date_one_back,
+        query_with_release_date_one_forward,
+        insert_query,
+    ]
+    for query in queries:
+        _logger.info(f"Attempting to updating processing_history table: {query}")
+        try:
+            query_job = bq_client.query(query)
+            query_job.result()
+
+            if query_job.errors:
+                # Print any errors if they occurred
+                _logger.error("Errors occurred during the update operation:")
+                for error in query_job.errors:
+                    _logger.error(error)
+                raise Exception(
+                    f"Error occurred during update operation: {query_job.errors}"
+                )
+            elif (
+                query_job.dml_stats.updated_row_count == 0
+                and query_job.dml_stats.inserted_row_count == 0
+            ):
+                continue
+            else:
+                _logger.info(f"Updated processing_history table with: {query}")
+                break
+
+        except Exception as e:
+            _logger.error(f"Error occurred during update query:{query}\n{e}")
+            raise e
