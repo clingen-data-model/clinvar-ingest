@@ -17,12 +17,15 @@ _slack_channel = os.environ.get("CLINVAR_INGEST_SLACK_CHANNEL", "C06QFR0278D")
 
 _release_tag = os.environ.get("CLINVAR_INGEST_RELEASE_TAG", "")
 
+_bq_meta_dataset = os.environ.get("CLINVAR_INGEST_BQ_META_DATASET", None)
+
 _dotenv_env = os.environ.get("DOTENV_ENV", "dev")
 _dotenv_values = dotenv_values(pathlib.Path(__file__).parent / f".{_dotenv_env}.env")
 
 
 class Env(BaseModel):
     bq_dest_project: str
+    bq_meta_dataset: str
     bucket_name: str
     bucket_staging_prefix: str
     bucket_parsed_prefix: str
@@ -47,16 +50,18 @@ def get_env() -> Env:
     variables and any default values.
     """
     return Env(
-        bq_dest_project=_dotenv_values["BQ_DEST_PROJECT"],
-        bucket_name=_bucket_name or _dotenv_values["CLINVAR_INGEST_BUCKET"],
+        bq_dest_project=_dotenv_values["BQ_DEST_PROJECT"],  # type: ignore
+        bq_meta_dataset=_bq_meta_dataset
+        or _dotenv_values["CLINVAR_INGEST_BQ_META_DATASET"],  # type: ignore
+        bucket_name=_bucket_name or _dotenv_values["CLINVAR_INGEST_BUCKET"],  # type: ignore
         bucket_staging_prefix=_bucket_staging_prefix,
         bucket_parsed_prefix=_bucket_parsed_prefix,
         parse_output_prefix=_bucket_parsed_prefix,
         executions_output_prefix=_bucket_executions_prefix,
         slack_token=_slack_token
-        or _dotenv_values.get("CLINVAR_INGEST_SLACK_TOKEN", ""),
+        or _dotenv_values.get("CLINVAR_INGEST_SLACK_TOKEN", ""),  # type: ignore
         slack_channel=_slack_channel
-        or _dotenv_values.get("CLINVAR_INGEST_SLACK_CHANNEL", ""),
+        or _dotenv_values.get("CLINVAR_INGEST_SLACK_CHANNEL", ""),  # type: ignore
         release_tag=_release_tag
-        or _dotenv_values.get("CLINVAR_INGEST_RELEASE_TAG", ""),
+        or _dotenv_values.get("CLINVAR_INGEST_RELEASE_TAG", ""),  # type: ignore
     )

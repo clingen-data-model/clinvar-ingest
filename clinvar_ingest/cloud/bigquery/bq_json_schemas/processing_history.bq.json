@@ -4,11 +4,47 @@
     "type": "DATE"
   },
   {
-    "name": "processing_date",
+    "name": "vcv_pipeline_version",
+    "type": "STRING"
+  },
+  {
+    "name": "rcv_pipeline_version",
+    "type": "STRING"
+  },
+  {
+    "name": "processed",
+    "type": "BOOL"
+  },
+  {
+    "name": "vcv_processing_started",
+    "type": "TIMESTAMP"
+  },
+  {
+    "name": "vcv_processing_finished",
+    "type": "TIMESTAMP"
+  },
+  {
+    "name": "rcv_processing_started",
+    "type": "TIMESTAMP"
+  },
+  {
+    "name": "rcv_processing_finished",
+    "type": "TIMESTAMP"
+  },
+  {
+    "name": "vcv_release_date",
     "type": "DATE"
   },
   {
-    "name": "pipeline_version",
+    "name": "rcv_release_date",
+    "type": "DATE"
+  },
+  {
+    "name": "vcv_bucket_dir",
+    "type": "STRING"
+  },
+  {
+    "name": "rcv_bucket_dir",
     "type": "STRING"
   }
 ]
