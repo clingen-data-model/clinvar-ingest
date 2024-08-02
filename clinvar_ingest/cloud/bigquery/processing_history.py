@@ -1,5 +1,7 @@
+import json
 import logging
 
+import google.cloud.bigquery.table
 from google.api_core.exceptions import NotFound
 from google.cloud import bigquery, storage
 
@@ -53,12 +55,13 @@ def ensure_pairs_view_exists(
     CREATE OR REPLACE VIEW `{project}.{dataset_name}.{table_name}` AS
     SELECT
         -- Use the release date from the VCV file as the final release date
-        vcv.xml_release_date as release_date,
+        vcv.release_date as release_date,
         -- VCV fields
         vcv.file_type as vcv_file_type,
         vcv.pipeline_version as vcv_pipeline_version,
         vcv.processing_started as vcv_processing_started,
         vcv.processing_finished as vcv_processing_finished,
+        vcv.release_date as vcv_release_date,
         vcv.xml_release_date as vcv_xml_release_date,
         vcv.bucket_dir as vcv_bucket_dir,
         -- RCV fields
@@ -66,6 +69,7 @@ def ensure_pairs_view_exists(
         rcv.pipeline_version as rcv_pipeline_version,
         rcv.processing_started as rcv_processing_started,
         rcv.processing_finished as rcv_processing_finished,
+        rcv.release_date as rcv_release_date,
         rcv.xml_release_date as rcv_xml_release_date,
         rcv.bucket_dir as rcv_bucket_dir,
     FROM
@@ -237,9 +241,9 @@ def write_started(
 
     sql = f"""
     INSERT INTO {fully_qualified_table_id}
-    (release_date, file_type, pipeline_version, processing_started, xml_release_date, bucket_dir)
+    (release_date, file_type, pipeline_version, processing_started, xml_release_date, bucket_dir, parsed_files)
     VALUES
-    (NULL, @file_type, @pipeline_version, CURRENT_TIMESTAMP(), @xml_release_date, @bucket_dir);
+    (NULL, @file_type, @pipeline_version, CURRENT_TIMESTAMP(), @xml_release_date, @bucket_dir, @parsed_files);
     """
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
@@ -271,6 +275,7 @@ def write_finished(
     release_tag: str,
     file_type: ClinVarIngestFileFormat,
     bucket_dir: str,
+    parsed_files: dict,  # ParseResponse.parsed_files
     client: bigquery.Client | None = None,
 ):
     """
@@ -321,16 +326,24 @@ def write_finished(
     # matching row could have been created, but this is unlikely.
     query = f"""
     UPDATE {fully_qualified_table_id}
-    SET processing_finished = CURRENT_TIMESTAMP()
+    SET processing_finished = CURRENT_TIMESTAMP(),
+        parsed_files = @parsed_files
     WHERE file_type = '{file_type}'
     AND pipeline_version = '{release_tag}'
     AND xml_release_date = '{release_date}'
     AND bucket_dir = '{bucket_dir}'
     """
     # print(f"Query: {query}")
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter(
+                "parsed_files", "STRING", json.dumps(parsed_files)
+            )
+        ]
+    )
 
     try:
-        query_job = client.query(query)
+        query_job = client.query(query, job_config=job_config)
         result = query_job.result()
 
         if query_job.errors:
@@ -378,6 +391,76 @@ def write_finished(
     except RuntimeError as e:
         _logger.error(f"Error occurred during update query:{query}\n{e}")
         raise e
+
+
+def read_processing_history_pairs(
+    processing_history_pairs_table: bigquery.Table,
+    client: bigquery.Client | None = None,
+) -> google.cloud.bigquery.table.RowIterator:
+    """
+    Reads the pairwise view of the processing history table linking
+    VCV and RCV processing events within a day of each other.
+    Used downstream during the ingest to bigquery step.
+    """
+    if client is None:
+        client = bigquery.Client()
+    query = f"""
+    SELECT
+        release_date
+        vcv_file_type,
+        vcv_pipeline_version,
+        vcv_processing_started,
+        vcv_processing_finished,
+        vcv_xml_release_date,
+        vcv_bucket_dir,
+        rcv_file_type,
+        rcv_pipeline_version,
+        rcv_processing_started,
+        rcv_processing_finished,
+        rcv_xml_release_date,
+        rcv_bucket_dir
+    FROM {processing_history_pairs_table}
+    """
+    query_job = client.query(query)
+    return query_job.result()
+
+
+def processed_pairs_ready_to_be_ingested(
+    processing_history_pairs_table: bigquery.Table,
+    client: bigquery.Client | None = None,
+) -> google.cloud.bigquery.table.RowIterator:
+    """
+    Reads the pairwise view of the processing history table linking
+    VCV and RCV processing events within a day of each other.
+    Returns those which ahve finished processing but have not
+    yet been ingested and assigned a final `release_date`.
+
+    TODO maybe be more explicit about this rather than relying on NULL release_date
+    """
+    if client is None:
+        client = bigquery.Client()
+    query = f"""
+    SELECT
+        release_date
+        vcv_file_type,
+        vcv_pipeline_version,
+        vcv_processing_started,
+        vcv_processing_finished,
+        vcv_xml_release_date,
+        vcv_bucket_dir,
+        rcv_file_type,
+        rcv_pipeline_version,
+        rcv_processing_started,
+        rcv_processing_finished,
+        rcv_xml_release_date,
+        rcv_bucket_dir
+    FROM {processing_history_pairs_table}
+    WHERE vcv_processing_finished IS NOT NULL
+    AND rcv_processing_finished IS NOT NULL
+    AND release_date IS NULL
+    """
+    query_job = client.query(query)
+    return query_job.result()
 
 
 # def write_vcv_started(

@@ -26,5 +26,9 @@
   {
     "name": "bucket_dir",
     "type": "STRING"
+  },
+  {
+    "name": "parsed_files",
+    "type": "STRING"
   }
 ]

@@ -333,6 +333,7 @@ processing_history.write_finished(
     file_type=file_mode,
     # The directory within the executions_output_prefix. See gcs_base in copy()
     bucket_dir=workflow_execution_id,
+    parsed_files=parse_response.parsed_files,
     client=_get_bq_client(),
 )
 
