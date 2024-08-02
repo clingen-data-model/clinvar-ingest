@@ -5,6 +5,7 @@ import google.cloud.bigquery.table
 from google.api_core.exceptions import NotFound
 from google.cloud import bigquery, storage
 
+from clinvar_ingest.api.model.requests import _dump_fn, walk_and_replace
 from clinvar_ingest.cloud.bigquery.create_tables import (
     ensure_dataset_exists,
     schema_file_path_for_table,
@@ -13,6 +14,10 @@ from clinvar_ingest.config import Env, get_env
 from clinvar_ingest.utils import ClinVarIngestFileFormat
 
 _logger = logging.getLogger("clinvar_ingest")
+
+
+def _internal_model_dump(obj):
+    return walk_and_replace(obj, _dump_fn)
 
 
 def create_processing_history_table(
@@ -64,6 +69,7 @@ def ensure_pairs_view_exists(
         vcv.release_date as vcv_release_date,
         vcv.xml_release_date as vcv_xml_release_date,
         vcv.bucket_dir as vcv_bucket_dir,
+        vcv.parsed_files as vcv_parsed_files,
         -- RCV fields
         rcv.file_type as rcv_file_type,
         rcv.pipeline_version as rcv_pipeline_version,
@@ -72,6 +78,7 @@ def ensure_pairs_view_exists(
         rcv.release_date as rcv_release_date,
         rcv.xml_release_date as rcv_xml_release_date,
         rcv.bucket_dir as rcv_bucket_dir,
+        rcv.parsed_files as rcv_parsed_files
     FROM
     (SELECT * FROM `{processing_history_table}` WHERE file_type = "vcv") vcv
     INNER JOIN
@@ -241,9 +248,9 @@ def write_started(
 
     sql = f"""
     INSERT INTO {fully_qualified_table_id}
-    (release_date, file_type, pipeline_version, processing_started, xml_release_date, bucket_dir, parsed_files)
+    (release_date, file_type, pipeline_version, processing_started, xml_release_date, bucket_dir)
     VALUES
-    (NULL, @file_type, @pipeline_version, CURRENT_TIMESTAMP(), @xml_release_date, @bucket_dir, @parsed_files);
+    (NULL, @file_type, @pipeline_version, CURRENT_TIMESTAMP(), @xml_release_date, @bucket_dir);
     """
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
@@ -337,7 +344,7 @@ def write_finished(
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
             bigquery.ScalarQueryParameter(
-                "parsed_files", "STRING", json.dumps(parsed_files)
+                "parsed_files", "STRING", json.dumps(_internal_model_dump(parsed_files))
             )
         ]
     )
@@ -393,6 +400,81 @@ def write_finished(
         raise e
 
 
+def update_final_release_date(
+    processing_history_table: bigquery.Table,
+    release_date: str,
+    release_tag: str,
+    file_type: ClinVarIngestFileFormat,
+    bucket_dir: str,
+    final_release_date: str,
+    client: bigquery.Client | None = None,
+):
+    """
+    Updates the final release date of the VCV processing to the processing_history table.
+    """
+    if client is None:
+        client = bigquery.Client()
+
+    fully_qualified_table_id = str(processing_history_table)
+    query = f"""
+    UPDATE {fully_qualified_table_id}
+    SET release_date = @release_date
+    WHERE file_type = '{file_type}'
+    AND pipeline_version = '{release_tag}'
+    AND xml_release_date = '{release_date}'
+    AND bucket_dir = '{bucket_dir}'
+    """  # TODO prepared statement
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("release_date", "STRING", final_release_date)
+        ]
+    )
+
+    query_job = client.query(query, job_config=job_config)
+    result = query_job.result()
+    if query_job.errors:
+        # Print any errors if they occurred
+        _logger.error("Errors occurred during the update operation:")
+        for error in query_job.errors:
+            _logger.error(error)
+        raise RuntimeError(
+            f"Error occurred during update operation: {query_job.errors}"
+        )
+    elif (
+        query_job.dml_stats.updated_row_count > 1  # type: ignore
+        or query_job.dml_stats.inserted_row_count > 1  # type: ignore
+    ):
+        msg = (
+            "More than one row was updated while updating processing_history "
+            f"for the final release date: dml_stats={query_job.dml_stats}, "
+            f"file_type={file_type}, release_date={release_date}, "
+            f"release_tag={release_tag}, bucket_dir={bucket_dir}"
+        )
+        _logger.error(msg)
+        raise RuntimeError(msg)
+    elif (
+        query_job.dml_stats.updated_row_count == 0  # type: ignore
+        and query_job.dml_stats.inserted_row_count == 0  # type: ignore
+    ):
+        msg = (
+            "No rows were updated during the update_final_release_date. "
+            f"file_type={file_type}, release_date={release_date}, "
+            f"release_tag={release_tag}, bucket_dir={bucket_dir}"
+        )
+        _logger.error(msg)
+        raise RuntimeError(msg)
+    else:
+        _logger.info(
+            (
+                "processing_history record updated for final release date."
+                "release_date=%s, file_type=%s"
+            ),
+            release_date,
+            file_type,
+        )
+        return result, query_job
+
+
 def read_processing_history_pairs(
     processing_history_pairs_table: bigquery.Table,
     client: bigquery.Client | None = None,
@@ -413,12 +495,14 @@ def read_processing_history_pairs(
         vcv_processing_finished,
         vcv_xml_release_date,
         vcv_bucket_dir,
+        vcv_parsed_files,
         rcv_file_type,
         rcv_pipeline_version,
         rcv_processing_started,
         rcv_processing_finished,
         rcv_xml_release_date,
-        rcv_bucket_dir
+        rcv_bucket_dir,
+        rcv_parsed_files
     FROM {processing_history_pairs_table}
     """
     query_job = client.query(query)
@@ -448,12 +532,14 @@ def processed_pairs_ready_to_be_ingested(
         vcv_processing_finished,
         vcv_xml_release_date,
         vcv_bucket_dir,
+        vcv_parsed_files,
         rcv_file_type,
         rcv_pipeline_version,
         rcv_processing_started,
         rcv_processing_finished,
         rcv_xml_release_date,
-        rcv_bucket_dir
+        rcv_bucket_dir,
+        rcv_parsed_files
     FROM {processing_history_pairs_table}
     WHERE vcv_processing_finished IS NOT NULL
     AND rcv_processing_finished IS NOT NULL
