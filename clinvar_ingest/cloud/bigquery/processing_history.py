@@ -30,6 +30,59 @@ def create_processing_history_table(
     return client.create_table(table)  # error if exists
 
 
+def ensure_pairs_view_exists(
+    processing_history_table: bigquery.Table,
+    client: bigquery.Client | None = None,
+):
+    """
+    Creates the pairwise view of the processing history table linking
+    VCV and RCV processing events within a day of each other.
+    Used downstream during the ingest to bigquery step.
+    """
+    if client is None:
+        client = bigquery.Client()
+    # Get the project from the client
+    project = client.project
+    env: Env = get_env()
+    dataset_name = env.bq_meta_dataset  # The last part of <project>.<dataset_name>
+    table_name = "processing_history_pairs"
+
+    # saved in bigquery as a saved query in clingen-dev called "processing_history_pairs"
+    # creates a view called clingen-dev.clinvar_ingest.processing_history_pairs
+    query = f"""
+    CREATE OR REPLACE VIEW `{project}.{dataset_name}.{table_name}` AS
+    SELECT
+        -- Use the release date from the VCV file as the final release date
+        vcv.xml_release_date as release_date,
+        -- VCV fields
+        vcv.file_type as vcv_file_type,
+        vcv.pipeline_version as vcv_pipeline_version,
+        vcv.processing_started as vcv_processing_started,
+        vcv.processing_finished as vcv_processing_finished,
+        vcv.xml_release_date as vcv_xml_release_date,
+        vcv.bucket_dir as vcv_bucket_dir,
+        -- RCV fields
+        rcv.file_type as rcv_file_type,
+        rcv.pipeline_version as rcv_pipeline_version,
+        rcv.processing_started as rcv_processing_started,
+        rcv.processing_finished as rcv_processing_finished,
+        rcv.xml_release_date as rcv_xml_release_date,
+        rcv.bucket_dir as rcv_bucket_dir,
+    FROM
+    (SELECT * FROM `{processing_history_table}` WHERE file_type = "vcv") vcv
+    INNER JOIN
+    (SELECT * FROM `{processing_history_table}` WHERE file_type = "rcv") rcv
+    ON (
+        vcv.xml_release_date >= DATE_SUB(rcv.xml_release_date, INTERVAL 1 DAY)
+        AND
+        vcv.xml_release_date <= DATE_ADD(rcv.xml_release_date, INTERVAL 1 DAY)
+    )
+    """
+    query_job = client.query(query)
+    _ = query_job.result()
+    return client.get_table(f"{project}.{dataset_name}.{table_name}")
+
+
 def ensure_initialized(
     client: bigquery.Client | None = None, storage_client: storage.Client | None = None
 ) -> bigquery.Table:
@@ -77,23 +130,6 @@ def ensure_initialized(
     except NotFound:
         table = create_processing_history_table(client, table_reference)
     return table
-
-
-# pylint: disable=pointless-string-statement
-"""
--- ADD VCV JOB LOG
-INSERT INTO `clingen-dev.clinvar_ingest.processing_history2`
-  (release_date, file_type, pipeline_version, processing_started, xml_release_date, bucket_dir)
-VALUES
-  (NULL, "vcv", "kf_dev_tag", CURRENT_TIMESTAMP(), "2024-07-23", "clinvar_vcv_2024_07_23_kf_dev_tag");
-
--- VCV FINISHED LOG
-UPDATE `clingen-dev.clinvar_ingest.processing_history2`
-SET processing_finished = CURRENT_TIMESTAMP()
-WHERE file_type = "vcv"
-AND pipeline_version = "kf_dev_tag"
-AND xml_release_date = "2024-07-23";
-"""
 
 
 def check_started_exists(

@@ -95,7 +95,13 @@ _logger.info(workflow_id_message)
 #     ClinVarIngestFileFormat.RCV: processing_history.write_rcv_started,
 #     ClinVarIngestFileFormat.VCV: processing_history.write_vcv_started,
 # }[file_mode]
-processing_history_table = processing_history.ensure_initialized()
+processing_history_table = processing_history.ensure_initialized(
+    client=_get_bq_client()
+)
+processing_history_pairs_view = processing_history.ensure_pairs_view_exists(
+    processing_history_table=processing_history_table,
+    client=_get_bq_client(),
+)
 processing_history.write_started(
     processing_history_table=processing_history_table,
     release_date=release_date,
