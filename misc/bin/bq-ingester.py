@@ -8,12 +8,9 @@
 import json
 import logging
 import os
-from pathlib import PurePath
-from typing import Any, Callable
 
 from google.cloud import bigquery
 from google.cloud.storage import Client as GCSClient
-from pydantic import BaseModel
 
 from clinvar_ingest.api.model.requests import (
     ClinvarFTPWatcherRequest,
@@ -21,6 +18,7 @@ from clinvar_ingest.api.model.requests import (
     CreateExternalTablesResponse,
     CreateInternalTablesRequest,
     DropExternalTablesRequest,
+    walk_and_replace,
 )
 from clinvar_ingest.cloud.bigquery import processing_history
 from clinvar_ingest.cloud.bigquery.create_tables import (
@@ -50,28 +48,6 @@ _logger = logging.getLogger("clinvar-ingest-workflow")
 #     "Released": "2024-02-01 15:47:16",
 #     "Size": 3298023159,
 # }
-
-
-def walk_and_replace(d: dict, dump_fn: Callable[[Any], Any]):
-    if isinstance(d, dict):
-        for k, v in d.items():
-            d[k] = walk_and_replace(v, dump_fn)
-    elif isinstance(d, list):
-        for i in range(len(d)):
-            d[i] = walk_and_replace(d[i], dump_fn)
-    else:
-        d = dump_fn(d)
-    return d
-
-
-def _dump_fn(val):
-    if isinstance(val, PurePath):
-        return str(val)
-    if isinstance(val, BaseModel):
-        return val.model_dump()
-    if isinstance(val, bigquery.Table):
-        return str(val)
-    return val
 
 
 def create_execution_id(
@@ -183,7 +159,7 @@ for row in processing_history_pairs:
     )
     vcv_create_tables_response = run_create_external_tables(vcv_create_tables_request)
     vcv_ext_resp_json = json.dumps(
-        walk_and_replace(vcv_create_tables_response, _dump_fn)
+        walk_and_replace(vcv_create_tables_response, processing_history._dump_fn)
     )
     _logger.info(f"VCV Create External Tables response: {vcv_ext_resp_json}")
 
@@ -196,7 +172,7 @@ for row in processing_history_pairs:
     )
     rcv_create_tables_response = run_create_external_tables(rcv_create_tables_request)
     rcv_ext_resp_json = json.dumps(
-        walk_and_replace(rcv_create_tables_response, _dump_fn)
+        walk_and_replace(rcv_create_tables_response, processing_history._dump_fn)
     )
     _logger.info(f"RCV Create External Tables response: {rcv_ext_resp_json}")
 
@@ -204,21 +180,37 @@ for row in processing_history_pairs:
     # and RCV rows to indicate that they have been ingested
     # Update VCV final release_date
     _logger.info("Updating VCV final release date.")
+    _logger.info(
+        f"processing_history_table: {processing_history_table}, "
+        f"xml_release_date: {vcv_xml_release_date}, "
+        f"release_tag: {vcv_pipeline_version}, "
+        f"file_type: {vcv_file_type}, "
+        f"bucket_dir: {vcv_bucket_dir}, "
+        f"final_release_date: {final_release_date}"
+    )
     processing_history.update_final_release_date(
         processing_history_table=processing_history_table,
-        release_date=vcv_release_date,
+        xml_release_date=vcv_xml_release_date,
         release_tag=vcv_pipeline_version,
-        file_type=file_mode,
+        file_type=vcv_file_type,
         bucket_dir=vcv_bucket_dir,
         final_release_date=final_release_date,
     )
     # Update RCV final release_date
     _logger.info("Updating RCV final release date.")
+    _logger.info(
+        f"processing_history_table: {processing_history_table}, "
+        f"xml_release_date: {rcv_xml_release_date}, "
+        f"release_tag: {rcv_pipeline_version}, "
+        f"file_type: {rcv_file_type}, "
+        f"bucket_dir: {rcv_bucket_dir}, "
+        f"final_release_date: {final_release_date}"
+    )
     processing_history.update_final_release_date(
         processing_history_table=processing_history_table,
-        release_date=rcv_release_date,
+        xml_release_date=rcv_xml_release_date,
         release_tag=rcv_pipeline_version,
-        file_type=file_mode,
+        file_type=rcv_file_type,
         bucket_dir=rcv_bucket_dir,
         final_release_date=final_release_date,
     )

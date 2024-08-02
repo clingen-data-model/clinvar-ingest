@@ -1,11 +1,13 @@
 import json
 import logging
+from pathlib import PurePath
 
 import google.cloud.bigquery.table
 from google.api_core.exceptions import NotFound
 from google.cloud import bigquery, storage
+from pydantic import BaseModel
 
-from clinvar_ingest.api.model.requests import _dump_fn, walk_and_replace
+from clinvar_ingest.api.model.requests import walk_and_replace
 from clinvar_ingest.cloud.bigquery.create_tables import (
     ensure_dataset_exists,
     schema_file_path_for_table,
@@ -14,6 +16,19 @@ from clinvar_ingest.config import Env, get_env
 from clinvar_ingest.utils import ClinVarIngestFileFormat
 
 _logger = logging.getLogger("clinvar_ingest")
+
+
+def _dump_fn(val):
+    if isinstance(val, PurePath):
+        return str(val)
+    if isinstance(val, BaseModel):
+        return val.model_dump()
+    if isinstance(val, bigquery.Table):
+        return str(val)
+    # if its a date-like
+    if hasattr(val, "isoformat"):
+        return val.isoformat()
+    return val
 
 
 def _internal_model_dump(obj):
@@ -244,7 +259,7 @@ def write_started(
                 """
                 query_job = client.query(delete_query)
                 _ = query_job.result()
-                _logger.info(f"Deleted {query_job.dml_stats.deleted_row_count} rows.")
+                _logger.info(f"Deleted {query_job.dml_stats.deleted_row_count} rows.")  # type: ignore
 
     sql = f"""
     INSERT INTO {fully_qualified_table_id}
@@ -402,7 +417,7 @@ def write_finished(
 
 def update_final_release_date(
     processing_history_table: bigquery.Table,
-    release_date: str,
+    xml_release_date: str,
     release_tag: str,
     file_type: ClinVarIngestFileFormat,
     bucket_dir: str,
@@ -418,19 +433,23 @@ def update_final_release_date(
     fully_qualified_table_id = str(processing_history_table)
     query = f"""
     UPDATE {fully_qualified_table_id}
-    SET release_date = @release_date
+    SET release_date = '{final_release_date}'
     WHERE file_type = '{file_type}'
     AND pipeline_version = '{release_tag}'
-    AND xml_release_date = '{release_date}'
+    AND xml_release_date = '{xml_release_date}'
     AND bucket_dir = '{bucket_dir}'
     """  # TODO prepared statement
-    job_config = bigquery.QueryJobConfig(
-        query_parameters=[
-            bigquery.ScalarQueryParameter("release_date", "STRING", final_release_date)
-        ]
-    )
+    # job_config = bigquery.QueryJobConfig(
+    #     query_parameters=[
+    #         bigquery.ScalarQueryParameter("release_date", "STRING", final_release_date)
+    #     ]
+    # )
+    _logger.info(f"query={query}")
 
-    query_job = client.query(query, job_config=job_config)
+    query_job = client.query(
+        query,
+        # job_config=job_config,
+    )
     result = query_job.result()
     if query_job.errors:
         # Print any errors if they occurred
@@ -447,7 +466,7 @@ def update_final_release_date(
         msg = (
             "More than one row was updated while updating processing_history "
             f"for the final release date: dml_stats={query_job.dml_stats}, "
-            f"file_type={file_type}, release_date={release_date}, "
+            f"file_type={file_type}, xml_release_date={xml_release_date}, "
             f"release_tag={release_tag}, bucket_dir={bucket_dir}"
         )
         _logger.error(msg)
@@ -458,7 +477,7 @@ def update_final_release_date(
     ):
         msg = (
             "No rows were updated during the update_final_release_date. "
-            f"file_type={file_type}, release_date={release_date}, "
+            f"file_type={file_type}, xml_release_date={xml_release_date}, "
             f"release_tag={release_tag}, bucket_dir={bucket_dir}"
         )
         _logger.error(msg)
@@ -467,9 +486,9 @@ def update_final_release_date(
         _logger.info(
             (
                 "processing_history record updated for final release date."
-                "release_date=%s, file_type=%s"
+                "xml_release_date=%s, file_type=%s"
             ),
-            release_date,
+            xml_release_date,
             file_type,
         )
         return result, query_job
@@ -525,7 +544,7 @@ def processed_pairs_ready_to_be_ingested(
         client = bigquery.Client()
     query = f"""
     SELECT
-        release_date
+        release_date,
         vcv_file_type,
         vcv_pipeline_version,
         vcv_processing_started,
