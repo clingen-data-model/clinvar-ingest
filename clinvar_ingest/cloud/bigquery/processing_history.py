@@ -8,6 +8,7 @@ from clinvar_ingest.cloud.bigquery.create_tables import (
     schema_file_path_for_table,
 )
 from clinvar_ingest.config import Env, get_env
+from clinvar_ingest.utils import ClinVarIngestFileFormat
 
 _logger = logging.getLogger("clinvar_ingest")
 
@@ -78,12 +79,64 @@ def ensure_initialized(
     return table
 
 
-def write_vcv_started(
+# pylint: disable=pointless-string-statement
+"""
+-- ADD VCV JOB LOG
+INSERT INTO `clingen-dev.clinvar_ingest.processing_history2`
+  (release_date, file_type, pipeline_version, processing_started, xml_release_date, bucket_dir)
+VALUES
+  (NULL, "vcv", "kf_dev_tag", CURRENT_TIMESTAMP(), "2024-07-23", "clinvar_vcv_2024_07_23_kf_dev_tag");
+
+-- VCV FINISHED LOG
+UPDATE `clingen-dev.clinvar_ingest.processing_history2`
+SET processing_finished = CURRENT_TIMESTAMP()
+WHERE file_type = "vcv"
+AND pipeline_version = "kf_dev_tag"
+AND xml_release_date = "2024-07-23";
+"""
+
+
+def check_started_exists(
     processing_history_table: bigquery.Table,
     release_date: str,
     release_tag: str,
-    vcv_bucket_dir: str,
+    file_type: ClinVarIngestFileFormat,
+    bucket_dir: str,
     client: bigquery.Client | None = None,
+):
+    sql = f"""
+    SELECT COUNT(*) as c
+    FROM {processing_history_table}
+    WHERE file_type = @file_type
+    AND pipeline_version = @pipeline_version
+    AND xml_release_date = @xml_release_date
+    AND bucket_dir = @bucket_dir;
+    """
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("file_type", "STRING", file_type),
+            bigquery.ScalarQueryParameter("pipeline_version", "STRING", release_tag),
+            bigquery.ScalarQueryParameter("xml_release_date", "STRING", release_date),
+            bigquery.ScalarQueryParameter("bucket_dir", "STRING", bucket_dir),
+        ]
+    )
+    if client is None:
+        client = bigquery.Client()
+
+    query_job = client.query(sql, job_config=job_config)
+    results = query_job.result()
+    for row in results:
+        return row.c > 0
+
+
+def write_started(
+    processing_history_table: bigquery.Table,
+    release_date: str,
+    release_tag: str,
+    file_type: ClinVarIngestFileFormat,
+    bucket_dir: str,
+    client: bigquery.Client | None = None,
+    error_if_exists=True,
 ):
     """
     Writes the status of the VCV processing to the processing_history table.
@@ -97,127 +150,263 @@ def write_vcv_started(
         client=client,
     )
 
-
     TODO might consider using the client.insert_rows method instead of a query
     since it returns the rows inserted.
     """
+    if client is None:
+        client = bigquery.Client()
     fully_qualified_table_id = str(processing_history_table)
+
+    # Check to see if there is a matching existing row
+    select_query = f"""
+    SELECT COUNT(*) as c
+    FROM {fully_qualified_table_id}
+    WHERE file_type = '{file_type}'
+    AND pipeline_version = '{release_tag}'
+    AND xml_release_date = '{release_date}'
+    AND bucket_dir = '{bucket_dir}'
+    """  # TODO prepared statement
+    _logger.info(
+        f"Checking if matching row exists for job started event. "
+        f"file_type={file_type}, release_date={release_date}, "
+        f"release_tag={release_tag}, bucket_dir={bucket_dir}"
+    )
+    query_job = client.query(select_query)
+    results = query_job.result()
+    for row in results:
+        if row.c != 0:
+            if error_if_exists:
+                raise RuntimeError(
+                    f"Expected 1 row to exist for the finished event, but found {row.c}. "
+                    f"file_type={file_type}, release_date={release_date}, "
+                    f"release_tag={release_tag}, bucket_dir={bucket_dir}"
+                )
+            else:
+                _logger.warning(
+                    f"Expected 0 rows to exist for the started event, but found {row.c}."
+                    f"file_type={file_type}, release_date={release_date}, "
+                    f"release_tag={release_tag}, bucket_dir={bucket_dir}"
+                )
+                _logger.warning("Deleting existing row.")
+                delete_query = f"""
+                DELETE FROM {fully_qualified_table_id}
+                WHERE file_type = '{file_type}'
+                AND pipeline_version = '{release_tag}'
+                AND xml_release_date = '{release_date}'
+                AND bucket_dir = '{bucket_dir}'
+                """
+                query_job = client.query(delete_query)
+                _ = query_job.result()
+                _logger.info(f"Deleted {query_job.dml_stats.deleted_row_count} rows.")
+
     sql = f"""
-    -- ADD VCV JOB LOG
     INSERT INTO {fully_qualified_table_id}
-    (release_date, vcv_pipeline_version, vcv_processing_started, vcv_release_date, vcv_bucket_dir)
+    (release_date, file_type, pipeline_version, processing_started, xml_release_date, bucket_dir)
     VALUES
-    (@release_date, @vcv_pipeline_version, CURRENT_TIMESTAMP(), @vcv_release_date, @vcv_bucket_dir);
+    (NULL, @file_type, @pipeline_version, CURRENT_TIMESTAMP(), @xml_release_date, @bucket_dir);
     """
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
             # Omitting release_date until VCV and RCV are merged
-            bigquery.ScalarQueryParameter("release_date", "STRING", None),
-            bigquery.ScalarQueryParameter(
-                "vcv_pipeline_version", "STRING", release_tag
-            ),
-            bigquery.ScalarQueryParameter("vcv_release_date", "STRING", release_date),
-            bigquery.ScalarQueryParameter("vcv_bucket_dir", "STRING", vcv_bucket_dir),
+            # bigquery.ScalarQueryParameter("release_date", "STRING", None),
+            bigquery.ScalarQueryParameter("file_type", "STRING", file_type),
+            bigquery.ScalarQueryParameter("pipeline_version", "STRING", release_tag),
+            bigquery.ScalarQueryParameter("xml_release_date", "STRING", release_date),
+            bigquery.ScalarQueryParameter("bucket_dir", "STRING", bucket_dir),
         ]
     )
-
-    if client is None:
-        client = bigquery.Client()
 
     # Run a synchronous query job and get the results
     query_job = client.query(sql, job_config=job_config)
     _ = query_job.result()
     _logger.info(
-        "processing_history record written for VCV started event release_date=%s",
+        (
+            "processing_history record written for job started event."
+            "release_date=%s, file_type=%s"
+        ),
         release_date,
+        file_type,
     )
 
 
-def write_vcv_finished(
+def write_finished(
     processing_history_table: bigquery.Table,
     release_date: str,
     release_tag: str,
+    file_type: ClinVarIngestFileFormat,
+    bucket_dir: str,
     client: bigquery.Client | None = None,
 ):
-    sql = f"""
-    UPDATE {processing_history_table}
-    SET vcv_processing_finished = CURRENT_TIMESTAMP()
-    WHERE vcv_pipeline_version = @vcv_pipeline_version
-    AND vcv_release_date = @vcv_release_date;
     """
-    job_config = bigquery.QueryJobConfig(
-        query_parameters=[
-            bigquery.ScalarQueryParameter(
-                "vcv_pipeline_version", "STRING", release_tag
-            ),
-            bigquery.ScalarQueryParameter("vcv_release_date", "STRING", release_date),
-        ]
+    Writes the status of the VCV processing to the processing_history table.
+
+    Example:
+    write_finished(
+        processing_history_table=table,
+        release_date="2024-07-23",
+        release_tag="local_dev",
+        file_type=ClinVarIngestFileFormat("vcv"),
+        vcv_bucket_dir="clinvar_vcv_2024_07_23_local_dev",
+        client=client,
     )
 
+    TODO might consider using the client.insert_rows method instead of a query
+    since it returns the rows inserted.
+    """
     if client is None:
         client = bigquery.Client()
+    fully_qualified_table_id = str(processing_history_table)
 
-    # Run a synchronous query job and get the results
-    query_job = client.query(sql, job_config=job_config)
-    _ = query_job.result()
+    # Check to make sure there is exactly 1 started row before doing the update
+    select_query = f"""
+    SELECT COUNT(*) as c
+    FROM {fully_qualified_table_id}
+    WHERE file_type = '{file_type}'
+    AND pipeline_version = '{release_tag}'
+    AND xml_release_date = '{release_date}'
+    AND bucket_dir = '{bucket_dir}'
+    """
+    _logger.info(
+        f"Ensuring 1 started row exists before writing finished event. "
+        f"file_type={file_type}, release_date={release_date}, "
+        f"release_tag={release_tag}, bucket_dir={bucket_dir}"
+    )
+    query_job = client.query(select_query)
+    results = query_job.result()
+    for row in results:
+        if row.c != 1:
+            raise RuntimeError(
+                f"Expected 1 row to exist for the finished event, but found {row.c}."
+                f"file_type={file_type}, release_date={release_date}, "
+                f"release_tag={release_tag}, bucket_dir={bucket_dir}"
+            )
+
+    # Do the update. Technically between the above select and this update, another
+    # matching row could have been created, but this is unlikely.
+    query = f"""
+    UPDATE {fully_qualified_table_id}
+    SET processing_finished = CURRENT_TIMESTAMP()
+    WHERE file_type = '{file_type}'
+    AND pipeline_version = '{release_tag}'
+    AND xml_release_date = '{release_date}'
+    AND bucket_dir = '{bucket_dir}'
+    """
+    # print(f"Query: {query}")
+
+    try:
+        query_job = client.query(query)
+        result = query_job.result()
+
+        if query_job.errors:
+            # Print any errors if they occurred
+            _logger.error("Errors occurred during the update operation:")
+            for error in query_job.errors:
+                _logger.error(error)
+            raise RuntimeError(
+                f"Error occurred during update operation: {query_job.errors}"
+            )
+        elif (
+            query_job.dml_stats.updated_row_count > 1  # type: ignore
+            or query_job.dml_stats.inserted_row_count > 1  # type: ignore
+        ):
+            msg = (
+                "More than one row was updated while updating processing_history "
+                f"for the finished event: dml_stats={query_job.dml_stats}, "
+                f"file_type={file_type}, release_date={release_date}, "
+                f"release_tag={release_tag}, bucket_dir={bucket_dir}"
+            )
+            _logger.error(msg)
+            raise RuntimeError(msg)
+        elif (
+            query_job.dml_stats.updated_row_count == 0  # type: ignore
+            and query_job.dml_stats.inserted_row_count == 0  # type: ignore
+        ):
+            msg = (
+                "No rows were updated during the write_finished. "
+                f"file_type={file_type}, release_date={release_date}, "
+                f"release_tag={release_tag}, bucket_dir={bucket_dir}"
+            )
+            _logger.error(msg)
+            raise RuntimeError(msg)
+        else:
+            _logger.info(
+                (
+                    "processing_history record written for job finished event."
+                    "release_date=%s, file_type=%s"
+                ),
+                release_date,
+                file_type,
+            )
+            return result, query_job
+
+    except RuntimeError as e:
+        _logger.error(f"Error occurred during update query:{query}\n{e}")
+        raise e
 
 
-"""
--- SELECT * FROM `clingen-dev.clinvar_ingest.processing_history`
--- Updating table at begininng of RCV ingest for
--- release date 2024-07-23
--- release_tag kf_dev_tag
--- bucket dir clinvar_rcv_2024_07_23_kf_dev_tag
-
-DELETE FROM `clingen-dev.clinvar_ingest.processing_history` WHERE 1=1;
-
--- ADD RCV JOB LOG
-INSERT INTO `clingen-dev.clinvar_ingest.processing_history`
-  (release_date, rcv_pipeline_version, rcv_processing_started, rcv_release_date, rcv_bucket_dir)
-VALUES
-  (NULL, "kf_dev_tag", CURRENT_TIMESTAMP(), "2024-07-23", "clinvar_rcv_2024_07_23_kf_dev_tag");
-
--- RCV FINISHED LOG
-UPDATE `clingen-dev.clinvar_ingest.processing_history`
-SET rcv_processing_finished = CURRENT_TIMESTAMP()
-WHERE rcv_pipeline_version = "kf_dev_tag"
-AND rcv_release_date = "2024-07-23";
-
--- ADD VCV JOB LOG
-INSERT INTO `clingen-dev.clinvar_ingest.processing_history`
-  (release_date, vcv_pipeline_version, vcv_processing_started, vcv_release_date, vcv_bucket_dir)
-VALUES
-  (NULL, "kf_dev_tag", CURRENT_TIMESTAMP(), "2024-07-23", "clinvar_vcv_2024_07_23_kf_dev_tag");
-
--- VCV FINISHED LOG
-UPDATE `clingen-dev.clinvar_ingest.processing_history`
-SET vcv_processing_finished = CURRENT_TIMESTAMP()
-WHERE vcv_pipeline_version = "kf_dev_tag"
-AND vcv_release_date = "2024-07-23";
+# def write_vcv_started(
+#     processing_history_table: bigquery.Table,
+#     release_date: str,
+#     release_tag: str,
+#     vcv_bucket_dir: str,
+#     client: bigquery.Client | None = None,
+# ):
+#     return write_started(
+#         processing_history_table=processing_history_table,
+#         release_date=release_date,
+#         release_tag=release_tag,
+#         file_type=ClinVarIngestFileFormat("vcv"),
+#         bucket_dir=vcv_bucket_dir,
+#         client=client,
+#     )
 
 
--- BQ-INGEST STEP: UNMATCHED VCV RUNS
-SELECT * FROM `clingen-dev.clinvar_ingest.processing_history` a
-WHERE vcv_processing_finished is not NULL
-AND rcv_processing_finished is NULL
--- Merged record hasn't been written yet
-AND NOT EXISTS (
-  SELECT * FROM `clingen-dev.clinvar_ingest.processing_history` b
-  WHERE a.vcv_release_date = b.vcv_release_date
-  AND a.vcv_pipeline_version = b.vcv_pipeline_version
-  AND rcv_processing_finished IS NOT NULL
-);
+# def write_vcv_finished(
+#     processing_history_table: bigquery.Table,
+#     release_date: str,
+#     release_tag: str,
+#     vcv_bucket_dir: str,
+#     client: bigquery.Client | None = None,
+# ):
+#     return write_finished(
+#         processing_history_table=processing_history_table,
+#         release_date=release_date,
+#         release_tag=release_tag,
+#         file_type=ClinVarIngestFileFormat("vcv"),
+#         bucket_dir=vcv_bucket_dir,
+#         client=client,
+#     )
 
 
--- BQ-INGEST STEP: UNMATCHED RCV RUNS
-SELECT * FROM `clingen-dev.clinvar_ingest.processing_history` a
-WHERE rcv_processing_finished is not NULL
-AND vcv_processing_finished is NULL
--- Merged record hasn't been written yet
-AND NOT EXISTS (
-  SELECT * FROM `clingen-dev.clinvar_ingest.processing_history` b
-  WHERE a.vcv_release_date = b.vcv_release_date
-  AND a.vcv_pipeline_version = b.vcv_pipeline_version
-  AND rcv_processing_finished IS NOT NULL
-);
-"""
+# def write_rcv_started(
+#     processing_history_table: bigquery.Table,
+#     release_date: str,
+#     release_tag: str,
+#     bucket_dir: str,
+#     client: bigquery.Client | None = None,
+# ):
+#     return write_started(
+#         processing_history_table=processing_history_table,
+#         release_date=release_date,
+#         release_tag=release_tag,
+#         file_type=ClinVarIngestFileFormat("rcv"),
+#         bucket_dir=bucket_dir,
+#         client=client,
+#     )
+
+
+# def write_rcv_finished(
+#     processing_history_table: bigquery.Table,
+#     release_date: str,
+#     release_tag: str,
+#     bucket_dir: str,
+#     client: bigquery.Client | None = None,
+# ):
+#     return write_finished(
+#         processing_history_table=processing_history_table,
+#         release_date=release_date,
+#         release_tag=release_tag,
+#         file_type=ClinVarIngestFileFormat("rcv"),
+#         bucket_dir=bucket_dir,
+#         client=client,
+#     )

@@ -16,6 +16,7 @@ from clinvar_ingest.api.model.requests import (
     ParseRequest,
     ParseResponse,
 )
+from clinvar_ingest.cloud.bigquery import processing_history
 from clinvar_ingest.cloud.bigquery.create_tables import (
     create_internal_tables,
     drop_external_tables,
@@ -33,27 +34,7 @@ logging.basicConfig(
 )
 _logger = logging.getLogger("clinvar-ingest-workflow")
 
-
-# wf_input = {
-#     "Directory": "/clingen-data-model/clinvar-ingest/main/test/data",
-#     "Host": "https://raw.githubusercontent.com",
-#     "Last Modified": "2023-10-07 15:47:16",
-#     "Name": "OriginalTestDataSet.xml.gz",
-#     "Release Date": "2023-10-07",
-#     "Released": "2023-10-07 15:47:16",
-#     "Size": 46719,
-# }
-
-# wf_input = {
-#     "Host": "https://ftp.ncbi.nlm.nih.gov",
-#     "Directory": "/pub/clinvar/xml/clinvar_variation/weekly_release",
-#     "Name": "ClinVarVariationRelease_2023-1104.xml.gz",
-#     "Size": 3160398711,
-#     "Released": "2023-11-05 15:47:16",
-#     "Last Modified": "2023-11-05 15:47:16",
-#     "Release Date": "2023-11-04",
-# }
-
+# Example payload from the FTP Watcher
 # wf_input = {
 #     "Directory": "/pub/clinvar/xml/VCV_xml_old_format",
 #     "Host": "https://ftp.ncbi.nlm.nih.gov/",
@@ -80,6 +61,12 @@ def _get_gcs_client() -> GCSClient:
     return getattr(_get_gcs_client, "client")
 
 
+def _get_bq_client() -> bigquery.Client:
+    if getattr(_get_bq_client, "client", None) is None:
+        setattr(_get_bq_client, "client", bigquery.Client())
+    return getattr(_get_bq_client, "client")
+
+
 ################################################################
 ### Initialization code
 
@@ -88,15 +75,38 @@ env = get_env()
 
 # Workflow specific input (which also comes from the env)
 wf_input = ClinvarFTPWatcherRequest(**os.environ)  # type: ignore
+file_mode = ClinVarIngestFileFormat(wf_input.file_format or env.file_format_mode)
+release_date = wf_input.release_date.isoformat()
+
+_logger.info(f"File mode: {file_mode}, release_date: {release_date}")
 
 workflow_execution_id = create_execution_id(
-    wf_input.release_date.isoformat().replace("-", "_"),
-    ClinVarIngestFileFormat(wf_input.file_format or env.file_format_mode),
+    release_date.replace("-", "_"),
+    file_mode,
     wf_input.released != wf_input.last_modified,
 )
 workflow_id_message = f"Workflow Execution ID: {workflow_execution_id}"
 send_slack_message("Starting " + workflow_id_message)
 _logger.info(workflow_id_message)
+
+################################################################
+# Write record to processing_history indicating this workflow has begun
+# write_start_processing_fn = {
+#     ClinVarIngestFileFormat.RCV: processing_history.write_rcv_started,
+#     ClinVarIngestFileFormat.VCV: processing_history.write_vcv_started,
+# }[file_mode]
+processing_history_table = processing_history.ensure_initialized()
+processing_history.write_started(
+    processing_history_table=processing_history_table,
+    release_date=release_date,
+    release_tag=env.release_tag,
+    file_type=file_mode,
+    # The directory within the executions_output_prefix. See gcs_base in copy()
+    bucket_dir=workflow_execution_id,
+    client=_get_bq_client(),
+    error_if_exists=False,
+)
+
 
 ################################################################
 # Run copy step. Copies a source XML file from an HTTP/FTP server to GCS
@@ -199,11 +209,14 @@ def parse(payload: ParseRequest, limit=None) -> ParseResponse:
         file_format=parse_format_mode,
         limit=limit,
     )
-    return ParseResponse(parsed_files=output_files)
+    return ParseResponse(parsed_files=output_files)  # type: ignore
 
 
 try:
-    parse_response = parse(ParseRequest(input_path=copy_response.gcs_path))
+    parse_response = parse(
+        ParseRequest(input_path=copy_response.gcs_path),
+        # limit=1000,
+    )
     _logger.info(f"Parse response: {parse_response.model_dump_json}")
 except Exception as e:
     msg = "Failed during 'parse'."
@@ -216,88 +229,107 @@ except Exception as e:
 # Creates external tables in BigQuery from the parsed data in GCS
 
 
-def create_external_tables(
-    payload: CreateExternalTablesRequest,
-) -> CreateExternalTablesResponse:
-    _logger.info(f"create_external_tables payload: {payload.model_dump_json()}")
-    external_tables_created = run_create_external_tables(payload)
-    for external_table_name, table in external_tables_created.items():
-        table: bigquery.Table = table
-        _logger.info(
-            "Created table %s as %s:%s.%s",
-            external_table_name,
-            table.project,
-            table.dataset_id,
-            table.table_id,
-        )
+# def create_external_tables(
+#     payload: CreateExternalTablesRequest,
+# ) -> CreateExternalTablesResponse:
+#     _logger.info(f"create_external_tables payload: {payload.model_dump_json()}")
+#     external_tables_created = run_create_external_tables(payload)
+#     for external_table_name, table in external_tables_created.items():
+#         table: bigquery.Table = table
+#         _logger.info(
+#             "Created table %s as %s:%s.%s",
+#             external_table_name,
+#             table.project,
+#             table.dataset_id,
+#             table.table_id,
+#         )
 
-    entity_type_table_ids = {
-        entity_type: f"{table.project}.{table.dataset_id}.{table.table_id}"
-        for entity_type, table in external_tables_created.items()
-    }
-    return CreateExternalTablesResponse(root=entity_type_table_ids)
+#     entity_type_table_ids = {
+#         entity_type: f"{table.project}.{table.dataset_id}.{table.table_id}"
+#         for entity_type, table in external_tables_created.items()
+#     }
+#     return CreateExternalTablesResponse(root=entity_type_table_ids)
 
 
-try:
-    create_external_tables_response = create_external_tables(
-        CreateExternalTablesRequest(
-            destination_dataset=workflow_execution_id,
-            source_table_paths=parse_response.parsed_files,
-        )
-    )
-    _logger.info(
-        f"Create External Tables response: {create_external_tables_response.model_dump_json()}"
-    )
-except Exception as e:
-    msg = "Failed during 'create_external_tables'."
-    _logger.exception(msg)
-    send_slack_message(workflow_id_message + " - " + msg)
-    raise e
+# try:
+#     create_external_tables_response = create_external_tables(
+#         CreateExternalTablesRequest(
+#             destination_dataset=workflow_execution_id,
+#             source_table_paths=parse_response.parsed_files,  # type: ignore
+#         )
+#     )
+#     _logger.info(
+#         f"Create External Tables response: {create_external_tables_response.model_dump_json()}"
+#     )
+# except Exception as e:
+#     msg = "Failed during 'create_external_tables'."
+#     _logger.exception(msg)
+#     send_slack_message(workflow_id_message + " - " + msg)
+#     raise e
+
+
+# ################################################################
+# # Create internal tables
+
+# try:
+#     create_internal_tables_request = CreateInternalTablesRequest(
+#         source_dest_table_map={
+#             # source -> destination
+#             external: external.replace("_external", "")
+#             for external in create_external_tables_response.root.values()
+#         }
+#     )
+#     _logger.info(
+#         f"Create Internal Tables request: {create_internal_tables_request.model_dump_json()}"
+#     )
+
+#     create_internal_tables_response = create_internal_tables(
+#         create_internal_tables_request
+#     )
+#     _logger.info(
+#         f"Create Internal Tables response: {create_internal_tables_response.model_dump_json()}"
+#     )
+# except Exception as e:
+#     msg = "Failed during 'create_internal_tables'."
+#     _logger.exception(msg)
+#     send_slack_message(workflow_id_message + " - " + msg)
+#     raise e
+
+# ################################################################
+# # Drop external tables
+# try:
+#     drop_external_tables_request = DropExternalTablesRequest(
+#         root=create_external_tables_response.root
+#     )
+#     _logger.info(
+#         f"Drop External Tables request: {drop_external_tables_request.model_dump_json()}"
+#     )
+
+#     drop_external_tables_response = drop_external_tables(drop_external_tables_request)
+# except Exception as e:
+#     msg = "Failed during 'drop_external_tables'."
+#     _logger.exception(msg)
+#     send_slack_message(workflow_id_message + " - " + msg)
+#     raise e
 
 
 ################################################################
-# Create internal tables
+# Write record to processing_history indicating this workflow has begun
+# write_start_processing_fn = {
+#     ClinVarIngestFileFormat.RCV: processing_history.write_rcv_started,
+#     ClinVarIngestFileFormat.VCV: processing_history.write_vcv_started,
+# }[file_mode]
+processing_history_table = processing_history.ensure_initialized()
+processing_history.write_finished(
+    processing_history_table=processing_history_table,
+    release_date=release_date,
+    release_tag=env.release_tag,
+    file_type=file_mode,
+    # The directory within the executions_output_prefix. See gcs_base in copy()
+    bucket_dir=workflow_execution_id,
+    client=_get_bq_client(),
+)
 
-try:
-    create_internal_tables_request = CreateInternalTablesRequest(
-        source_dest_table_map={
-            # source -> destination
-            external: external.replace("_external", "")
-            for external in create_external_tables_response.root.values()
-        }
-    )
-    _logger.info(
-        f"Create Internal Tables request: {create_internal_tables_request.model_dump_json()}"
-    )
-
-    create_internal_tables_response = create_internal_tables(
-        create_internal_tables_request
-    )
-    _logger.info(
-        f"Create Internal Tables response: {create_internal_tables_response.model_dump_json()}"
-    )
-except Exception as e:
-    msg = "Failed during 'create_internal_tables'."
-    _logger.exception(msg)
-    send_slack_message(workflow_id_message + " - " + msg)
-    raise e
-
-################################################################
-# Drop external tables
-try:
-    drop_external_tables_request = DropExternalTablesRequest(
-        root=create_external_tables_response.root
-    )
-    _logger.info(
-        f"Drop External Tables request: {drop_external_tables_request.model_dump_json()}"
-    )
-
-    drop_external_tables_response = drop_external_tables(drop_external_tables_request)
-except Exception as e:
-    msg = "Failed during 'drop_external_tables'."
-    _logger.exception(msg)
-    send_slack_message(workflow_id_message + " - " + msg)
-    raise e
 
 ################################################################
 _logger.info("Workflow succeeded")

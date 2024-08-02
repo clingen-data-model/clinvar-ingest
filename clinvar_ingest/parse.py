@@ -3,7 +3,6 @@ import json
 import logging
 import os
 import pathlib
-from enum import StrEnum
 from typing import IO, Any, TextIO
 
 from clinvar_ingest.cloud.gcs import blob_reader, blob_size, blob_writer
@@ -15,16 +14,11 @@ from clinvar_ingest.reader import (
     read_clinvar_rcv_xml,
     read_clinvar_vcv_xml,
 )
-from clinvar_ingest.utils import make_progress_logger
+from clinvar_ingest.utils import ClinVarIngestFileFormat, make_progress_logger
 
 _logger = logging.getLogger("clinvar_ingest")
 
 GZIP_COMPRESSLEVEL = int(os.environ.get("GZIP_COMPRESSLEVEL", 9))
-
-
-class ClinVarIngestFileFormat(StrEnum):
-    VCV = "vcv"
-    RCV = "rcv"
 
 
 def _st_size(filepath: str):

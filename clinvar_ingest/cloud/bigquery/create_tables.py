@@ -21,6 +21,7 @@ from clinvar_ingest.api.model.requests import (
 )
 from clinvar_ingest.cloud.gcs import parse_blob_uri
 from clinvar_ingest.config import get_env
+from clinvar_ingest.parse import ClinVarIngestFileFormat
 
 _logger = logging.getLogger("clinvar_ingest")
 
@@ -289,61 +290,65 @@ def drop_external_tables(
     return args
 
 
-def update_processing_history_table():
+def update_processing_history_table(
+    processing_history_table_ref: bigquery.TableReference,
+    release_date: str,
+    release_tag: str,
+    file_format_mode: ClinVarIngestFileFormat,
+    client: bigquery.Client | None = None,
+):
     """
     Update the processing_history table with the current timestamp.
     """
     env = get_env()
-    bq_client = bigquery.Client()
-    processing_history_table_ref = bigquery.TableReference.from_string(
-        f"{env.bq_dest_project}.clinvar_ingest.processing_history"
-    )
+    if client is None:
+        client = bigquery.Client()
 
     # Try to update the processing_history table that has the SAME release_date (YYYY-MM-DD) as
     # the vcv_release_date or rcv_release_date (which ever is currently being processed)
     # and the vcv_release_date or rcv_release_date (which ever is currently being processed) is NULL
     query_with_same_release_date = f"""
-        UPDATE `{processing_history_table_ref}` 
-        SET 
-            {env.file_format_mode}_release_date = "{env.release_date}",
-            {env.file_format_mode}_pipeline_version = "{env.release_tag}",
-            {env.file_format_mode}_bucket_dir = "{env.bucket_name}"
-        WHERE release_date = "{env.release_date}" 
-        AND {env.file_format_mode}_release_date IS NULL
+        UPDATE `{processing_history_table_ref}`
+        SET
+            {file_format_mode}_release_date = "{release_date}",
+            {file_format_mode}_pipeline_version = "{env.release_tag}",
+            {file_format_mode}_bucket_dir = "{env.bucket_name}"
+        WHERE release_date = "{release_date}"
+        AND {file_format_mode}_release_date IS NULL
         """
 
     # Try to update the processing_history table that has a release_date (YYYY-MM-DD) one day EARLIER than
     # the vcv_release_date or rcv_release_date (which ever is currently being processed)
     # and the vcv_release_date or rcv_release_date (which ever is currently being processed) is NULL
     query_with_release_date_one_back = f"""
-            UPDATE `{processing_history_table_ref}` 
-            SET 
-                {env.file_format_mode}_release_date = "{env.release_date}",
-                {env.file_format_mode}_pipeline_version = "{env.release_tag}",
-                {env.file_format_mode}_bucket_dir = "{env.bucket_name}"
-            WHERE release_date = DATE_SUB("{env.release_date}", INTERVAL 1 DAY) 
-            AND {env.file_format_mode}_release_date IS NULL
+            UPDATE `{processing_history_table_ref}`
+            SET
+                {file_format_mode}_release_date = "{release_date}",
+                {file_format_mode}_pipeline_version = "{env.release_tag}",
+                {file_format_mode}_bucket_dir = "{env.bucket_name}"
+            WHERE release_date = DATE_SUB("{release_date}", INTERVAL 1 DAY)
+            AND {file_format_mode}_release_date IS NULL
             """
 
     # Try to update the processing_history table that has a release_date (YYYY-MM-DD) one day LATER than
     # the vcv_release_date or rcv_release_date (which ever is currently being processed)
     # and the vcv_release_date or rcv_release_date (which ever is currently being processed) is NULL
     query_with_release_date_one_forward = f"""
-            UPDATE `{processing_history_table_ref}` 
-            SET 
-                {env.file_format_mode}_release_date = "{env.release_date}",
-                {env.file_format_mode}_pipeline_version = "{env.release_tag}",
-                {env.file_format_mode}_bucket_dir = "{env.bucket_name}"
-            WHERE release_date = DATE_ADD("{env.release_date}", INTERVAL 1 DAY) 
-            AND {env.file_format_mode}_release_date IS NULL
+            UPDATE `{processing_history_table_ref}`
+            SET
+                {file_format_mode}_release_date = "{release_date}",
+                {file_format_mode}_pipeline_version = "{env.release_tag}",
+                {file_format_mode}_bucket_dir = "{env.bucket_name}"
+            WHERE release_date = DATE_ADD("{release_date}", INTERVAL 1 DAY)
+            AND {file_format_mode}_release_date IS NULL
             """
 
     # Insert a new row into the processing_history table with the current release_date (YYYY-MM-DD)
     # equal to the vcv_release_date or the rcv_release_date (which ever is currently being processed)
     insert_query = f"""
-        INSERT INTO `{processing_history_table_ref}` 
-            (release_date, {env.file_format_mode}_release_date, {env.file_format_mode}_pipeline_version, {env.file_format_mode}_bucket_dir, processed)
-            VALUES ("{env.release_date}", "{env.release_date}","{env.release_tag}", "{env.bucket_name}", FALSE) 
+        INSERT INTO `{processing_history_table_ref}`
+            (release_date, {file_format_mode}_release_date, {file_format_mode}_pipeline_version, {file_format_mode}_bucket_dir, processed)
+            VALUES ("{release_date}", "{release_date}","{env.release_tag}", "{env.bucket_name}", FALSE)
         """
 
     queries = [
@@ -355,7 +360,7 @@ def update_processing_history_table():
     for query in queries:
         _logger.info(f"Attempting to updating processing_history table: {query}")
         try:
-            query_job = bq_client.query(query)
+            query_job = client.query(query)
             query_job.result()
 
             if query_job.errors:
