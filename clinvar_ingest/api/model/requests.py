@@ -211,7 +211,7 @@ class CreateInternalTablesRequest(BaseModel):
     """
 
     source_dest_table_map: Annotated[
-        dict[BigqueryFullTableId, Union[BigqueryFullTableId, BigqueryFullTableId]],
+        dict[BigqueryFullTableId, BigqueryFullTableId],
         "A map of source table IDs to destination table IDs."
         "Destinations can also be table names, and project+dataset will be inferred from the source table.",
     ]

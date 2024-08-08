@@ -1,4 +1,5 @@
 import time
+from enum import StrEnum
 from typing import Any, List
 
 
@@ -141,3 +142,8 @@ def make_counter():
     while True:
         yield i
         i += 1
+
+
+class ClinVarIngestFileFormat(StrEnum):
+    VCV = "vcv"
+    RCV = "rcv"
