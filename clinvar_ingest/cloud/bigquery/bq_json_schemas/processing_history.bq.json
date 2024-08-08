@@ -29,6 +29,6 @@
   },
   {
     "name": "parsed_files",
-    "type": "STRING"
+    "type": "JSON"
   }
 ]

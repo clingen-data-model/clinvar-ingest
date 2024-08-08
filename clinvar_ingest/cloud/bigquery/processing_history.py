@@ -359,7 +359,7 @@ def write_finished(
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
             bigquery.ScalarQueryParameter(
-                "parsed_files", "STRING", json.dumps(_internal_model_dump(parsed_files))
+                "parsed_files", "JSON", json.dumps(_internal_model_dump(parsed_files))
             )
         ]
     )
@@ -535,7 +535,7 @@ def processed_pairs_ready_to_be_ingested(
     """
     Reads the pairwise view of the processing history table linking
     VCV and RCV processing events within a day of each other.
-    Returns those which ahve finished processing but have not
+    Returns those which have finished processing but have not
     yet been ingested and assigned a final `release_date`.
 
     TODO maybe be more explicit about this rather than relying on NULL release_date
