@@ -76,7 +76,7 @@ project=$(gcloud config get project)
 image_tag=workflow-py-${release_tag}
 image=gcr.io/clingen-dev/clinvar-ingest:$image_tag
 pipeline_service_account=clinvar-ingest-pipeline@clingen-dev.iam.gserviceaccount.com
-#deployment_service_account=clinvar-ingest-deployment@clingen-dev.iam.gserviceaccount.com
+deployment_service_account=clinvar-ingest-deployment@clingen-dev.iam.gserviceaccount.com
 
 ################################################################
 # Build the image
