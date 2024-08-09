@@ -76,7 +76,7 @@ project=$(gcloud config get project)
 image_tag=workflow-py-${release_tag}
 image=gcr.io/clingen-dev/clinvar-ingest:$image_tag
 pipeline_service_account=clinvar-ingest-pipeline@clingen-dev.iam.gserviceaccount.com
-deployment_service_account=clinvar-ftp-watcher-deployment@clingen-dev.iam.gserviceaccount.com
+#deployment_service_account=clinvar-ingest-deployment@clingen-dev.iam.gserviceaccount.com
 
 ################################################################
 # Build the image
@@ -137,6 +137,6 @@ if [[ $instance_name =~ ^.*bq-ingest.*$ ]]; then
       --location ${region} \
       --uri=https://${region}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${project}/jobs/${instance_name}:run \
       --http-method POST \
-      --oauth-service-account-email=${deployment_service_account} \
+      --oauth-service-account-email=$pipeline_service_account \
       --schedule='*/15 * * * *'
 fi
