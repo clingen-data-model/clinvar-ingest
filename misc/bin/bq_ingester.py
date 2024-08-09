@@ -124,7 +124,12 @@ try:
             location=bucket_location,
         )
         _logger.info(f"Created dataset: {dataset.dataset_id}")
-        send_slack_message(f"BQ Ingest now processing {row} into dataset: {dataset.dataset_id}")
+
+        msg = f"""
+            BQ Ingest now processing {vcv_bucket_dir} and {rcv_bucket_dir} files into dataset: {dataset.dataset_id}.
+            """
+        _logger.info(msg)
+        send_slack_message(msg)
 
         # Create VCV external tables
         vcv_create_tables_request = CreateExternalTablesRequest(
@@ -246,8 +251,9 @@ try:
         )
 
         msg = f"""
-            BQ Ingest workflow succeeded processing VCV release dated {vcv_xml_release_date} from {vcv_bucket_dir} 
-            and RCV release dated {rcv_xml_release_date} from {rcv_bucket_dir} into dataset {dataset.dataset_id}.
+            BQ Ingest workflow succeeded. 
+            Processed VCV release dated {vcv_xml_release_date} from {vcv_bucket_dir} and
+            RCV release dated {rcv_xml_release_date} from {rcv_bucket_dir} into dataset {dataset.dataset_id}.
             """
         _logger.info(msg)
         send_slack_message(msg)
