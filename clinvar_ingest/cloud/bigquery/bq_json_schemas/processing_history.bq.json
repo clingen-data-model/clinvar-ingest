@@ -4,47 +4,31 @@
     "type": "DATE"
   },
   {
-    "name": "vcv_pipeline_version",
+    "name": "file_type",
     "type": "STRING"
   },
   {
-    "name": "rcv_pipeline_version",
+    "name": "pipeline_version",
     "type": "STRING"
   },
   {
-    "name": "processed",
-    "type": "BOOL"
-  },
-  {
-    "name": "vcv_processing_started",
+    "name": "processing_started",
     "type": "TIMESTAMP"
   },
   {
-    "name": "vcv_processing_finished",
+    "name": "processing_finished",
     "type": "TIMESTAMP"
   },
   {
-    "name": "rcv_processing_started",
-    "type": "TIMESTAMP"
-  },
-  {
-    "name": "rcv_processing_finished",
-    "type": "TIMESTAMP"
-  },
-  {
-    "name": "vcv_release_date",
+    "name": "xml_release_date",
     "type": "DATE"
   },
   {
-    "name": "rcv_release_date",
-    "type": "DATE"
-  },
-  {
-    "name": "vcv_bucket_dir",
+    "name": "bucket_dir",
     "type": "STRING"
   },
   {
-    "name": "rcv_bucket_dir",
-    "type": "STRING"
+    "name": "parsed_files",
+    "type": "JSON"
   }
 ]

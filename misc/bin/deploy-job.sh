@@ -72,11 +72,11 @@ set -u
 clinvar_ingest_bucket="clinvar-ingest-dev"
 
 region="us-east1"
-# project=$(gcloud config get project)
+project=$(gcloud config get project)
 image_tag=workflow-py-${release_tag}
 image=gcr.io/clingen-dev/clinvar-ingest:$image_tag
 pipeline_service_account=clinvar-ingest-pipeline@clingen-dev.iam.gserviceaccount.com
-deployment_service_account=clinvar-ingest-deployment@clingen-dev.iam.gserviceaccount.com
+deployment_service_account=clinvar-ftp-watcher-deployment@clingen-dev.iam.gserviceaccount.com
 
 ################################################################
 # Build the image
@@ -114,13 +114,29 @@ if [ -n "$file_format" ]; then
     env_vars="$env_vars,file_format=${file_format}"
 fi
 
+# if instance_name contains bq_ingest - add extra env vars
+if [[ $instance_name =~ ^.*bq-ingest.*$ ]]; then
+    env_vars="$env_vars,BQ_DEST_PROJECT=clingen-dev,CLINVAR_INGEST_BQ_META_DATASET=clinvar_ingest"
+fi
+
 gcloud run jobs $command $instance_name \
-    --cpu=2 \
-    --memory=8Gi \
-    --task-timeout=10h \
-    --image=$image \
-    --region=$region \
-    --command="$clinvar_ingest_cmd" \
-    --service-account=$pipeline_service_account \
-    --set-env-vars=$env_vars \
-    --set-secrets=CLINVAR_INGEST_SLACK_TOKEN=clinvar-ingest-slack-token:latest
+      --cpu=2 \
+      --memory=8Gi \
+      --task-timeout=10h \
+      --image=$image \
+      --region=$region \
+      --command="$clinvar_ingest_cmd" \
+      --service-account=$pipeline_service_account \
+      --set-env-vars=$env_vars \
+      --set-secrets=CLINVAR_INGEST_SLACK_TOKEN=clinvar-ingest-slack-token:latest
+
+if [[ $instance_name =~ ^.*bq-ingest.*$ ]]; then
+    # turn off file globbing
+    set -f
+    gcloud scheduler jobs ${command} http ${instance_name} \
+      --location ${region} \
+      --uri=https://${region}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${project}/jobs/${instance_name}:run \
+      --http-method POST \
+      --oauth-service-account-email=${deployment_service_account} \
+      --schedule='*/15 * * * *'
+fi
