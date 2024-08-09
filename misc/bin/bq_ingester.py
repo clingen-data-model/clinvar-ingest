@@ -60,7 +60,7 @@ def _get_bq_client() -> bigquery.Client:
 
 # Main env for the codebase
 env = get_env()
-_logger.info(f"BQ Ingester environment: {env}")
+_logger.info(f"BQ Ingest environment: {env}")
 
 ################################################################
 # Write record to processing_history indicating this workflow has begun
@@ -124,7 +124,7 @@ try:
             location=bucket_location,
         )
         _logger.info(f"Created dataset: {dataset.dataset_id}")
-        send_slack_message(f"BQ Ingester now processing {row} into dataset: {dataset.dataset_id}")
+        send_slack_message(f"BQ Ingest now processing {row} into dataset: {dataset.dataset_id}")
 
         # Create VCV external tables
         vcv_create_tables_request = CreateExternalTablesRequest(
@@ -246,13 +246,13 @@ try:
         )
 
         msg = f"""
-            BQ Ingester workflow succeeded processing VCV release dated {vcv_xml_release_date} from {vcv_bucket_dir} 
+            BQ Ingest workflow succeeded processing VCV release dated {vcv_xml_release_date} from {vcv_bucket_dir} 
             and RCV release dated {rcv_xml_release_date} from {rcv_bucket_dir} into dataset {dataset.dataset_id}.
             """
         _logger.info(msg)
         send_slack_message(msg)
 except Exception as e:
-    msg = "BQ Ingester workflow failed to process VCV/RCV datasets. Check the log for more information."
+    msg = "BQ Ingest workflow failed to process VCV/RCV datasets. Check the log for more information."
     _logger.exception(msg)
     send_slack_message(msg)
     raise e
