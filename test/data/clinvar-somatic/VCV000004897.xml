@@ -1,0 +1,276 @@
+<ClinVarVariationRelease xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://ftp.ncbi.nlm.nih.gov/pub/clinvar/xsd_public/ClinVar_VCV_2.0.xsd" ReleaseDate="2024-07-30">
+<VariationArchive VariationID="4897" VariationName="NM_022458.4(LMBR1):c.423+4618C&gt;G" VariationType="single nucleotide variant" Accession="VCV000004897" Version="5" RecordType="classified" NumberOfSubmissions="1" NumberOfSubmitters="1" DateLastUpdated="2024-07-29" DateCreated="2014-09-16" MostRecentSubmission="2024-04-06">
+  <RecordStatus>current</RecordStatus>
+  <Species>Homo sapiens</Species>
+  <ClassifiedRecord>
+    <SimpleAllele AlleleID="19936" VariationID="4897">
+      <GeneList>
+        <Gene Symbol="LMBR1" FullName="limb development membrane protein 1" GeneID="64327" HGNC_ID="HGNC:13243" Source="submitted" RelationshipType="within multiple genes by overlap">
+          <Location>
+            <CytogeneticLocation>7q36.3</CytogeneticLocation>
+            <SequenceLocation Assembly="GRCh38" AssemblyAccessionVersion="GCF_000001405.38" AssemblyStatus="current" Chr="7" Accession="NC_000007.14" start="156669012" stop="156893183" display_start="156669012" display_stop="156893183" Strand="-" />
+            <SequenceLocation Assembly="GRCh37" AssemblyAccessionVersion="GCF_000001405.25" AssemblyStatus="previous" Chr="7" Accession="NC_000007.13" start="156473569" stop="156685901" display_start="156473569" display_stop="156685901" Strand="-" />
+          </Location>
+          <OMIM>605522</OMIM>
+        </Gene>
+        <Gene Symbol="ZRS" FullName="ZPA regulatory sequence" GeneID="105804841" Source="submitted" RelationshipType="within multiple genes by overlap">
+          <Location>
+            <CytogeneticLocation>7q36.3</CytogeneticLocation>
+            <SequenceLocation Assembly="GRCh38" AssemblyAccessionVersion="GCF_000001405.38" AssemblyStatus="current" Chr="7" Accession="NC_000007.14" start="156790708" stop="156793079" display_start="156790708" display_stop="156793079" Strand="+" />
+          </Location>
+          <OMIM>620738</OMIM>
+        </Gene>
+      </GeneList>
+      <Name>NM_022458.4(LMBR1):c.423+4618C&gt;G</Name>
+      <CanonicalSPDI>NC_000007.14:156791770:G:C</CanonicalSPDI>
+      <VariantType>single nucleotide variant</VariantType>
+      <Location>
+        <CytogeneticLocation>7q36.3</CytogeneticLocation>
+        <SequenceLocation Assembly="GRCh38" AssemblyAccessionVersion="GCF_000001405.38" forDisplay="true" AssemblyStatus="current" Chr="7" Accession="NC_000007.14" start="156791771" stop="156791771" display_start="156791771" display_stop="156791771" variantLength="1" positionVCF="156791771" referenceAlleleVCF="G" alternateAlleleVCF="C" />
+        <SequenceLocation Assembly="GRCh37" AssemblyAccessionVersion="GCF_000001405.25" AssemblyStatus="previous" Chr="7" Accession="NC_000007.13" start="156584465" stop="156584465" display_start="156584465" display_stop="156584465" variantLength="1" positionVCF="156584465" referenceAlleleVCF="G" alternateAlleleVCF="C" />
+      </Location>
+      <OtherNameList>
+        <Name>105C-G</Name>
+      </OtherNameList>
+      <HGVSlist>
+        <HGVS Assembly="GRCh37" Type="genomic, top-level">
+          <NucleotideExpression sequenceAccessionVersion="NC_000007.13" sequenceAccession="NC_000007" sequenceVersion="13" change="g.156584465G&gt;C" Assembly="GRCh37">
+            <Expression>NC_000007.13:g.156584465G&gt;C</Expression>
+          </NucleotideExpression>
+        </HGVS>
+        <HGVS Assembly="GRCh38" Type="genomic, top-level">
+          <NucleotideExpression sequenceAccessionVersion="NC_000007.14" sequenceAccession="NC_000007" sequenceVersion="14" change="g.156791771G&gt;C" Assembly="GRCh38">
+            <Expression>NC_000007.14:g.156791771G&gt;C</Expression>
+          </NucleotideExpression>
+        </HGVS>
+        <HGVS Type="genomic">
+          <NucleotideExpression sequenceAccessionVersion="NG_009240.2" sequenceAccession="NG_009240" sequenceVersion="2" change="g.106438C&gt;G">
+            <Expression>NG_009240.2:g.106438C&gt;G</Expression>
+          </NucleotideExpression>
+        </HGVS>
+        <HGVS Type="genomic">
+          <NucleotideExpression sequenceAccessionVersion="NG_042169.2" sequenceAccession="NG_042169" sequenceVersion="2" change="g.1164G&gt;C">
+            <Expression>NG_042169.2:g.1164G&gt;C</Expression>
+          </NucleotideExpression>
+        </HGVS>
+        <HGVS Type="coding">
+          <NucleotideExpression sequenceAccessionVersion="NM_001363412.2" sequenceAccession="NM_001363412" sequenceVersion="2" change="c.360+4618C&gt;G">
+            <Expression>NM_001363412.2:c.360+4618C&gt;G</Expression>
+          </NucleotideExpression>
+          <MolecularConsequence ID="SO:0001627" Type="intron variant" DB="SO" />
+        </HGVS>
+        <HGVS Type="coding">
+          <NucleotideExpression sequenceAccessionVersion="NM_001350954.2" sequenceAccession="NM_001350954" sequenceVersion="2" change="c.144+4618C&gt;G">
+            <Expression>NM_001350954.2:c.144+4618C&gt;G</Expression>
+          </NucleotideExpression>
+          <MolecularConsequence ID="SO:0001627" Type="intron variant" DB="SO" />
+        </HGVS>
+        <HGVS Type="coding">
+          <NucleotideExpression sequenceAccessionVersion="NM_001363410.2" sequenceAccession="NM_001363410" sequenceVersion="2" change="c.423+4618C&gt;G">
+            <Expression>NM_001363410.2:c.423+4618C&gt;G</Expression>
+          </NucleotideExpression>
+          <MolecularConsequence ID="SO:0001627" Type="intron variant" DB="SO" />
+        </HGVS>
+        <HGVS Type="coding">
+          <NucleotideExpression sequenceAccessionVersion="NM_022458.4" sequenceAccession="NM_022458" sequenceVersion="4" change="c.423+4618C&gt;G" MANESelect="true">
+            <Expression>NM_022458.4:c.423+4618C&gt;G</Expression>
+          </NucleotideExpression>
+          <MolecularConsequence ID="SO:0001627" Type="intron variant" DB="SO" />
+        </HGVS>
+        <HGVS Type="coding">
+          <NucleotideExpression sequenceAccessionVersion="NM_001363409.2" sequenceAccession="NM_001363409" sequenceVersion="2" change="c.423+4618C&gt;G">
+            <Expression>NM_001363409.2:c.423+4618C&gt;G</Expression>
+          </NucleotideExpression>
+          <MolecularConsequence ID="SO:0001627" Type="intron variant" DB="SO" />
+        </HGVS>
+        <HGVS Type="coding">
+          <NucleotideExpression sequenceAccessionVersion="NM_001350953.2" sequenceAccession="NM_001350953" sequenceVersion="2" change="c.423+4618C&gt;G">
+            <Expression>NM_001350953.2:c.423+4618C&gt;G</Expression>
+          </NucleotideExpression>
+          <MolecularConsequence ID="SO:0001627" Type="intron variant" DB="SO" />
+        </HGVS>
+        <HGVS Type="coding">
+          <NucleotideExpression sequenceAccessionVersion="NM_001350958.2" sequenceAccession="NM_001350958" sequenceVersion="2" change="c.-112+4618C&gt;G">
+            <Expression>NM_001350958.2:c.-112+4618C&gt;G</Expression>
+          </NucleotideExpression>
+          <MolecularConsequence ID="SO:0001627" Type="intron variant" DB="SO" />
+        </HGVS>
+        <HGVS Type="coding">
+          <NucleotideExpression sequenceAccessionVersion="NM_001350956.2" sequenceAccession="NM_001350956" sequenceVersion="2" change="c.-112+4618C&gt;G">
+            <Expression>NM_001350956.2:c.-112+4618C&gt;G</Expression>
+          </NucleotideExpression>
+          <MolecularConsequence ID="SO:0001627" Type="intron variant" DB="SO" />
+        </HGVS>
+        <HGVS Type="coding">
+          <NucleotideExpression sequenceAccessionVersion="NM_001350957.2" sequenceAccession="NM_001350957" sequenceVersion="2" change="c.54+4618C&gt;G">
+            <Expression>NM_001350957.2:c.54+4618C&gt;G</Expression>
+          </NucleotideExpression>
+          <MolecularConsequence ID="SO:0001627" Type="intron variant" DB="SO" />
+        </HGVS>
+        <HGVS Type="coding">
+          <NucleotideExpression sequenceAccessionVersion="NM_001363411.2" sequenceAccession="NM_001363411" sequenceVersion="2" change="c.54+4618C&gt;G">
+            <Expression>NM_001363411.2:c.54+4618C&gt;G</Expression>
+          </NucleotideExpression>
+          <MolecularConsequence ID="SO:0001627" Type="intron variant" DB="SO" />
+        </HGVS>
+        <HGVS Type="coding">
+          <NucleotideExpression sequenceAccessionVersion="NM_001350955.2" sequenceAccession="NM_001350955" sequenceVersion="2" change="c.-112+4618C&gt;G">
+            <Expression>NM_001350955.2:c.-112+4618C&gt;G</Expression>
+          </NucleotideExpression>
+          <MolecularConsequence ID="SO:0001627" Type="intron variant" DB="SO" />
+        </HGVS>
+        <HGVS Type="coding">
+          <NucleotideExpression sequenceAccessionVersion="NM_001363413.2" sequenceAccession="NM_001363413" sequenceVersion="2" change="c.-112+4618C&gt;G">
+            <Expression>NM_001363413.2:c.-112+4618C&gt;G</Expression>
+          </NucleotideExpression>
+          <MolecularConsequence ID="SO:0001627" Type="intron variant" DB="SO" />
+        </HGVS>
+      </HGVSlist>
+      <XRefList>
+        <XRef ID="CA117131" DB="ClinGen" />
+        <XRef Type="Allelic variant" ID="620738.0001" DB="OMIM" />
+        <XRef Type="rs" ID="606231146" DB="dbSNP" />
+      </XRefList>
+      <FunctionalConsequence Value="effect on regulatory function of DNA">
+        <XRef ID="0152" DB="Variation Ontology" />
+        <Citation Type="general">
+          <ID Source="PubMed">12837695</ID>
+        </Citation>
+      </FunctionalConsequence>
+    </SimpleAllele>
+    <RCVList>
+      <RCVAccession Title="NM_022458.4(LMBR1):c.423+4618C&gt;G AND Polydactyly of a triphalangeal thumb" Accession="RCV000005175" Version="7">
+        <ClassifiedConditionList TraitSetID="1347">
+          <ClassifiedCondition DB="MedGen" ID="C1868114">Polydactyly of a triphalangeal thumb</ClassifiedCondition>
+        </ClassifiedConditionList>
+        <RCVClassifications>
+          <GermlineClassification>
+            <ReviewStatus>no assertion criteria provided</ReviewStatus>
+            <Description DateLastEvaluated="2003-07-15" SubmissionCount="1">Pathogenic</Description>
+          </GermlineClassification>
+        </RCVClassifications>
+      </RCVAccession>
+    </RCVList>
+    <Classifications>
+      <GermlineClassification DateLastEvaluated="2003-07-15" NumberOfSubmissions="1" NumberOfSubmitters="1" DateCreated="2014-09-16" MostRecentSubmission="2024-04-06">
+        <ReviewStatus>no assertion criteria provided</ReviewStatus>
+        <Description>Pathogenic</Description>
+        <Citation Type="general">
+          <ID Source="PubMed">12837695</ID>
+        </Citation>
+        <Citation Type="general">
+          <ID Source="PubMed">32169219</ID>
+        </Citation>
+        <Citation Type="general">
+          <ID Source="PubMed">8012392</ID>
+        </Citation>
+        <ConditionList>
+          <TraitSet ID="1347" Type="Disease" ContributesToAggregateClassification="true">
+            <Trait ID="3510" Type="Disease">
+              <Name>
+                <ElementValue Type="Preferred">Polydactyly of a triphalangeal thumb</ElementValue>
+                <XRef ID="MONDO:0008270" DB="MONDO" />
+              </Name>
+              <Name>
+                <ElementValue Type="Alternate">POLYDACTYLY OF TRIPHALANGEAL THUMB</ElementValue>
+                <XRef Type="MIM" ID="174500" DB="OMIM" />
+              </Name>
+              <Name>
+                <ElementValue Type="Alternate">TRIPHALANGEAL THUMB-POLYDACTYLY SYNDROME</ElementValue>
+                <XRef Type="MIM" ID="174500" DB="OMIM" />
+              </Name>
+              <Name>
+                <ElementValue Type="Alternate">Polydactyly, preaxial II</ElementValue>
+              </Name>
+              <Symbol>
+                <ElementValue Type="Alternate">PPD2</ElementValue>
+                <XRef Type="MIM" ID="174500" DB="OMIM" />
+              </Symbol>
+              <AttributeSet>
+                <Attribute Type="GARD id" integerValue="5289" />
+                <XRef ID="5289" DB="Office of Rare Diseases" />
+              </AttributeSet>
+              <AttributeSet>
+                <Attribute Type="GARD id" integerValue="4260" />
+                <XRef ID="4260" DB="Office of Rare Diseases" />
+              </AttributeSet>
+              <XRef ID="2439" DB="Orphanet" />
+              <XRef ID="2950" DB="Orphanet" />
+              <XRef ID="93336" DB="Orphanet" />
+              <XRef ID="C1868114" DB="MedGen" />
+              <XRef ID="MONDO:0008270" DB="MONDO" />
+              <XRef Type="MIM" ID="174500" DB="OMIM" />
+            </Trait>
+          </TraitSet>
+        </ConditionList>
+      </GermlineClassification>
+    </Classifications>
+    <ClinicalAssertionList>
+      <ClinicalAssertion ID="25352" SubmissionDate="2014-09-11" DateLastUpdated="2024-04-06" DateCreated="2013-04-04">
+        <ClinVarSubmissionID localKey="605522.0002_POLYDACTYLY, PREAXIAL II" title="LMBR1, 105C-G_POLYDACTYLY, PREAXIAL II" />
+        <ClinVarAccession Accession="SCV000025352" DateUpdated="2024-04-06" DateCreated="2013-04-04" Type="SCV" Version="6" SubmitterName="OMIM" OrgID="3" OrganizationCategory="resource" />
+        <RecordStatus>current</RecordStatus>
+        <Classification DateLastEvaluated="2003-07-15">
+          <ReviewStatus>no assertion criteria provided</ReviewStatus>
+          <GermlineClassification>Pathogenic</GermlineClassification>
+        </Classification>
+        <Assertion>variation to disease</Assertion>
+        <ObservedInList>
+          <ObservedIn>
+            <Sample>
+              <Origin>germline</Origin>
+              <Species>human</Species>
+              <AffectedStatus>not provided</AffectedStatus>
+            </Sample>
+            <Method>
+              <MethodType>literature only</MethodType>
+            </Method>
+            <ObservedData>
+              <Attribute Type="Description">In affected members of the large Dutch family segregating preaxial polydactyly II (PPD2; 174500) reported by Heutink et al. (1994), Lettice et al. (2003) identified heterozygosity for a 105C-G transversion in the zone of polarizing activity (ZPA) regulatory sequence (ZRS) in intron 5 of the LMBR1 gene.</Attribute>
+              <Citation>
+                <ID Source="PubMed">8012392</ID>
+              </Citation>
+              <Citation>
+                <ID Source="PubMed">12837695</ID>
+              </Citation>
+              <XRef DB="OMIM" ID="174500" Type="MIM" />
+            </ObservedData>
+            <ObservedData>
+              <Attribute Type="Description">Using a high-throughput mouse reporter assay to assess human ZRS variants in vivo, Kvon et al. (2020) found that the 105C-G variant, which they called Dutch-1, had no impact on gene expression, suggesting that it may be benign.</Attribute>
+              <Citation>
+                <ID Source="PubMed">32169219</ID>
+              </Citation>
+            </ObservedData>
+          </ObservedIn>
+        </ObservedInList>
+        <SimpleAllele>
+          <GeneList>
+            <Gene Symbol="LMBR1" />
+          </GeneList>
+          <Name>LMBR1, 105C-G</Name>
+          <VariantType>Variation</VariantType>
+          <OtherNameList>
+            <Name Type="NonHGVS">105C-G</Name>
+          </OtherNameList>
+          <XRefList>
+            <XRef DB="OMIM" ID="605522.0002" Type="Allelic variant" />
+          </XRefList>
+        </SimpleAllele>
+        <TraitSet Type="Disease">
+          <Trait Type="Disease">
+            <Name>
+              <ElementValue Type="Preferred">POLYDACTYLY, PREAXIAL II</ElementValue>
+            </Name>
+          </Trait>
+        </TraitSet>
+        <Comment DataSource="CuratedByNCBI" Type="public">SCV000025352 was updated April 5, 2024 to reflect OMIM's move of allelic variants from LMBR1 to ZRS.</Comment>
+      </ClinicalAssertion>
+    </ClinicalAssertionList>
+    <TraitMappingList>
+      <TraitMapping ClinicalAssertionID="25352" TraitType="Disease" MappingType="Name" MappingValue="POLYDACTYLY, PREAXIAL II" MappingRef="Preferred">
+        <MedGen CUI="C1868114" Name="Polydactyly of a triphalangeal thumb" />
+      </TraitMapping>
+    </TraitMappingList>
+  </ClassifiedRecord>
+</VariationArchive>
+</ClinVarVariationRelease>
