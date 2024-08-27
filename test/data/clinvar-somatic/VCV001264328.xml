@@ -1,0 +1,192 @@
+<ClinVarVariationRelease xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://ftp.ncbi.nlm.nih.gov/pub/clinvar/xsd_public/ClinVar_VCV_2.0.xsd" ReleaseDate="2024-07-30">
+<VariationArchive VariationID="1264328" VariationName="NM_000497.4(CYP11B1):c.1024C&gt;T (p.Gln342Ter)" VariationType="single nucleotide variant" Accession="VCV001264328" Version="2" RecordType="classified" NumberOfSubmissions="1" NumberOfSubmitters="1" DateLastUpdated="2024-02-20" DateCreated="2021-09-19" MostRecentSubmission="2024-02-14">
+  <RecordStatus>current</RecordStatus>
+  <Species>Homo sapiens</Species>
+  <ClassifiedRecord>
+    <SimpleAllele AlleleID="1254229" VariationID="1264328">
+      <GeneList>
+        <Gene Symbol="CYP11B1" FullName="cytochrome P450 family 11 subfamily B member 1" GeneID="1584" HGNC_ID="HGNC:2591" Source="submitted" RelationshipType="within multiple genes by overlap">
+          <Location>
+            <CytogeneticLocation>8q24.3</CytogeneticLocation>
+            <SequenceLocation Assembly="GRCh38" AssemblyAccessionVersion="GCF_000001405.38" AssemblyStatus="current" Chr="8" Accession="NC_000008.11" start="142872357" stop="142879825" display_start="142872357" display_stop="142879825" Strand="-" />
+            <SequenceLocation Assembly="GRCh37" AssemblyAccessionVersion="GCF_000001405.25" AssemblyStatus="previous" Chr="8" Accession="NC_000008.10" start="143953772" stop="143961235" display_start="143953772" display_stop="143961235" Strand="-" />
+          </Location>
+          <OMIM>610613</OMIM>
+        </Gene>
+        <Gene Symbol="LOC106799833" FullName="CYP11B1 recombination region" GeneID="106799833" Source="calculated" RelationshipType="within multiple genes by overlap">
+          <Location>
+            <CytogeneticLocation>8q24.3</CytogeneticLocation>
+            <SequenceLocation Assembly="GRCh38" AssemblyAccessionVersion="GCF_000001405.38" AssemblyStatus="current" Chr="8" Accession="NC_000008.11" start="142874234" stop="142879022" display_start="142874234" display_stop="142879022" Strand="+" />
+          </Location>
+        </Gene>
+      </GeneList>
+      <Name>NM_000497.4(CYP11B1):c.1024C&gt;T (p.Gln342Ter)</Name>
+      <CanonicalSPDI>NC_000008.11:142875808:G:A</CanonicalSPDI>
+      <VariantType>single nucleotide variant</VariantType>
+      <Location>
+        <CytogeneticLocation>8q24.3</CytogeneticLocation>
+        <SequenceLocation Assembly="GRCh38" AssemblyAccessionVersion="GCF_000001405.38" forDisplay="true" AssemblyStatus="current" Chr="8" Accession="NC_000008.11" start="142875809" stop="142875809" display_start="142875809" display_stop="142875809" variantLength="1" positionVCF="142875809" referenceAlleleVCF="G" alternateAlleleVCF="A" />
+        <SequenceLocation Assembly="GRCh37" AssemblyAccessionVersion="GCF_000001405.25" AssemblyStatus="previous" Chr="8" Accession="NC_000008.10" start="143957225" stop="143957225" display_start="143957225" display_stop="143957225" variantLength="1" positionVCF="143957225" referenceAlleleVCF="G" alternateAlleleVCF="A" />
+      </Location>
+      <ProteinChange>Q342*</ProteinChange>
+      <HGVSlist>
+        <HGVS Assembly="GRCh37" Type="genomic, top-level">
+          <NucleotideExpression sequenceAccessionVersion="NC_000008.10" sequenceAccession="NC_000008" sequenceVersion="10" change="g.143957225G&gt;A" Assembly="GRCh37">
+            <Expression>NC_000008.10:g.143957225G&gt;A</Expression>
+          </NucleotideExpression>
+        </HGVS>
+        <HGVS Assembly="GRCh38" Type="genomic, top-level">
+          <NucleotideExpression sequenceAccessionVersion="NC_000008.11" sequenceAccession="NC_000008" sequenceVersion="11" change="g.142875809G&gt;A" Assembly="GRCh38">
+            <Expression>NC_000008.11:g.142875809G&gt;A</Expression>
+          </NucleotideExpression>
+        </HGVS>
+        <HGVS Type="genomic">
+          <NucleotideExpression sequenceAccessionVersion="NG_007954.1" sequenceAccession="NG_007954" sequenceVersion="1" change="g.9012C&gt;T">
+            <Expression>NG_007954.1:g.9012C&gt;T</Expression>
+          </NucleotideExpression>
+        </HGVS>
+        <HGVS Type="genomic">
+          <NucleotideExpression sequenceAccessionVersion="NG_046132.1" sequenceAccession="NG_046132" sequenceVersion="1" change="g.1676G&gt;A">
+            <Expression>NG_046132.1:g.1676G&gt;A</Expression>
+          </NucleotideExpression>
+        </HGVS>
+        <HGVS Type="coding">
+          <NucleotideExpression sequenceAccessionVersion="NM_000497.4" sequenceAccession="NM_000497" sequenceVersion="4" change="c.1024C&gt;T" MANESelect="true">
+            <Expression>NM_000497.4:c.1024C&gt;T</Expression>
+          </NucleotideExpression>
+          <ProteinExpression sequenceAccessionVersion="NP_000488.3" sequenceAccession="NP_000488" sequenceVersion="3" change="p.Gln342Ter">
+            <Expression>NP_000488.3:p.Gln342Ter</Expression>
+          </ProteinExpression>
+          <MolecularConsequence ID="SO:0001587" Type="nonsense" DB="SO" />
+        </HGVS>
+        <HGVS Type="coding">
+          <NucleotideExpression sequenceAccessionVersion="NM_001026213.1" sequenceAccession="NM_001026213" sequenceVersion="1" change="c.1024C&gt;T">
+            <Expression>NM_001026213.1:c.1024C&gt;T</Expression>
+          </NucleotideExpression>
+          <ProteinExpression sequenceAccessionVersion="NP_001021384.1" sequenceAccession="NP_001021384" sequenceVersion="1" change="p.Gln342Ter">
+            <Expression>NP_001021384.1:p.Gln342Ter</Expression>
+          </ProteinExpression>
+          <MolecularConsequence ID="SO:0001587" Type="nonsense" DB="SO" />
+        </HGVS>
+      </HGVSlist>
+      <XRefList>
+        <XRef Type="Interpreted" ID="1264342" DB="ClinVar" />
+        <XRef Type="rs" ID="1043525925" DB="dbSNP" />
+      </XRefList>
+    </SimpleAllele>
+    <RCVList>
+      <RCVAccession Title="NM_000497.4(CYP11B1):c.1024C&gt;T (p.Gln342Ter) AND not provided" Accession="RCV003565487" Version="1">
+        <ClassifiedConditionList TraitSetID="9460">
+          <ClassifiedCondition DB="MedGen" ID="C3661900">not provided</ClassifiedCondition>
+        </ClassifiedConditionList>
+        <RCVClassifications>
+          <GermlineClassification>
+            <ReviewStatus>criteria provided, single submitter</ReviewStatus>
+            <Description DateLastEvaluated="2023-09-12" SubmissionCount="1">Pathogenic</Description>
+          </GermlineClassification>
+        </RCVClassifications>
+      </RCVAccession>
+    </RCVList>
+    <Classifications>
+      <GermlineClassification DateLastEvaluated="2023-09-12" NumberOfSubmissions="1" NumberOfSubmitters="1" DateCreated="2021-09-19" MostRecentSubmission="2024-02-14">
+        <ReviewStatus>criteria provided, single submitter</ReviewStatus>
+        <Description>Pathogenic</Description>
+        <Citation Type="general">
+          <ID Source="PubMed">26476331</ID>
+        </Citation>
+        <Citation Type="general">
+          <ID Source="PubMed">34718183</ID>
+        </Citation>
+        <Citation Type="general">
+          <ID Source="PubMed">8506298</ID>
+        </Citation>
+        <DescriptionHistory Dated="2024-02-10">
+          <Description>no classification for the single variant</Description>
+        </DescriptionHistory>
+        <ConditionList>
+          <TraitSet ID="9460" Type="Disease" ContributesToAggregateClassification="true">
+            <Trait ID="17556" Type="Disease">
+              <Name>
+                <ElementValue Type="Preferred">not provided</ElementValue>
+                <XRef ID="13DG0619" DB="Department Of Translational Genomics (developmental Genetics Section), King Faisal Specialist Hospital &amp; Research Centre" />
+              </Name>
+              <Name>
+                <ElementValue Type="Alternate">none provided</ElementValue>
+              </Name>
+              <AttributeSet>
+                <Attribute Type="public definition">The term 'not provided' is registered in MedGen to support identification of submissions to ClinVar for which no condition was named when assessing the variant. 'not provided' differs from 'not specified', which is used when a variant is asserted to be benign, likely benign, or of uncertain significance for conditions that have not been specified.</Attribute>
+              </AttributeSet>
+              <XRef ID="C3661900" DB="MedGen" />
+            </Trait>
+          </TraitSet>
+        </ConditionList>
+      </GermlineClassification>
+    </Classifications>
+    <ClinicalAssertionList>
+      <ClinicalAssertion ID="8010063" SubmissionDate="2024-02-08" DateLastUpdated="2024-02-14" DateCreated="2024-02-14">
+        <ClinVarSubmissionID localKey="27639433|MedGen:CN517202" submittedAssembly="GRCh37" />
+        <ClinVarAccession Accession="SCV004325760" DateUpdated="2024-02-14" DateCreated="2024-02-14" Type="SCV" Version="1" SubmitterName="Invitae" OrgID="500031" OrganizationCategory="laboratory" OrgAbbreviation="Invitae" />
+        <RecordStatus>current</RecordStatus>
+        <Classification DateLastEvaluated="2023-09-12">
+          <ReviewStatus>criteria provided, single submitter</ReviewStatus>
+          <GermlineClassification>Pathogenic</GermlineClassification>
+          <Citation>
+            <ID Source="PubMed">8506298</ID>
+          </Citation>
+          <Citation>
+            <ID Source="PubMed">26476331</ID>
+          </Citation>
+          <Citation>
+            <ID Source="PubMed">34718183</ID>
+          </Citation>
+          <Comment>This sequence change creates a premature translational stop signal (p.Gln342*) in the CYP11B1 gene. It is expected to result in an absent or disrupted protein product. Loss-of-function variants in CYP11B1 are known to be pathogenic (PMID: 8506298, 26476331). This variant is not present in population databases (gnomAD no frequency). This premature translational stop signal has been observed in individual(s) with congenital adrenal hyperplasia (PMID: 34718183). ClinVar contains an entry for this variant (Variation ID: 1264328). For these reasons, this variant has been classified as Pathogenic.</Comment>
+        </Classification>
+        <Assertion>variation to disease</Assertion>
+        <AttributeSet>
+          <Attribute Type="AssertionMethod">Invitae Variant Classification Sherloc (09022015)</Attribute>
+          <Citation>
+            <ID Source="PubMed">28492532</ID>
+          </Citation>
+        </AttributeSet>
+        <ObservedInList>
+          <ObservedIn>
+            <Sample>
+              <Origin>germline</Origin>
+              <Species TaxonomyId="9606">human</Species>
+              <AffectedStatus>unknown</AffectedStatus>
+            </Sample>
+            <Method>
+              <MethodType>clinical testing</MethodType>
+            </Method>
+            <ObservedData>
+              <Attribute Type="Description">not provided</Attribute>
+            </ObservedData>
+          </ObservedIn>
+        </ObservedInList>
+        <SimpleAllele>
+          <GeneList>
+            <Gene Symbol="CYP11B1" />
+          </GeneList>
+          <VariantType>Variation</VariantType>
+          <AttributeSet>
+            <Attribute Type="HGVS">NC_000008.10:g.143957225G&gt;A</Attribute>
+          </AttributeSet>
+        </SimpleAllele>
+        <TraitSet Type="Disease">
+          <Trait Type="Disease">
+            <XRef DB="MedGen" ID="CN517202" Type="CUI" />
+          </Trait>
+        </TraitSet>
+        <SubmissionNameList>
+          <SubmissionName>SUB14200283</SubmissionName>
+        </SubmissionNameList>
+      </ClinicalAssertion>
+    </ClinicalAssertionList>
+    <TraitMappingList>
+      <TraitMapping ClinicalAssertionID="8010063" TraitType="Disease" MappingType="XRef" MappingValue="CN517202" MappingRef="MedGen">
+        <MedGen CUI="C3661900" Name="not provided" />
+      </TraitMapping>
+    </TraitMappingList>
+  </ClassifiedRecord>
+</VariationArchive>
+</ClinVarVariationRelease>

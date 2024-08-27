@@ -1,0 +1,223 @@
+<ClinVarVariationRelease xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://ftp.ncbi.nlm.nih.gov/pub/clinvar/xsd_public/ClinVar_VCV_2.0.xsd" ReleaseDate="2024-07-30">
+<VariationArchive RecordType="classified" VariationID="222476" VariationName="NM_020297.4(ABCC9):c.1884del (p.Phe628fs)" VariationType="Deletion" Accession="VCV000222476" Version="1" NumberOfSubmissions="1" NumberOfSubmitters="1" DateLastUpdated="2022-04-25" DateCreated="2016-03-01" MostRecentSubmission="2016-03-01">
+  <RecordStatus>current</RecordStatus>
+  <Species>Homo sapiens</Species>
+  <ClassifiedRecord>
+    <SimpleAllele AlleleID="224442" VariationID="222476">
+      <GeneList>
+        <Gene Symbol="ABCC9" FullName="ATP binding cassette subfamily C member 9" GeneID="10060" HGNC_ID="HGNC:60" Source="submitted" RelationshipType="within single gene">
+          <Location>
+            <CytogeneticLocation>12p12.1</CytogeneticLocation>
+            <SequenceLocation Assembly="GRCh38" AssemblyAccessionVersion="GCF_000001405.38" AssemblyStatus="current" Chr="12" Accession="NC_000012.12" start="21797389" stop="21941426" display_start="21797389" display_stop="21941426" Strand="-" />
+            <SequenceLocation Assembly="GRCh37" AssemblyAccessionVersion="GCF_000001405.25" AssemblyStatus="previous" Chr="12" Accession="NC_000012.11" start="21950322" stop="22089627" display_start="21950322" display_stop="22089627" Strand="-" />
+          </Location>
+          <OMIM>601439</OMIM>
+        </Gene>
+      </GeneList>
+      <Name>NM_020297.4(ABCC9):c.1884del (p.Phe628fs)</Name>
+      <CanonicalSPDI>NC_000012.12:21887852:AAAA:AAA</CanonicalSPDI>
+      <VariantType>Deletion</VariantType>
+      <Location>
+        <CytogeneticLocation>12p12.1</CytogeneticLocation>
+        <SequenceLocation Assembly="GRCh38" AssemblyAccessionVersion="GCF_000001405.38" forDisplay="true" AssemblyStatus="current" Chr="12" Accession="NC_000012.12" start="21887853" stop="21887853" display_start="21887853" display_stop="21887853" variantLength="1" positionVCF="21887852" referenceAlleleVCF="CA" alternateAlleleVCF="C" />
+        <SequenceLocation Assembly="GRCh37" AssemblyAccessionVersion="GCF_000001405.25" AssemblyStatus="previous" Chr="12" Accession="NC_000012.11" start="22040787" stop="22040787" display_start="22040787" display_stop="22040787" variantLength="1" positionVCF="22040786" referenceAlleleVCF="CA" alternateAlleleVCF="C" />
+      </Location>
+      <ProteinChange>F628fs</ProteinChange>
+      <ProteinChange>F340fs</ProteinChange>
+      <HGVSlist>
+        <HGVS Type="coding">
+          <NucleotideExpression sequenceAccessionVersion="NM_020297.3" sequenceAccession="NM_020297" sequenceVersion="3" change="c.1884delT">
+            <Expression>NM_020297.3:c.1884delT</Expression>
+          </NucleotideExpression>
+        </HGVS>
+        <HGVS Type="genomic">
+          <NucleotideExpression sequenceAccessionVersion="LRG_377" sequenceAccession="LRG_377">
+            <Expression>LRG_377:g.53842del</Expression>
+          </NucleotideExpression>
+        </HGVS>
+        <HGVS Assembly="GRCh37" Type="genomic, top-level">
+          <NucleotideExpression sequenceAccessionVersion="NC_000012.11" sequenceAccession="NC_000012" sequenceVersion="11" change="g.22040790del" Assembly="GRCh37">
+            <Expression>NC_000012.11:g.22040790del</Expression>
+          </NucleotideExpression>
+        </HGVS>
+        <HGVS Assembly="GRCh38" Type="genomic, top-level">
+          <NucleotideExpression sequenceAccessionVersion="NC_000012.12" sequenceAccession="NC_000012" sequenceVersion="12" change="g.21887856del" Assembly="GRCh38">
+            <Expression>NC_000012.12:g.21887856del</Expression>
+          </NucleotideExpression>
+        </HGVS>
+        <HGVS Type="genomic">
+          <NucleotideExpression sequenceAccessionVersion="NG_012819.1" sequenceAccession="NG_012819" sequenceVersion="1" change="g.53842del">
+            <Expression>NG_012819.1:g.53842del</Expression>
+          </NucleotideExpression>
+        </HGVS>
+        <HGVS Type="coding">
+          <NucleotideExpression sequenceAccessionVersion="NM_001377273.1" sequenceAccession="NM_001377273" sequenceVersion="1" change="c.1884del">
+            <Expression>NM_001377273.1:c.1884del</Expression>
+          </NucleotideExpression>
+          <ProteinExpression sequenceAccessionVersion="NP_001364202.1" sequenceAccession="NP_001364202" sequenceVersion="1" change="p.Phe628fs">
+            <Expression>NP_001364202.1:p.Phe628fs</Expression>
+          </ProteinExpression>
+          <MolecularConsequence ID="SO:0001589" Type="frameshift variant" DB="SO" />
+        </HGVS>
+        <HGVS Type="coding">
+          <NucleotideExpression sequenceAccessionVersion="NM_001377274.1" sequenceAccession="NM_001377274" sequenceVersion="1" change="c.1020del">
+            <Expression>NM_001377274.1:c.1020del</Expression>
+          </NucleotideExpression>
+          <ProteinExpression sequenceAccessionVersion="NP_001364203.1" sequenceAccession="NP_001364203" sequenceVersion="1" change="p.Phe340fs">
+            <Expression>NP_001364203.1:p.Phe340fs</Expression>
+          </ProteinExpression>
+          <MolecularConsequence ID="SO:0001589" Type="frameshift variant" DB="SO" />
+        </HGVS>
+        <HGVS Type="coding">
+          <NucleotideExpression sequenceAccessionVersion="NM_005691.4" sequenceAccession="NM_005691" sequenceVersion="4" change="c.1884del">
+            <Expression>NM_005691.4:c.1884del</Expression>
+          </NucleotideExpression>
+          <ProteinExpression sequenceAccessionVersion="NP_005682.2" sequenceAccession="NP_005682" sequenceVersion="2" change="p.Phe628fs">
+            <Expression>NP_005682.2:p.Phe628fs</Expression>
+          </ProteinExpression>
+          <MolecularConsequence ID="SO:0001589" Type="frameshift variant" DB="SO" />
+        </HGVS>
+        <HGVS Type="coding">
+          <NucleotideExpression sequenceAccessionVersion="NM_020297.4" sequenceAccession="NM_020297" sequenceVersion="4" change="c.1884del" MANESelect="true">
+            <Expression>NM_020297.4:c.1884del</Expression>
+          </NucleotideExpression>
+          <ProteinExpression sequenceAccessionVersion="NP_064693.2" sequenceAccession="NP_064693" sequenceVersion="2" change="p.Phe628fs">
+            <Expression>NP_064693.2:p.Phe628fs</Expression>
+          </ProteinExpression>
+          <MolecularConsequence ID="SO:0001589" Type="frameshift variant" DB="SO" />
+        </HGVS>
+      </HGVSlist>
+      <XRefList>
+        <XRef ID="CA353947" DB="ClinGen" />
+        <XRef Type="rs" ID="869025348" DB="dbSNP" />
+      </XRefList>
+    </SimpleAllele>
+    <RCVList>
+      <RCVAccession Title="NM_020297.4(ABCC9):c.1884del (p.Phe628fs) AND Arrhythmogenic right ventricular cardiomyopathy" Accession="RCV000208233" Version="1">
+        <ClassifiedConditionList TraitSetID="8771">
+          <ClassifiedCondition DB="MedGen" ID="C0349788">Arrhythmogenic right ventricular cardiomyopathy</ClassifiedCondition>
+        </ClassifiedConditionList>
+        <RCVClassifications>
+          <GermlineClassification>
+            <ReviewStatus>criteria provided, single submitter</ReviewStatus>
+            <Description DateLastEvaluated="2015-02-16" SubmissionCount="1">Uncertain significance</Description>
+          </GermlineClassification>
+        </RCVClassifications>
+      </RCVAccession>
+    </RCVList>
+    <Classifications>
+      <GermlineClassification DateLastEvaluated="2015-02-16" NumberOfSubmissions="1" NumberOfSubmitters="1" DateCreated="2016-03-01" MostRecentSubmission="2016-03-01">
+        <ReviewStatus>criteria provided, single submitter</ReviewStatus>
+        <Description>Uncertain significance</Description>
+        <ConditionList>
+          <TraitSet ID="8771" Type="Disease" ContributesToAggregateClassification="true">
+            <Trait ID="6619" Type="Disease">
+              <Name>
+                <ElementValue Type="Alternate">Cardiomyopathy, ARVC</ElementValue>
+              </Name>
+              <Name>
+                <ElementValue Type="Alternate">Arrhythmogenic right ventricular dysplasia</ElementValue>
+                <XRef ID="CMGVARID00187" DB="Centre for Mendelian Genomics, University Medical Centre Ljubljana" />
+                <XRef Type="Phenotypic series" ID="PS107970" DB="OMIM" />
+                <XRef ID="253528005" DB="SNOMED CT" />
+              </Name>
+              <Name>
+                <ElementValue Type="Preferred">Arrhythmogenic right ventricular cardiomyopathy</ElementValue>
+                <XRef ID="Arrhythmogenic+Right+Ventricular+Cardiomyopathy/587" DB="Genetic Alliance" />
+                <XRef ID="MONDO:0016587" DB="MONDO" />
+                <XRef ID="281170005" DB="SNOMED CT" />
+              </Name>
+              <Symbol>
+                <ElementValue Type="Preferred">ARVD</ElementValue>
+              </Symbol>
+              <Symbol>
+                <ElementValue Type="Alternate">ARVC</ElementValue>
+              </Symbol>
+              <AttributeSet>
+                <Attribute Type="GeneReviews short">NBK1131</Attribute>
+                <XRef ID="NBK1131" DB="GeneReviews" />
+              </AttributeSet>
+              <AttributeSet>
+                <Attribute Type="mode of inheritance">Various modes of inheritance</Attribute>
+              </AttributeSet>
+              <AttributeSet>
+                <Attribute Type="GARD id" integerValue="5847" />
+                <XRef ID="5847" DB="Office of Rare Diseases" />
+              </AttributeSet>
+              <AttributeSet>
+                <Attribute Type="public definition">Arrhythmogenic right ventricular cardiomyopathy (ARVC) &#8211; previously referred to as arrhythmogenic right ventricular dysplasia (ARVD) &#8211; is characterized by progressive fibrofatty replacement of the myocardium that predisposes to ventricular tachycardia and sudden death in young individuals and athletes. It primarily affects the right ventricle, and it may also involve the left ventricle. The presentation of disease is highly variable even within families, and some affected individuals may not meet established clinical criteria. The mean age at diagnosis is 31 years (&#177;13; range: 4-64 years).</Attribute>
+                <XRef ID="NBK1131" DB="GeneReviews" />
+              </AttributeSet>
+              <Citation Type="review" Abbrev="GeneReviews">
+                <ID Source="PubMed">20301310</ID>
+                <ID Source="BookShelf">NBK1131</ID>
+              </Citation>
+              <Citation Type="practice guideline" Abbrev="AHRQ, 2013">
+                <ID Source="BookShelf">NBK248310</ID>
+              </Citation>
+              <Citation Type="Recommendation" Abbrev="HRS/EHRA, 2012">
+                <ID Source="PubMed">21810866</ID>
+              </Citation>
+              <XRef ID="247" DB="Orphanet" />
+              <XRef ID="C0349788" DB="MedGen" />
+              <XRef ID="MONDO:0016587" DB="MONDO" />
+            </Trait>
+          </TraitSet>
+        </ConditionList>
+      </GermlineClassification>
+    </Classifications>
+    <ClinicalAssertionList>
+      <ClinicalAssertion ID="493554" SubmissionDate="2016-01-15" DateLastUpdated="2016-03-01" DateCreated="2016-03-01">
+        <ClinVarSubmissionID localKey="NM_020297.3:c.1884delT|MedGen:C0349788" submittedAssembly="GRCh37" />
+        <ClinVarAccession Accession="SCV000263749" DateUpdated="2016-03-01" DateCreated="2016-03-01" Type="SCV" Version="2" SubmitterName="Blueprint Genetics" OrgID="500188" OrganizationCategory="laboratory" />
+        <RecordStatus>current</RecordStatus>
+        <Classification DateLastEvaluated="2015-02-16">
+          <ReviewStatus>criteria provided, single submitter</ReviewStatus>
+          <GermlineClassification>Uncertain significance</GermlineClassification>
+        </Classification>
+        <Assertion>variation to disease</Assertion>
+        <AttributeSet>
+          <Attribute Type="AssertionMethod">Variant Classification</Attribute>
+          <Citation>
+            <URL>https://submit.ncbi.nlm.nih.gov/ft/byid/5yj8a71c/variant_classification_wp_vara41-03.pdf</URL>
+          </Citation>
+        </AttributeSet>
+        <ObservedInList>
+          <ObservedIn>
+            <Sample>
+              <Origin>germline</Origin>
+              <Species TaxonomyId="9606">human</Species>
+              <AffectedStatus>yes</AffectedStatus>
+            </Sample>
+            <Method>
+              <MethodType>clinical testing</MethodType>
+            </Method>
+            <ObservedData>
+              <Attribute Type="VariantAlleles" integerValue="1" />
+            </ObservedData>
+          </ObservedIn>
+        </ObservedInList>
+        <SimpleAllele>
+          <GeneList>
+            <Gene Symbol="ABCC9" />
+          </GeneList>
+          <VariantType>Variation</VariantType>
+          <AttributeSet>
+            <Attribute Type="HGVS">NM_020297.3:c.1884delT</Attribute>
+          </AttributeSet>
+        </SimpleAllele>
+        <TraitSet Type="Disease">
+          <Trait Type="Disease">
+            <XRef DB="MedGen" ID="C0349788" Type="CUI" />
+          </Trait>
+        </TraitSet>
+      </ClinicalAssertion>
+    </ClinicalAssertionList>
+    <TraitMappingList>
+      <TraitMapping ClinicalAssertionID="493554" TraitType="Disease" MappingType="XRef" MappingValue="C0349788" MappingRef="MedGen">
+        <MedGen CUI="C0349788" Name="Arrhythmogenic right ventricular cardiomyopathy" />
+      </TraitMapping>
+    </TraitMappingList>
+  </ClassifiedRecord>
+</VariationArchive>
+</ClinVarVariationRelease>
