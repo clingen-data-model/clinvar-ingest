@@ -85,6 +85,7 @@ def ensure_pairs_view_exists(
         vcv.xml_release_date as vcv_xml_release_date,
         vcv.bucket_dir as vcv_bucket_dir,
         vcv.parsed_files as vcv_parsed_files,
+        vcv.bq_ingest_processing as vcv_bq_ingest_processing,
         -- RCV fields
         rcv.file_type as rcv_file_type,
         rcv.pipeline_version as rcv_pipeline_version,
@@ -552,6 +553,7 @@ def processed_pairs_ready_to_be_ingested(
         vcv_xml_release_date,
         vcv_bucket_dir,
         vcv_parsed_files,
+        vcv_bq_ingest_processing,
         rcv_file_type,
         rcv_pipeline_version,
         rcv_processing_started,
@@ -563,7 +565,29 @@ def processed_pairs_ready_to_be_ingested(
     WHERE vcv_processing_finished IS NOT NULL
     AND rcv_processing_finished IS NOT NULL
     AND release_date IS NULL
+    AND vcv_bq_ingest_processing IS NOT TRUE
     """
+    query_job = client.query(query)
+    return query_job.result()
+
+
+def update_bq_ingest_processing_flag(
+    processing_history_table: bigquery.Table,
+    pipeline_version: str,
+    xml_release_date: str,
+    bq_ingest_processing: bool | None = True,
+    client: bigquery.Client | None = None,
+):
+    if client is None:
+        client = bigquery.Client()
+    fully_qualified_table_id = str(processing_history_table)
+    query = f"""
+    UPDATE {fully_qualified_table_id}
+    SET bq_ingest_processing = {bq_ingest_processing}
+    WHERE file_type = '{ClinVarIngestFileFormat.VCV}'
+    AND pipeline_version = '{pipeline_version}'
+    AND xml_release_date = '{xml_release_date}'
+    """  # TODO prepared statement
     query_job = client.query(query)
     return query_job.result()
 
