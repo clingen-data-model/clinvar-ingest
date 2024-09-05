@@ -10,7 +10,7 @@ if [[ "$1" == "apply" ]]; then
     # Uses each linter's option to apply the changes if it is supported
     black clinvar_ingest test || had_error=1
     isort clinvar_ingest test || had_error=1
-    ruff --fix clinvar_ingest test || had_error=1
+    ruff check --fix clinvar_ingest test || had_error=1
     pylint --disable=C,R,W clinvar_ingest || had_error=1
 else
     # Check-only mode
