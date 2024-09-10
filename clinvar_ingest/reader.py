@@ -13,6 +13,7 @@ import xmltodict
 from clinvar_ingest.model.common import Model
 from clinvar_ingest.model.rcv import RcvMapping
 from clinvar_ingest.model.variation_archive import VariationArchive
+from clinvar_ingest.model_somatic.variation_archive import VariationArchiveSomatic
 
 _logger = logging.getLogger("clinvar_ingest")
 
@@ -24,6 +25,18 @@ def construct_model(tag, item):
     if tag == "VariationArchive":
         _logger.debug("Returning new VariationArchive")
         return VariationArchive.from_xml(item)
+    elif tag == "ClinVarSet":
+        _logger.debug("Returning new ClinVarSet")
+        return RcvMapping.from_xml(item)
+    else:
+        raise ValueError(f"Unexpected tag: {tag} {item=}")
+
+
+def construct_model_somatic(tag, item):
+    _logger.debug(f"construct_model_somatic: {tag=}, {item=}")
+    if tag == "VariationArchive":
+        _logger.debug("Returning new VariationArchiveSomatic")
+        return VariationArchiveSomatic.from_xml(item)
     elif tag == "ClinVarSet":
         _logger.debug("Returning new ClinVarSet")
         return RcvMapping.from_xml(item)
@@ -138,6 +151,17 @@ def read_clinvar_rcv_xml(reader: TextIO, disassemble=True) -> Iterator[Model]:
 
 
 def read_clinvar_vcv_xml(reader: TextIO, disassemble=True) -> Iterator[Model]:
+    tag_we_care_about = "VariationArchive"
+    return _read_clinvar_xml(reader, tag_we_care_about, disassemble)
+
+
+def read_clinvar_somatic_model_vcv_xml(
+    reader: TextIO, disassemble=True
+) -> Iterator[Model]:
+    _logger.warning("Updating model constructor to use somatic models")
+    global construct_model
+    global construct_model_somatic
+    construct_model = construct_model_somatic
     tag_we_care_about = "VariationArchive"
     return _read_clinvar_xml(reader, tag_we_care_about, disassemble)
 
