@@ -1,0 +1,46 @@
+[
+  {
+    "name": "date_created",
+    "type": "DATE"
+  },
+  {
+    "name": "record_status",
+    "type": "STRING"
+  },
+  {
+    "name": "variation_id",
+    "type": "STRING"
+  },
+  {
+    "name": "release_date",
+    "type": "DATE"
+  },
+  {
+    "name": "content",
+    "type": "STRING"
+  },
+  {
+    "name": "species",
+    "type": "STRING"
+  },
+  {
+    "name": "id",
+    "type": "STRING"
+  },
+  {
+    "name": "version",
+    "type": "INTEGER"
+  },
+  {
+    "name": "num_submitters",
+    "type": "INTEGER"
+  },
+  {
+    "name": "date_last_updated",
+    "type": "DATE"
+  },
+  {
+    "name": "num_submissions",
+    "type": "INTEGER"
+  }
+]

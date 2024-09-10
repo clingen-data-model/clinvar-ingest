@@ -248,11 +248,7 @@ class VariationArchiveClassification(Model):
     num_submitters: int | None
     num_submissions: int | None
     date_created: str
-    # interp_type: str
     interp_description: str
-    # interp_explanation: str
-    # interp_date_last_evaluated: str
-    # interp_content: dict
     most_recent_submission: str
 
     # Only for SomanticClinicalImpact
