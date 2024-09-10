@@ -44,8 +44,13 @@ class ClinicalAssertionSomatic(Model):
     date_last_updated: str
     submitted_assembly: str
     record_status: str
+    # TODO Moved to ClinicalAssertion.Classification.ReviewStatus.$
     review_status: str
+    # TODO Moved to ClinicalAssertion.Classification.@DateLastEvaluated
     interpretation_date_last_evaluated: str
+    # TODO (NEW) From ClinicalAssertion.Classification [<StatementType>]
+    statement_type: StatementType
+    # TODO Moved to ClinicalAssertion.Classification.<StatementType>.$
     interpretation_description: str
     interpretation_comments: list[dict]
     submitter_id: str
@@ -327,15 +332,9 @@ class VariationArchiveSomatic(Model):
     date_created: str
     record_status: str
     species: str
-    # review_status: str
-    # interp_description: str
     num_submitters: int | None
     num_submissions: int | None
     date_last_updated: str
-    # interp_type: str
-    # interp_explanation: str
-    # interp_date_last_evaluated: str
-    # interp_content: dict
     content: dict
 
     trait_sets: list[TraitSet]
@@ -357,10 +356,7 @@ class VariationArchiveSomatic(Model):
         _logger.debug(f"VariationArchive.from_xml(inp={json.dumps(inp)})")
         vcv_accession = extract(inp, "@Accession")
 
-        # interp_record = inp.get("InterpretedRecord", inp.get("IncludedRecord"))
         interp_record = inp.get("ClassifiedRecord", inp.get("IncludedRecord"))
-        # interpretations = extract(interp_record, "Interpretations")
-        # interpretation = interpretations["Interpretation"]
 
         variation = Variation.from_xml(interp_record, vcv_accession)
         rcv_accessions = [
