@@ -265,6 +265,8 @@ class ClinicalAssertionSomatic(Model):
 
 @dataclasses.dataclass
 class VariationArchiveClassification(Model):
+    # TODO Add VCV_ID as a field to link this back to the VariationArchive
+    # maybe another name? Use a field name that exists elsewhere.
     statement_type: StatementType
     review_status: str
 
@@ -293,7 +295,7 @@ class VariationArchiveClassification(Model):
         or OncogenicityClassification entry. The statement_type is the key
         from the original `Classifications` XML/dict, indicating the type.
         """
-        interp_description = extract(extract(inp, "Description"))
+        interp_description = extract(inp, "Description")
         return VariationArchiveClassification(
             statement_type=statement_type,
             review_status=extract(inp, "ReviewStatus", "$"),
