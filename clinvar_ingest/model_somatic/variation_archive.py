@@ -37,20 +37,17 @@ class ClinicalAssertionSomatic(Model):
     id: str
     title: str
     local_key: str
-    assertion_accession: str
     version: str
     assertion_type: str
     date_created: str
     date_last_updated: str
     submitted_assembly: str
     record_status: str
-    # TODO Moved to ClinicalAssertion.Classification.ReviewStatus.$
+    # (CHANGED) Moved to ClinicalAssertion.Classification.ReviewStatus.$
     review_status: str
-    # TODO Moved to ClinicalAssertion.Classification.@DateLastEvaluated
+    # (CHANGED) Moved to ClinicalAssertion.Classification.@DateLastEvaluated
     interpretation_date_last_evaluated: str
-    # TODO (NEW) From ClinicalAssertion.Classification [<StatementType>]
-    statement_type: StatementType
-    # TODO Moved to ClinicalAssertion.Classification.<StatementType>.$
+    # (CHANGED) Moved to ClinicalAssertion.Classification.<StatementType>.$
     interpretation_description: str
     interpretation_comments: list[dict]
     submitter_id: str
@@ -65,6 +62,12 @@ class ClinicalAssertionSomatic(Model):
     clinical_assertion_observations: list[ClinicalAssertionObservation]
     clinical_assertion_trait_set: ClinicalAssertionTraitSet | None
     clinical_assertion_variations: list[ClinicalAssertionVariation]
+
+    # (NEW) From ClinicalAssertion.Classification [<StatementType>]
+    statement_type: StatementType
+    # Only for SomaticClinicalImpact
+    clincal_impact_assertion_type: str
+    clinical_impact_clinical_significance: str
 
     @staticmethod
     def jsonifiable_fields() -> list[str]:
@@ -86,7 +89,7 @@ class ClinicalAssertionSomatic(Model):
         raw_accession = extract(inp, "ClinVarAccession")
         scv_accession = extract(raw_accession, "@Accession")
         clinvar_submission = extract(inp, "ClinVarSubmissionID")
-        interpretation = extract(inp, "Interpretation")
+        classification_raw = extract(inp, "Classification")
         additional_submitters = [
             Submitter.from_xml(a, scv_accession)
             for a in ensure_list(
@@ -151,7 +154,7 @@ class ClinicalAssertionSomatic(Model):
         )
 
         interpretation_comments = []
-        for raw_comment in ensure_list(extract(interpretation, "Comment") or []):
+        for raw_comment in ensure_list(extract(classification_raw, "Comment") or []):
             comment = {"text": extract(raw_comment, "$")}
             if "@Type" in raw_comment:
                 comment["type"] = extract(raw_comment, "@Type")
@@ -161,25 +164,42 @@ class ClinicalAssertionSomatic(Model):
             extract(inp, "SubmissionNameList", "SubmissionName") or []
         )
 
-        obj = ClinicalAssertion(
+        # Classification fields
+        review_status = extract(classification_raw, "ReviewStatus", "$")
+        _logger.info(f"review_status: {review_status}")
+        statement_type = None
+        # The VariationArchiveClassification can be used to extract the few fields we care about
+        _classification = VariationArchiveClassification.from_xml(classification_raw)
+        if len(_classification) != 1:
+            raise ValueError(
+                f"Expected a single Classification node in SCV {scv_accession},"
+                f" got: {_classification}"
+            )
+        _classification = _classification[0]
+        statement_type = _classification.statement_type
+        clincal_impact_assertion_type = _classification.clinical_impact_assertion_type
+        clinical_impact_clinical_significance = (
+            _classification.clinical_impact_clinical_significance
+        )
+        # In SCVs it's just the inner text, not a Description node like in VCVs
+        interpretation_description = extract(classification_raw, "$")
+
+        obj = ClinicalAssertionSomatic(
             internal_id=obj_id,
             id=scv_accession,
             title=extract(clinvar_submission, "@title"),
             local_key=extract(clinvar_submission, "@localKey"),
-            assertion_accession=scv_accession,
             version=extract(raw_accession, "@Version"),
             assertion_type=extract(extract(inp, "Assertion"), "$"),
             date_created=sanitize_date(extract(inp, "@DateCreated")),
             date_last_updated=sanitize_date(extract(inp, "@DateLastUpdated")),
             submitted_assembly=extract(clinvar_submission, "@submittedAssembly"),
             record_status=extract(extract(inp, "RecordStatus"), "$"),
-            review_status=extract(extract(inp, "ReviewStatus"), "$"),
+            review_status=review_status,
             interpretation_date_last_evaluated=sanitize_date(
-                extract(interpretation, "@DateLastEvaluated")
+                extract(classification_raw, "@DateLastEvaluated")
             ),
-            interpretation_description=extract(
-                extract(interpretation, "Description"), "$"
-            ),
+            interpretation_description=interpretation_description,
             interpretation_comments=interpretation_comments,
             submitter_id=submitter.id,
             submitters=submitters,
@@ -191,6 +211,9 @@ class ClinicalAssertionSomatic(Model):
             clinical_assertion_observations=observations,
             clinical_assertion_trait_set=assertion_trait_set,
             clinical_assertion_variations=submitted_variations,
+            statement_type=statement_type,
+            clincal_impact_assertion_type=clincal_impact_assertion_type,
+            clinical_impact_clinical_significance=clinical_impact_clinical_significance,
             content=inp,
         )
         return obj
@@ -251,7 +274,7 @@ class VariationArchiveClassification(Model):
     interp_description: str
     most_recent_submission: str
 
-    # Only for SomanticClinicalImpact
+    # Only for SomaticClinicalImpact
     clinical_impact_assertion_type: str
     clinical_impact_clinical_significance: str
 
