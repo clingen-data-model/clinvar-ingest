@@ -15,7 +15,6 @@ from clinvar_ingest.model.variation_archive import (
     ClinicalAssertion,
     ClinicalAssertionObservation,
     ClinicalAssertionVariation,
-    RcvAccession,
     Submission,
     Submitter,
     Variation,
@@ -66,7 +65,7 @@ class ClinicalAssertionSomatic(Model):
     # (NEW) From ClinicalAssertion.Classification [<StatementType>]
     statement_type: StatementType
     # Only for SomaticClinicalImpact
-    clincal_impact_assertion_type: str
+    clinical_impact_assertion_type: str
     clinical_impact_clinical_significance: str
 
     @staticmethod
@@ -212,7 +211,7 @@ class ClinicalAssertionSomatic(Model):
             clinical_assertion_trait_set=assertion_trait_set,
             clinical_assertion_variations=submitted_variations,
             statement_type=statement_type,
-            clincal_impact_assertion_type=clincal_impact_assertion_type,
+            clinical_impact_assertion_type=clincal_impact_assertion_type,
             clinical_impact_clinical_significance=clinical_impact_clinical_significance,
             content=inp,
         )
@@ -261,6 +260,148 @@ class ClinicalAssertionSomatic(Model):
         for variation in clinical_assertion_variations:
             for subobj in variation.disassemble():
                 yield subobj
+
+
+@dataclasses.dataclass
+class RcvAccessionSomatic(Model):
+    independent_observations: int
+    variation_id: int
+    id: str
+    variation_archive_id: str
+    date_last_evaluated: str
+    version: int | None
+    title: str
+    trait_set_id: str
+    review_status: str
+    interpretation: str
+    submission_count: int | None
+
+    content: dict
+
+    # New in Somatic Classification XML model
+    statement_type: StatementType
+    # Only for SomaticClinicalImpact
+    clincal_impact_assertion_type: str | None
+    clinical_impact_clinical_significance: str | None
+
+    @staticmethod
+    def jsonifiable_fields() -> list[str]:
+        return ["content"]
+
+    def __post_init__(self):
+        self.entity_type = "rcv_accession_somatic"
+
+    # @staticmethod
+    # def classifications_from_xml(rcv_classifications_raw: list[dict]) -> list[dict]:
+
+    @staticmethod
+    def from_xml(
+        inp: dict,
+        variation_id: int = None,
+        variation_archive_id: str = None,
+    ):
+        """
+        OLD:
+
+        <RCVAccession
+            Title="CYP2C19*12/*34 AND Sertraline response"
+            ReviewStatus="practice guideline"
+            Interpretation="drug response"
+            SubmissionCount="1"
+            Accession="RCV000783230"
+            Version="8">
+        <InterpretedConditionList TraitSetID="20745">
+            <InterpretedCondition DB="MedGen" ID="CN221265">
+                Sertraline response
+            </InterpretedCondition>
+        </InterpretedConditionList>
+        </RCVAccession>
+
+        NEW:
+
+        <RCVAccession Title="CYP2C19*12/*34 AND Sertraline response"
+                      Accession="RCV000783230" Version="10">
+            <ClassifiedConditionList TraitSetID="20745">
+                <ClassifiedCondition DB="MedGen" ID="CN221265">Sertraline response</ClassifiedCondition>
+            </ClassifiedConditionList>
+            <RCVClassifications>
+                <GermlineClassification>
+                    <ReviewStatus>practice guideline</ReviewStatus>
+                    <Description SubmissionCount="1">drug response</Description>
+                </GermlineClassification>
+            </RCVClassifications>
+        </RCVAccession>
+
+        SomaticClinicalImpact:
+        <RCVAccession Title="NM_024426.6(WT1):c.1400G&gt;T (p.Arg467Leu) AND Acute myeloid leukemia"
+                      Accession="RCV003883245" Version="1">
+            <ClassifiedConditionList TraitSetID="6288">
+                <ClassifiedCondition DB="MedGen" ID="C0023467">Acute myeloid leukemia</ClassifiedCondition>
+            </ClassifiedConditionList>
+            <RCVClassifications>
+                <SomaticClinicalImpact>
+                    <ReviewStatus>no assertion criteria provided</ReviewStatus>
+                    <Description
+                        ClinicalImpactAssertionType="prognostic"
+                        ClinicalImpactClinicalSignificance="poor outcome"
+                        DateLastEvaluated="2024-01-24"
+                        SubmissionCount="1">
+                        Tier I - Strong
+                    </Description>
+                </SomaticClinicalImpact>
+            </RCVClassifications>
+        </RCVAccession>
+        """
+        # org.broadinstitute.monster.clinvar.parsers.VCV.scala : 259 : parseRawRcv
+        rcv_id = extract(inp, "@Accession")
+        rcv_classifications_raw = extract(inp, "RCVClassifications") or {}
+
+        # Ensure only 1 classification type is present by checking each StatementType
+        statement_types: list[StatementType] = []
+        for st in StatementType:
+            if str(st) in rcv_classifications_raw:
+                statement_types.append(st)
+        if len(statement_types) > 1:
+            raise ValueError(
+                f"Expected a single StatementType node in RCVClassifications in RCV {rcv_id},"
+                f" got: {statement_types}"
+            )
+        if len(statement_types) == 0:
+            raise ValueError(
+                f"Did not find a StatementType node in RCVClassifications in RCV {rcv_id}"
+            )
+
+        # extract classification information from the RCV Classification record
+        statement_type = statement_types[0]
+        classification_node = extract(rcv_classifications_raw, str(statement_type))
+        description_node = extract(classification_node, "Description")
+
+        # TODO independentObservations always null?
+        obj = RcvAccessionSomatic(
+            independent_observations=extract(inp, "@independentObservations"),
+            variation_id=variation_id,
+            id=rcv_id,
+            variation_archive_id=variation_archive_id,
+            date_last_evaluated=extract(description_node, "@DateLastEvaluated"),
+            version=int_or_none(extract(inp, "@Version")),
+            title=extract(inp, "@Title"),
+            trait_set_id=extract(inp, "ClassifiedConditionList", "@TraitSetID"),
+            review_status=extract(classification_node, "ReviewStatus", "$"),
+            interpretation=extract(description_node, "$"),
+            submission_count=int_or_none(extract(inp, "@SubmissionCount")),
+            statement_type=statement_type,
+            clincal_impact_assertion_type=extract(
+                description_node, "@ClinicalImpactAssertionType"
+            ),
+            clinical_impact_clinical_significance=extract(
+                description_node, "@ClinicalImpactClinicalSignificance"
+            ),
+            content=inp,
+        )
+        return obj
+
+    def disassemble(self):
+        yield self
 
 
 @dataclasses.dataclass
@@ -349,7 +490,7 @@ class VariationArchiveSomatic(Model):
     name: str
     version: str
     variation: Variation
-    clinical_assertions: list[ClinicalAssertion]
+    clinical_assertions: list[ClinicalAssertionSomatic]
     date_created: str
     record_status: str
     species: str
@@ -361,7 +502,7 @@ class VariationArchiveSomatic(Model):
     trait_sets: list[TraitSet]
     trait_mappings: list[TraitMapping]
 
-    rcv_accessions: list[RcvAccession]
+    rcv_accessions: list[RcvAccessionSomatic]
     classifications: list[VariationArchiveClassification]
 
     @staticmethod
@@ -381,7 +522,7 @@ class VariationArchiveSomatic(Model):
 
         variation = Variation.from_xml(interp_record, vcv_accession)
         rcv_accessions = [
-            RcvAccession.from_xml(
+            RcvAccessionSomatic.from_xml(
                 r, variation_id=variation.id, variation_archive_id=vcv_accession
             )
             for r in ensure_list(
@@ -442,7 +583,7 @@ class VariationArchiveSomatic(Model):
             version=extract(inp, "@Version"),
             variation=variation,
             clinical_assertions=[
-                ClinicalAssertion.from_xml(
+                ClinicalAssertionSomatic.from_xml(
                     ca,
                     # TODO
                     normalized_traits=[],  # flatten1([ts.traits for ts in trait_sets]),
