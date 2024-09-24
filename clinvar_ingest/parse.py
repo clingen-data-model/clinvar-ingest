@@ -173,6 +173,9 @@ def parse_and_write_files(
             case ClinVarIngestFileFormat.RCV:
                 releaseinfo = get_clinvar_rcv_xml_releaseinfo(f_in)
                 iterate_type = "rcv_mapping"
+            case ClinVarIngestFileFormat.VCV_SOMATIC:
+                releaseinfo = get_clinvar_vcv_xml_releaseinfo(f_in)
+                iterate_type = "variation_archive"
             case _:
                 raise ValueError(f"Unknown file format: {file_format}")
         release_date = releaseinfo["release_date"]
