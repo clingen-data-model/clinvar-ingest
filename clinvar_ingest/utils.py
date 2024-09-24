@@ -147,3 +147,5 @@ def make_counter():
 class ClinVarIngestFileFormat(StrEnum):
     VCV = "vcv"
     RCV = "rcv"
+
+    VCV_SOMATIC = "vcv_somatic"

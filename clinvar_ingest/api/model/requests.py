@@ -105,7 +105,7 @@ class ClinvarFTPWatcherRequest(BaseModel):
     release_date: date
 
     file_format: Annotated[
-        Optional[Literal["vcv", "rcv"]],
+        Optional[Literal["vcv", "rcv", "vcv_somatic"]],
         Field(
             description=(
                 "Type of file this request refers to. "
