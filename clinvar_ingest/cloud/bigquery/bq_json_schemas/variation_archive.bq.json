@@ -1,9 +1,5 @@
 [
   {
-    "name": "interp_content",
-    "type": "STRING"
-  },
-  {
     "name": "date_created",
     "type": "DATE"
   },
@@ -13,10 +9,6 @@
   },
   {
     "name": "variation_id",
-    "type": "STRING"
-  },
-  {
-    "name": "interp_description",
     "type": "STRING"
   },
   {
@@ -36,18 +28,6 @@
     "type": "STRING"
   },
   {
-    "name": "interp_type",
-    "type": "STRING"
-  },
-  {
-    "name": "interp_explanation",
-    "type": "STRING"
-  },
-  {
-    "name": "interp_date_last_evaluated",
-    "type": "DATE"
-  },
-  {
     "name": "version",
     "type": "INTEGER"
   },
@@ -62,9 +42,5 @@
   {
     "name": "num_submissions",
     "type": "INTEGER"
-  },
-  {
-    "name": "review_status",
-    "type": "STRING"
   }
 ]

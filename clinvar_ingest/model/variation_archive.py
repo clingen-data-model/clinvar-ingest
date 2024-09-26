@@ -203,7 +203,7 @@ class ClinicalAssertion(Model):
         return ["content", "interpretation_comments"]
 
     def __post_init__(self):
-        self.entity_type = "clinical_assertion_somatic"
+        self.entity_type = "clinical_assertion"
 
     @staticmethod
     def from_xml(
@@ -796,7 +796,7 @@ class RcvAccession(Model):
         return ["content"]
 
     def __post_init__(self):
-        self.entity_type = "rcv_accession_somatic"
+        self.entity_type = "rcv_accession"
 
     # @staticmethod
     # def classifications_from_xml(rcv_classifications_raw: list[dict]) -> list[dict]:
@@ -1018,7 +1018,7 @@ class VariationArchive(Model):
 
     def __post_init__(self):
         self.variation_id = self.variation.id
-        self.entity_type = "variation_archive_somatic"
+        self.entity_type = "variation_archive"
 
     @staticmethod
     def from_xml(inp: dict):
