@@ -9,19 +9,10 @@ from google.cloud.storage import Client as GCSClient
 from clinvar_ingest.api.model.requests import (
     ClinvarFTPWatcherRequest,
     CopyResponse,
-    CreateExternalTablesRequest,
-    CreateExternalTablesResponse,
-    CreateInternalTablesRequest,
-    DropExternalTablesRequest,
     ParseRequest,
     ParseResponse,
 )
 from clinvar_ingest.cloud.bigquery import processing_history
-from clinvar_ingest.cloud.bigquery.create_tables import (
-    create_internal_tables,
-    drop_external_tables,
-    run_create_external_tables,
-)
 from clinvar_ingest.cloud.gcs import copy_file_to_bucket, http_download_requests
 from clinvar_ingest.config import get_env
 from clinvar_ingest.parse import ClinVarIngestFileFormat, parse_and_write_files

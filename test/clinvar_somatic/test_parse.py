@@ -1,10 +1,10 @@
 from clinvar_ingest.model.common import dictify
-from clinvar_ingest.model_somatic.variation_archive import (
-    ClinicalAssertionSomatic,
+from clinvar_ingest.model.variation_archive import (
+    ClinicalAssertion,
     RcvAccessionSomatic,
     StatementType,
+    VariationArchive,
     VariationArchiveClassification,
-    VariationArchiveSomatic,
 )
 from clinvar_ingest.reader import read_clinvar_somatic_model_vcv_xml
 
@@ -32,7 +32,7 @@ def test_vcv_VCV000000002():
     assert vcv_classification.statement_type == StatementType.GermlineClassification
 
     # VariationArchive
-    vcv = [o for o in objects if isinstance(o, VariationArchiveSomatic)]
+    vcv = [o for o in objects if isinstance(o, VariationArchive)]
     assert len(vcv) == 1
     vcv = vcv[0]
     assert vcv.entity_type == "variation_archive_somatic"
@@ -53,7 +53,7 @@ def test_vcv_VCV000000002():
     print(dictify(vcv_classification))
 
     # ClinicalAssertion
-    scv = [o for o in objects if isinstance(o, ClinicalAssertionSomatic)]
+    scv = [o for o in objects if isinstance(o, ClinicalAssertion)]
     assert len(scv) == 2
     scv20155 = scv[0]
     scv2865972 = scv[1]

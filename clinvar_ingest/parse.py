@@ -12,7 +12,6 @@ from clinvar_ingest.reader import (
     get_clinvar_rcv_xml_releaseinfo,
     get_clinvar_vcv_xml_releaseinfo,
     read_clinvar_rcv_xml,
-    read_clinvar_somatic_model_vcv_xml,
     read_clinvar_vcv_xml,
 )
 from clinvar_ingest.utils import ClinVarIngestFileFormat, make_progress_logger
@@ -143,8 +142,6 @@ def reader_fn_for_format(
             reader_fn = read_clinvar_vcv_xml
         case ClinVarIngestFileFormat.RCV:
             reader_fn = read_clinvar_rcv_xml
-        case ClinVarIngestFileFormat.VCV_SOMATIC:
-            reader_fn = read_clinvar_somatic_model_vcv_xml
         case _:
             raise ValueError(f"Unknown file format: {file_format}")
     return reader_fn
@@ -173,9 +170,6 @@ def parse_and_write_files(
             case ClinVarIngestFileFormat.RCV:
                 releaseinfo = get_clinvar_rcv_xml_releaseinfo(f_in)
                 iterate_type = "rcv_mapping"
-            case ClinVarIngestFileFormat.VCV_SOMATIC:
-                releaseinfo = get_clinvar_vcv_xml_releaseinfo(f_in)
-                iterate_type = "variation_archive"
             case _:
                 raise ValueError(f"Unknown file format: {file_format}")
         release_date = releaseinfo["release_date"]
