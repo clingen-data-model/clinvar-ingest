@@ -12,10 +12,6 @@
     "type": "DATE"
   },
   {
-    "name": "content",
-    "type": "STRING"
-  },
-  {
     "name": "id",
     "type": "STRING"
   },
@@ -36,10 +32,6 @@
     "type": "STRING"
   },
   {
-    "name": "submission_count",
-    "type": "INTEGER"
-  },
-  {
     "name": "trait_set_id",
     "type": "STRING"
   },
@@ -49,6 +41,26 @@
   },
   {
     "name": "interpretation",
+    "type": "STRING"
+  },
+  {
+    "name": "submission_count",
+    "type": "INTEGER"
+  },
+  {
+    "name": "content",
+    "type": "STRING"
+  },
+  {
+    "name": "statement_type",
+    "type": "STRING"
+  },
+  {
+    "name": "clinical_impact_assertion_type",
+    "type": "STRING"
+  },
+  {
+    "name": "clinical_impact_clinical_significance",
     "type": "STRING"
   }
 ]

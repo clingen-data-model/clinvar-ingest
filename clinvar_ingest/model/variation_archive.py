@@ -306,7 +306,7 @@ class ClinicalAssertion(Model):
             )
         _classification = _classification[0]
         statement_type = _classification.statement_type
-        clincal_impact_assertion_type = _classification.clinical_impact_assertion_type
+        clinical_impact_assertion_type = _classification.clinical_impact_assertion_type
         clinical_impact_clinical_significance = (
             _classification.clinical_impact_clinical_significance
         )
@@ -341,7 +341,7 @@ class ClinicalAssertion(Model):
             clinical_assertion_trait_set=assertion_trait_set,
             clinical_assertion_variations=submitted_variations,
             statement_type=statement_type,
-            clinical_impact_assertion_type=clincal_impact_assertion_type,
+            clinical_impact_assertion_type=clinical_impact_assertion_type,
             clinical_impact_clinical_significance=clinical_impact_clinical_significance,
             content=inp,
         )
@@ -788,7 +788,7 @@ class RcvAccession(Model):
     # New in Somatic Classification XML model
     statement_type: StatementType
     # Only for SomaticClinicalImpact
-    clincal_impact_assertion_type: str | None
+    clinical_impact_assertion_type: str | None
     clinical_impact_clinical_significance: str | None
 
     @staticmethod
@@ -897,7 +897,7 @@ class RcvAccession(Model):
             interpretation=extract(description_node, "$"),
             submission_count=int_or_none(extract(inp, "@SubmissionCount")),
             statement_type=statement_type,
-            clincal_impact_assertion_type=extract(
+            clinical_impact_assertion_type=extract(
                 description_node, "@ClinicalImpactAssertionType"
             ),
             clinical_impact_clinical_significance=extract(
