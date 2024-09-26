@@ -1,18 +1,18 @@
 from clinvar_ingest.model.common import dictify
 from clinvar_ingest.model.variation_archive import (
     ClinicalAssertion,
-    RcvAccessionSomatic,
+    RcvAccession,
     StatementType,
     VariationArchive,
     VariationArchiveClassification,
 )
-from clinvar_ingest.reader import read_clinvar_somatic_model_vcv_xml
+from clinvar_ingest.reader import read_clinvar_vcv_xml
 
 
 def test_vcv_VCV000000002():
     filename = "test/data/clinvar_somatic/VCV000000002.xml"
     with open(filename) as f:
-        objects = list(read_clinvar_somatic_model_vcv_xml(f))
+        objects = list(read_clinvar_vcv_xml(f))
 
     # for obj in objects:
     #     print(dictify(obj))
@@ -35,7 +35,7 @@ def test_vcv_VCV000000002():
     vcv = [o for o in objects if isinstance(o, VariationArchive)]
     assert len(vcv) == 1
     vcv = vcv[0]
-    assert vcv.entity_type == "variation_archive_somatic"
+    assert vcv.entity_type == "variation_archive"
     assert vcv.date_created == "2017-01-30"
     assert vcv.date_last_updated == "2022-04-25"
     assert vcv.id == "VCV000000002"
@@ -64,7 +64,7 @@ def test_vcv_VCV000000002():
     assert scv20155.clinical_impact_clinical_significance is None
     assert scv20155.date_created == "2013-04-04"
     assert scv20155.date_last_updated == "2017-01-30"
-    assert scv20155.entity_type == "clinical_assertion_somatic"
+    assert scv20155.entity_type == "clinical_assertion"
     assert scv20155.id == "SCV000020155"
     assert scv20155.internal_id == "20155"
     assert scv20155.interpretation_comments == []
@@ -94,7 +94,7 @@ def test_vcv_VCV000000002():
     assert scv2865972.clinical_impact_clinical_significance is None
     assert scv2865972.date_created == "2021-05-16"
     assert scv2865972.date_last_updated == "2021-05-16"
-    assert scv2865972.entity_type == "clinical_assertion_somatic"
+    assert scv2865972.entity_type == "clinical_assertion"
     assert scv2865972.id == "SCV001451119"
     assert scv2865972.internal_id == "2865972"
     assert scv2865972.interpretation_comments == []
@@ -117,13 +117,13 @@ def test_vcv_VCV000000002():
     assert scv2865972.version == "1"
 
     # RCV
-    rcvs = [o for o in objects if isinstance(o, RcvAccessionSomatic)]
+    rcvs = [o for o in objects if isinstance(o, RcvAccession)]
     assert len(rcvs) == 1
-    rcv: RcvAccessionSomatic = rcvs[0]
-    assert rcv.clincal_impact_assertion_type is None
+    rcv: RcvAccession = rcvs[0]
+    assert rcv.clinical_impact_assertion_type is None
     assert rcv.clinical_impact_clinical_significance is None
     assert rcv.date_last_evaluated is None
-    assert rcv.entity_type == "rcv_accession_somatic"
+    assert rcv.entity_type == "rcv_accession"
     assert rcv.id == "RCV000000012"
     assert rcv.independent_observations is None
     assert rcv.interpretation == "Pathogenic"
@@ -136,4 +136,5 @@ def test_vcv_VCV000000002():
     )
     assert rcv.trait_set_id == "2"
     assert rcv.variation_archive_id == "VCV000000002"
+    assert rcv.version == 5
     assert rcv.version == 5
