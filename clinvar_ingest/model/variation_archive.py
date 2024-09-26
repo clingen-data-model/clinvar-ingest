@@ -29,6 +29,7 @@ from clinvar_ingest.utils import (
     extract,
     extract_oneof,
     flatten1,
+    get,
     make_counter,
 )
 
@@ -1063,26 +1064,36 @@ class VariationArchive(Model):
                 or []
             )
         ]
-        # trait_set_id_to_rcv_id = {r.trait_set_id: r.id for r in rcv_accessions}
-        # trait_sets = [
-        #     TraitSet.from_xml(ts, trait_set_id_to_rcv_id[get(ts, "@ID")])
-        #     for ts in ensure_list(
-        #         extract(
-        #             interpretation,
-        #             "ConditionList",
-        #             "TraitSet",
-        #         )
-        #         or []
-        #     )
-        # ]
+        # Collect TraitSet dicts from each Classification type
+        raw_classifications = extract(interp_record, "Classifications")
+        raw_classification_types = set([r.value for r in StatementType]).intersection(
+            set(raw_classifications.keys())
+        )
+        raw_trait_sets = flatten1(
+            [
+                ensure_list(
+                    extract(
+                        raw_classifications[raw_classification_type],
+                        "ConditionList",
+                        "TraitSet",
+                    )
+                    or []
+                )
+                for raw_classification_type in raw_classification_types
+            ]
+        )
 
-        # TODO Classifications
+        trait_set_id_to_rcv_id = {r.trait_set_id: r.id for r in rcv_accessions}
+        trait_sets = [
+            TraitSet.from_xml(ts, trait_set_id_to_rcv_id[get(ts, "@ID")])
+            for ts in raw_trait_sets
+        ]
+
         # Classifications is a single node containing multiple Classification subclass nodes
         # e.g. "Classifications": {
         #  "GermlineClassification": {...},
         #  "SomaticClinicalImpact": {...}}
-        classifications_xml = extract(interp_record, "Classifications")
-        classifications = VariationArchiveClassification.from_xml(classifications_xml)
+        classifications = VariationArchiveClassification.from_xml(raw_classifications)
 
         obj = VariationArchive(
             id=vcv_accession,
@@ -1092,8 +1103,7 @@ class VariationArchive(Model):
             clinical_assertions=[
                 ClinicalAssertion.from_xml(
                     ca,
-                    # TODO
-                    normalized_traits=[],  # flatten1([ts.traits for ts in trait_sets]),
+                    normalized_traits=flatten1([ts.traits for ts in trait_sets]),
                     trait_mappings=trait_mappings,
                     variation_id=variation.id,
                     variation_archive_id=vcv_accession,
@@ -1106,10 +1116,8 @@ class VariationArchive(Model):
             species=extract(extract(inp, "Species"), "$"),
             num_submitters=int_or_none(extract(inp, "@NumberOfSubmitters")),
             num_submissions=int_or_none(extract(inp, "@NumberOfSubmissions")),
-            # trait_sets=trait_sets,
-            trait_sets=[],
-            # trait_mappings=trait_mappings,
-            trait_mappings=[],
+            trait_sets=trait_sets,
+            trait_mappings=trait_mappings,
             rcv_accessions=rcv_accessions,
             classifications=classifications,
             content=inp,
