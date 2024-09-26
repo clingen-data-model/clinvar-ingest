@@ -18,6 +18,7 @@ from clinvar_ingest.model.variation_archive import (
     Submitter,
     Variation,
     VariationArchive,
+    VariationArchiveClassification,
 )
 from clinvar_ingest.parse import clean_object
 from clinvar_ingest.reader import read_clinvar_vcv_xml
@@ -27,12 +28,12 @@ def test_read_original_clinvar_variation_2():
     """
     Test a SimpleAllele record
     """
-    filename = "test/data/original-clinvar-variation-2.xml"
+    filename = "test/data/VCV000000002.xml"
     with open(filename) as f:
         objects = list(read_clinvar_vcv_xml(f))
 
     # print("\n".join([str(dictify(o)) for o in objects]))
-    assert len(objects) == 23
+    assert len(objects) == 24
     expected_types = [
         Variation,
         Gene,
@@ -56,6 +57,7 @@ def test_read_original_clinvar_variation_2():
         ClinicalAssertion,
         ClinicalAssertionVariation,
         RcvAccession,
+        VariationArchiveClassification,
         VariationArchive,
     ]
     for i, obj in enumerate(objects):
@@ -147,7 +149,7 @@ def test_read_original_clinvar_variation_634266(log_conf):
     """
     Test a Genotype record
     """
-    filename = "test/data/original-clinvar-variation-634266.xml"
+    filename = "test/data/VCV000634266.xml"
     with open(filename) as f:
         objects = list(read_clinvar_vcv_xml(f))
 
@@ -437,7 +439,7 @@ def test_read_original_clinvar_variation_1264328():
     This tests an IncludedRecord with no ClinicalAssertions.
     Exercises this bug fix: https://github.com/clingen-data-model/clinvar-ingest/issues/101
     """
-    filename = "test/data/original-clinvar-variation-1264328.xml"
+    filename = "test/data/VCV001264328.xml"
     with open(filename) as f:
         objects = list(read_clinvar_vcv_xml(f))
 
@@ -457,8 +459,7 @@ def test_read_original_clinvar_variation_10():
     This tests an IncludedRecord with no ClinicalAssertions.
     Exercises this bug fix:
     """
-    # filename = "test/data/original-clinvar-variation-10.xml"
-    filename = "test/data/original-clinvar-variation-10.xml"
+    filename = "test/data/VCV000000010.xml"
     with open(filename) as f:
         objects = list(read_clinvar_vcv_xml(f))
 
@@ -594,7 +595,7 @@ def test_read_original_clinvar_variation_10():
 
     """
     Get trait set ids from the vcv
-    xq -x '//ClinVarVariationRelease/VariationArchive/InterpretedRecord/Interpretations/Interpretation/ConditionList/TraitSet/@ID' original-clinvar-variation-10.xml
+    xq -x '//ClinVarVariationRelease/VariationArchive/InterpretedRecord/Interpretations/Interpretation/ConditionList/TraitSet/@ID' VCV000000010.xml
     """
 
     clinical_assertion_traits = [

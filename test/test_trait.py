@@ -24,7 +24,7 @@ def distinct_dict_set(list1: List[dict]) -> List[dict]:
 
 
 def test_trait_from_xml_32():
-    filename = "test/data/original-clinvar-variation-32.xml"
+    filename = "test/data/VCV000000032.xml"
     with open(filename) as f:
         content = f.read()
     root = _parse_xml_document(content)
@@ -136,7 +136,7 @@ def test_trait_from_xml_32():
 
 
 def test_trait_from_xml_6619():
-    with open("test/data/original-clinvar-variation-222476.xml") as f:
+    with open("test/data/VCV000222476.xml") as f:
         content = f.read()
     root = _parse_xml_document(content)
     release = root["ClinVarVariationRelease"]
@@ -217,8 +217,7 @@ def test_trait_from_xml_6619():
 
 
 def test_trait_from_xml_3510():
-    # test/data/original-clinvar-variation-4897.xml
-    with open("test/data/original-clinvar-variation-4897.xml") as f:
+    with open("test/data/VCV000004897.xml") as f:
         content = f.read()
     root = _parse_xml_document(content)
     release = root["ClinVarVariationRelease"]
@@ -246,7 +245,7 @@ def test_trait_from_xml_3510():
 
 
 def test_trait_from_xml_406155():
-    with open("test/data/original-clinvar-variation-406155.xml") as f:
+    with open("test/data/VCV000406155.xml") as f:
         content = f.read()
     root = _parse_xml_document(content)
     release = root["ClinVarVariationRelease"]
@@ -278,7 +277,7 @@ def test_trait_from_xml_406155():
 
 
 def test_trait_set_from_xml_10():
-    with open("test/data/original-clinvar-variation-10.xml") as f:
+    with open("test/data/VCV000000010.xml") as f:
         content = f.read()
     root = _parse_xml_document(content)
     release = root["ClinVarVariationRelease"]
@@ -354,7 +353,7 @@ def test_trait_set_from_xml_10():
 
 
 def test_trait_mapping_10():
-    with open("test/data/original-clinvar-variation-10.xml") as f:
+    with open("test/data/VCV000000010.xml") as f:
         content = f.read()
     root = _parse_xml_document(content)
     release = root["ClinVarVariationRelease"]

@@ -7,8 +7,7 @@ def test_parse(log_conf):
     This test evaluates the case where a Genotype contains both a SimpleAllele and a
     Haplotype (which contains SimpleAlleles)
     """
-    # filename = "test/data/original-clinvar-variation-424711.xml"
-    filename = "test/data/clinvar_somatic/VCV000424711.xml"
+    filename = "test/data/VCV000424711.xml"
     with open(filename, "r", encoding="utf-8") as f:
         objects = list(read_clinvar_vcv_xml(f))
 
