@@ -1,5 +1,4 @@
 import dataclasses
-import json
 from typing import List
 
 from clinvar_ingest.model.common import Model
@@ -40,7 +39,7 @@ class RcvMapping(Model):
             rcv_accession=rcv_accession,
             scv_accessions=scv_accessions,
             trait_set_id=rcv_trait_set["@ID"],
-            trait_set_content=rcv_trait_set
+            trait_set_content=rcv_trait_set,
         )
 
     def disassemble(self):
