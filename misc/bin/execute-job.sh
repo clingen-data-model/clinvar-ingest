@@ -116,7 +116,7 @@ fi
 
 
 env_vars="CLINVAR_INGEST_BUCKET=$CLINVAR_INGEST_BUCKET"
-if [[ -v "$CLINVAR_INGEST_SLACK_CHANNEL" ]]; then
+if [[ -v CLINVAR_INGEST_SLACK_CHANNEL ]]; then
     env_vars="$env_vars,CLINVAR_INGEST_SLACK_CHANNEL=$CLINVAR_INGEST_SLACK_CHANNEL"
 fi
 env_vars="$env_vars,host=$host"
