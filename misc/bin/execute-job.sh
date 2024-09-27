@@ -8,16 +8,10 @@
 
 
 set -xeo pipefail
-if [ -z "$release_tag" ]; then
-    release_tag="missing_release_tag" # ensure underscore separators for BQ naming
-else
-    echo "release_tag set in environment"
-fi
 
 if [ -z "$instance_name" ]; then
-    instance_name="clinvar-ingest-${release_tag}"
-else
-    echo "instance_name set in environment"
+    echo "Must set instance_name"
+    exit 1
 fi
 
 if [ "$JOB_WAIT" == "1" ]; then
@@ -26,7 +20,6 @@ else
     wait_opt="--async" # the default
 fi
 
-job_name=$instance_name
 region="us-east1"
 
 # Global Variables
@@ -119,6 +112,9 @@ env_vars="CLINVAR_INGEST_BUCKET=$CLINVAR_INGEST_BUCKET"
 if [[ -v CLINVAR_INGEST_SLACK_CHANNEL ]]; then
     env_vars="$env_vars,CLINVAR_INGEST_SLACK_CHANNEL=$CLINVAR_INGEST_SLACK_CHANNEL"
 fi
+if [[ -v CLINVAR_INGEST_RELEASE_TAG ]]; then
+    env_vars="$env_vars,CLINVAR_INGEST_RELEASE_TAG=$CLINVAR_INGEST_RELEASE_TAG"
+fi
 env_vars="$env_vars,host=$host"
 env_vars="$env_vars,directory=$directory"
 env_vars="$env_vars,name=$name"
@@ -128,7 +124,7 @@ env_vars="$env_vars,released=$released"
 env_vars="$env_vars,release_date=$release_date"
 env_vars="$env_vars,file_format=$file_format"
 
-gcloud run jobs execute $job_name \
+gcloud run jobs execute $instance_name \
     --region $region \
     $wait_opt \
     --update-env-vars=$env_vars

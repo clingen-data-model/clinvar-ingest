@@ -27,30 +27,29 @@
 
 set -xeo pipefail
 
-if [ -z "$release_tag" ]; then
-    release_tag="missing_release_tag" # ensure underscore separators for BQ naming
-else
-    echo "release_tag set in environment"
+if [ -z "$CLINVAR_INGEST_RELEASE_TAG" ]; then
+    echo "Must set CLINVAR_INGEST_RELEASE_TAG"
+    exit 1
 fi
 
-# Check if release_tag is only alphanumeric and underscores
-if [[ "$release_tag" =~ [^a-zA-Z0-9_] ]]; then
-    echo "The release_tag contains characters other than alphanumeric and underscores."
+# Check if CLINVAR_INGEST_RELEASE_TAG is only alphanumeric and underscores
+if [[ "$CLINVAR_INGEST_RELEASE_TAG" =~ [^a-zA-Z0-9_] ]]; then
+    echo "The CLINVAR_INGEST_RELEASE_TAG contains characters other than alphanumeric and underscores."
     exit 1
 fi
 
 if [ -z "$instance_name" ]; then
-    instance_name="clinvar-ingest-${release_tag}"
-    # Check if the variable contains only alphanumeric characters and hyphens
-    if [[ "$instance_name" =~ [^a-zA-Z0-9-] ]]; then
-        echo "The instance_name contains characters other than alphanumeric and hyphens."
-        exit 1
-    fi
-else
-    echo "instance_name set in environment"
+    echo "Must set instance_name"
+    exit 1
+fi
+# Check if instance_name contains only alphanumeric characters and hyphens
+if [[ "$instance_name" =~ [^a-zA-Z0-9-] ]]; then
+    echo "The instance_name contains characters other than alphanumeric and hyphens."
+    exit 1
 fi
 
-echo "Release tag: $release_tag"
+
+echo "Release tag: $CLINVAR_INGEST_RELEASE_TAG"
 echo "Instance name: $instance_name"
 
 if [ -n "$clinvar_ingest_cmd" ]; then
@@ -73,7 +72,7 @@ clinvar_ingest_bucket="clinvar-ingest-dev"
 
 region="us-east1"
 project=$(gcloud config get project)
-image_tag=workflow-py-${release_tag}
+image_tag=workflow-py-${CLINVAR_INGEST_RELEASE_TAG}
 image=gcr.io/clingen-dev/clinvar-ingest:$image_tag
 pipeline_service_account=clinvar-ingest-pipeline@clingen-dev.iam.gserviceaccount.com
 # deployment_service_account=clinvar-ingest-deployment@clingen-dev.iam.gserviceaccount.com
@@ -109,7 +108,8 @@ else
     command="create"
 fi
 
-env_vars="CLINVAR_INGEST_BUCKET=$clinvar_ingest_bucket,CLINVAR_INGEST_RELEASE_TAG=${release_tag}"
+env_vars="CLINVAR_INGEST_BUCKET=$clinvar_ingest_bucket"
+env_vars="$env_vars,CLINVAR_INGEST_RELEASE_TAG=${CLINVAR_INGEST_RELEASE_TAG}"
 if [ -n "$file_format" ]; then
     env_vars="$env_vars,file_format=${file_format}"
 fi
