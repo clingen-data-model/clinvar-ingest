@@ -13,6 +13,10 @@
     "type": "STRING"
   },
   {
+    "name": "trait_set_content",
+    "type": "STRING"
+  },
+  {
     "name": "release_date",
     "type": "DATE"
   }

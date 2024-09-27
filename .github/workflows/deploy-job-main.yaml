@@ -42,11 +42,11 @@ jobs:
         run: |
           bash misc/bin/deploy-job.sh
 
-      - name: run test pipeline
+      - name: run test vcv pipeline (without issuing slack messages)
         run: |
           export JOB_WAIT=1
           echo "JOB_WAIT=$JOB_WAIT" >> $GITHUB_ENV
-          bash misc/bin/execute-job.sh vcv-small
+          CLINVAR_INGEST_SLACK_CHANNEL='' bash misc/bin/execute-job.sh vcv-small
 
       ## Deploy + test RCV pipeline
       - name: set env vars
@@ -62,11 +62,11 @@ jobs:
         run: |
           bash misc/bin/deploy-job.sh
 
-      - name: run test pipeline
+      - name: run test rcv pipeline (without issuing slack messages)
         run: |
           export JOB_WAIT=1
           echo "JOB_WAIT=$JOB_WAIT" >> $GITHUB_ENV
-          bash misc/bin/execute-job.sh rcv-small
+          CLINVAR_INGEST_SLACK_CHANNEL='' bash misc/bin/execute-job.sh rcv-small
 
       ## Deploy copy-only pipeline
       - name: set env vars
