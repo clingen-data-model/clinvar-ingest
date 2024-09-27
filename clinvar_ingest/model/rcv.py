@@ -1,4 +1,5 @@
 import dataclasses
+import json
 from typing import List
 
 from clinvar_ingest.model.common import Model
@@ -15,10 +16,11 @@ class RcvMapping(Model):
     rcv_accession: str
     scv_accessions: List[str]
     trait_set_id: str
+    trait_set_content: dict
 
     @staticmethod
     def jsonifiable_fields() -> List[str]:
-        return []
+        return ["trait_set_content"]
 
     def __post_init__(self):
         self.entity_type = "rcv_mapping"
@@ -38,6 +40,7 @@ class RcvMapping(Model):
             rcv_accession=rcv_accession,
             scv_accessions=scv_accessions,
             trait_set_id=rcv_trait_set["@ID"],
+            trait_set_content=rcv_trait_set
         )
 
     def disassemble(self):
