@@ -31,11 +31,11 @@ jobs:
       ## Deploy + test VCV pipeline
       - name: set env vars
         run: |
-          export release_tag=${{ github.ref_name }}
+          export CLINVAR_INGEST_RELEASE_TAG=${{ github.ref_name }}
           export instance_name=clinvar-vcv-ingest
           export file_format=vcv
           echo "instance_name=$instance_name" >> $GITHUB_ENV
-          echo "release_tag=$release_tag" >> $GITHUB_ENV
+          echo "CLINVAR_INGEST_RELEASE_TAG=$CLINVAR_INGEST_RELEASE_TAG" >> $GITHUB_ENV
           echo "file_format=$file_format" >> $GITHUB_ENV
 
       - name: build and deploy
@@ -46,16 +46,18 @@ jobs:
         run: |
           export JOB_WAIT=1
           echo "JOB_WAIT=$JOB_WAIT" >> $GITHUB_ENV
-          CLINVAR_INGEST_SLACK_CHANNEL='' bash misc/bin/execute-job.sh vcv-small
+          # Override variables for testing.
+          # Send no slack message and write outputs to a directory including the github run number to avoid collisions.
+          CLINVAR_INGEST_SLACK_CHANNEL='' CLINVAR_INGEST_RELEASE_TAG="${CLINVAR_INGEST_RELEASE_TAG}_gh_${{ github.run_number }}" bash misc/bin/execute-job.sh vcv-small
 
       ## Deploy + test RCV pipeline
       - name: set env vars
         run: |
-          export release_tag=${{ github.ref_name }}
+          export CLINVAR_INGEST_RELEASE_TAG=${{ github.ref_name }}
           export instance_name=clinvar-rcv-ingest
           export file_format=rcv
           echo "instance_name=$instance_name" >> $GITHUB_ENV
-          echo "release_tag=$release_tag" >> $GITHUB_ENV
+          echo "CLINVAR_INGEST_RELEASE_TAG=$CLINVAR_INGEST_RELEASE_TAG" >> $GITHUB_ENV
           echo "file_format=$file_format" >> $GITHUB_ENV
 
       - name: build and deploy
@@ -66,17 +68,19 @@ jobs:
         run: |
           export JOB_WAIT=1
           echo "JOB_WAIT=$JOB_WAIT" >> $GITHUB_ENV
-          CLINVAR_INGEST_SLACK_CHANNEL='' bash misc/bin/execute-job.sh rcv-small
+          # Override variables for testing.
+          # Send no slack message and write outputs to a directory including the github run number to avoid collisions.
+          CLINVAR_INGEST_SLACK_CHANNEL='' CLINVAR_INGEST_RELEASE_TAG="${CLINVAR_INGEST_RELEASE_TAG}_gh_${{ github.run_number }}" bash misc/bin/execute-job.sh rcv-small
 
       ## Deploy copy-only pipeline
       - name: set env vars
         run: |
-          export release_tag=${{ github.ref_name }}
+          export CLINVAR_INGEST_RELEASE_TAG=${{ github.ref_name }}
           export instance_name=clinvar-ingest-copy-only
           export file_format=vcv
           export clinvar_ingest_cmd=python,/app/workflow-copy-only.py
           echo "instance_name=$instance_name" >> $GITHUB_ENV
-          echo "release_tag=$release_tag" >> $GITHUB_ENV
+          echo "CLINVAR_INGEST_RELEASE_TAG=$CLINVAR_INGEST_RELEASE_TAG" >> $GITHUB_ENV
           echo "clinvar_ingest_cmd=$clinvar_ingest_cmd" >> $GITHUB_ENV
           echo "file_format=$file_format" >> $GITHUB_ENV
 
@@ -84,20 +88,14 @@ jobs:
         run: |
           bash misc/bin/deploy-job.sh
 
-      # - name: run test pipeline
-      #   run: |
-      #     export JOB_WAIT=1
-      #     echo "JOB_WAIT=$JOB_WAIT" >> $GITHUB_ENV
-      #     bash misc/bin/execute-job.sh rcv-small
-
       ## Deploy BQ Ingest pipeline
       - name: set env vars
         run: |
-          export release_tag=${{ github.ref_name }}
+          export CLINVAR_INGEST_RELEASE_TAG=${{ github.ref_name }}
           export instance_name=clinvar-bq-ingest
           export clinvar_ingest_cmd=python,/app/bq_ingester.py
           echo "instance_name=$instance_name" >> $GITHUB_ENV
-          echo "release_tag=$release_tag" >> $GITHUB_ENV
+          echo "CLINVAR_INGEST_RELEASE_TAG=$CLINVAR_INGEST_RELEASE_TAG" >> $GITHUB_ENV
           echo "clinvar_ingest_cmd=$clinvar_ingest_cmd" >> $GITHUB_ENV
 
       - name: build and deploy
