@@ -13,7 +13,7 @@ def test_variation_descendant_tree_genotype_with_haplotypes():
     with open("test/data/VCV000634266.xml") as inp:
         inp_xml = inp.read()
     inp = xmltodict.parse(inp_xml)
-    inp = inp["ClinVarVariationRelease"]["VariationArchive"]["InterpretedRecord"]
+    inp = inp["ClinVarVariationRelease"]["VariationArchive"]["ClassifiedRecord"]
 
     descendant_tree = Variation.descendant_tree(inp)
     expected_tree = [
@@ -106,7 +106,7 @@ def test_variation_descendant_tree_haploytpe_with_alleles():
     with open("test/data/VCV000040200.xml") as inp:
         inp_xml = inp.read()
     inp = xmltodict.parse(inp_xml)
-    inp = inp["ClinVarVariationRelease"]["VariationArchive"]["InterpretedRecord"]
+    inp = inp["ClinVarVariationRelease"]["VariationArchive"]["ClassifiedRecord"]
 
     descendant_tree = Variation.descendant_tree(inp)
     expected_tree = [
@@ -121,7 +121,7 @@ def test_variation_get_all_children():
     with open("test/data/VCV000634266.xml") as inp:
         inp_xml = inp.read()
     inp = xmltodict.parse(inp_xml)
-    inp = inp["ClinVarVariationRelease"]["VariationArchive"]["InterpretedRecord"]
+    inp = inp["ClinVarVariationRelease"]["VariationArchive"]["ClassifiedRecord"]
 
     descendant_tree = Variation.descendant_tree(inp)
     children = Variation.get_all_children(descendant_tree)
@@ -133,7 +133,7 @@ def test_variation_get_all_descendants():
     with open("test/data/VCV000634266.xml") as inp:
         inp_xml = inp.read()
     inp = xmltodict.parse(inp_xml)
-    inp = inp["ClinVarVariationRelease"]["VariationArchive"]["InterpretedRecord"]
+    inp = inp["ClinVarVariationRelease"]["VariationArchive"]["ClassifiedRecord"]
 
     descendant_tree = Variation.descendant_tree(inp)
     descendants = Variation.get_all_descendants(descendant_tree)
@@ -147,7 +147,7 @@ def test_clinical_assertion_variation_descendants():
 
     inp = xmltodict.parse(inp_xml)
     interp_record = inp["ClinVarVariationRelease"]["VariationArchive"][
-        "InterpretedRecord"
+        "ClassifiedRecord"
     ]
     clinical_assertion_list = interp_record["ClinicalAssertionList"][
         "ClinicalAssertion"
@@ -175,7 +175,7 @@ def test_clinical_assertion_variation_descendants_genotype():
 
     inp = xmltodict.parse(inp_xml)
     interp_record = inp["ClinVarVariationRelease"]["VariationArchive"][
-        "InterpretedRecord"
+        "ClassifiedRecord"
     ]
     clinical_assertion_list = interp_record["ClinicalAssertionList"][
         "ClinicalAssertion"
