@@ -221,25 +221,28 @@ def test_trait_from_xml_3510():
         content = f.read()
     root = _parse_xml_document(content)
     release = root["ClinVarVariationRelease"]
-    interp_record = release["VariationArchive"]["InterpretedRecord"]
+    interp_record = release["VariationArchive"]["ClassifiedRecord"]
     rcv_id = interp_record["RCVList"]["RCVAccession"]["@Accession"]
-    interp = interp_record["Interpretations"]["Interpretation"]
+    interp = interp_record["Classifications"]["GermlineClassification"]
     interp_traitset = interp["ConditionList"]["TraitSet"]
     raw_trait = interp_traitset["Trait"]  # only 1 trait in this example
 
     trait = Trait.from_xml(raw_trait, rcv_id)
     assert trait.id == "3510"
     assert trait.rcv_id == "RCV000005175"
+    assert trait.gard_id == 5289
 
     # This trait has an attribute_content array because it has multiple GARD ids
+    # The first GARD ID is the one that is used as the trait's GARD ID,
+    # and the rest are stored in the attribute_content array
     assert len(trait.attribute_content) == 1
     assert trait.attribute_content == [
         {
             "Attribute": {
                 "@Type": "GARD id",
-                "@integerValue": "5289",
+                "@integerValue": "4260",
             },
-            "XRef": {"@ID": "5289", "@DB": "Office of Rare Diseases"},
+            "XRef": {"@ID": "4260", "@DB": "Office of Rare Diseases"},
         }
     ]
 
