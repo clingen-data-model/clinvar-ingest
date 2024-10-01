@@ -1,18 +1,16 @@
-from typing import List
-
 from clinvar_ingest.model.common import dictify
 from clinvar_ingest.model.trait import Trait, TraitMapping, TraitSet
 from clinvar_ingest.reader import _parse_xml_document
 from clinvar_ingest.utils import ensure_list
 
 
-def unordered_dict_list_equal(list1: List[dict], list2: List[dict]) -> bool:
+def unordered_dict_list_equal(list1: list[dict], list2: list[dict]) -> bool:
     set1 = set([tuple(elem.items()) for elem in list1])
     set2 = set([tuple(elem.items()) for elem in list2])
     return len(list1) == len(list2) and set1 == set2
 
 
-def distinct_dict_set(list1: List[dict]) -> List[dict]:
+def distinct_dict_set(list1: list[dict]) -> list[dict]:
     """
     N^2 algorithm to remove duplicates from a list of dicts
     """
@@ -357,7 +355,7 @@ def test_trait_mapping_10():
         content = f.read()
     root = _parse_xml_document(content)
     release = root["ClinVarVariationRelease"]
-    interp_record = release["VariationArchive"]["InterpretedRecord"]
+    interp_record = release["VariationArchive"]["ClassifiedRecord"]
     clinical_assertion_id_to_accession = {
         clinical_assertion["@ID"]: clinical_assertion["ClinVarAccession"]["@Accession"]
         for clinical_assertion in ensure_list(
@@ -365,10 +363,10 @@ def test_trait_mapping_10():
         )
     }
     trait_mappings_raw = ensure_list(interp_record["TraitMappingList"]["TraitMapping"])
-    assert len(trait_mappings_raw) == 344
+    assert len(trait_mappings_raw) == 353
 
     trait_mappings_raw_distinct = distinct_dict_set(trait_mappings_raw)
-    assert len(trait_mappings_raw_distinct) == 175
+    assert len(trait_mappings_raw_distinct) == 185
 
     trait_mappings = [
         TraitMapping.from_xml(raw, clinical_assertion_id_to_accession)
