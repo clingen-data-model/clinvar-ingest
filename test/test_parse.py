@@ -153,7 +153,7 @@ def test_read_original_clinvar_variation_634266(log_conf):
     with open(filename) as f:
         objects = list(read_clinvar_vcv_xml(f))
 
-    assert len(objects) == 70
+    assert len(objects) == 71
     expected_types = [
         Variation,
         TraitMapping,
@@ -224,6 +224,7 @@ def test_read_original_clinvar_variation_634266(log_conf):
         RcvAccession,
         RcvAccession,
         RcvAccession,
+        VariationArchiveClassification,
         VariationArchive,
     ]
 
@@ -258,14 +259,9 @@ def test_read_original_clinvar_variation_634266(log_conf):
     assert variation_archive.date_created == "2019-06-17"
     assert variation_archive.record_status == "current"
     assert variation_archive.species == "Homo sapiens"
-    assert variation_archive.review_status == "practice guideline"
-    assert variation_archive.interp_description == "drug response"
     assert variation_archive.num_submitters == 1
     assert variation_archive.num_submissions == 4
-    assert variation_archive.date_last_updated == "2023-10-07"
-    assert variation_archive.interp_type == "Clinical significance"
-    assert variation_archive.interp_explanation is None
-    assert variation_archive.interp_date_last_evaluated is None
+    assert variation_archive.date_last_updated == "2024-07-29"
     # assert variation_archive.interp_content
     # assert variation_archive.content
     assert variation_archive.variation_id == "634266"
@@ -279,6 +275,17 @@ def test_read_original_clinvar_variation_634266(log_conf):
         ]
         == "CYP2C19"
     )
+
+    # test for variationarchiveclassification
+    classification = [
+        o for o in objects if isinstance(o, VariationArchiveClassification)
+    ]
+    assert len(classification) == 1
+    classification = classification[0]
+    assert classification.entity_type == "variation_archive_classification"
+    assert classification.review_status == "practice guideline"
+    assert classification.interp_description == "drug response"
+    assert classification.date_last_evaluated is None
 
     # SCVs - TODO build out further
     # SCV 1
@@ -443,15 +450,52 @@ def test_read_original_clinvar_variation_1264328():
     with open(filename) as f:
         objects = list(read_clinvar_vcv_xml(f))
 
-    assert 6 == len(objects)
-    assert isinstance(objects[0], Variation)
-    assert isinstance(objects[1], Gene)
-    assert isinstance(objects[2], GeneAssociation)
-    assert isinstance(objects[3], Gene)
-    assert isinstance(objects[4], GeneAssociation)
-    assert isinstance(objects[5], VariationArchive)
+    assert 18 == len(objects)
+    # assert isinstance(objects[0], Variation)
+    # assert isinstance(objects[1], Gene)
+    # assert isinstance(objects[2], GeneAssociation)
+    # assert isinstance(objects[3], Gene)
+    # assert isinstance(objects[4], GeneAssociation)
+    # assert isinstance(objects[5], VariationArchive)
+    expected_types = [
+        Variation,
+        Gene,
+        GeneAssociation,
+        Gene,
+        GeneAssociation,
+        TraitMapping,
+        Trait,
+        TraitSet,
+        Submitter,
+        Submission,
+        ClinicalAssertionObservation,
+        ClinicalAssertionTrait,
+        ClinicalAssertionTraitSet,
+        ClinicalAssertion,
+        ClinicalAssertionVariation,
+        RcvAccession,
+        VariationArchiveClassification,
+        VariationArchive,
+    ]
+
+    for i, obj in enumerate(objects):
+        assert isinstance(
+            obj, expected_types[i]
+        ), f"Expected {expected_types[i]} at index {i}, got {type(obj)}"
+
     clinical_assertions = [obj for obj in objects if isinstance(obj, ClinicalAssertion)]
-    assert 0 == len(clinical_assertions)
+    assert 1 == len(clinical_assertions)
+
+    # test for variationarchiveclassification
+    classification = [
+        o for o in objects if isinstance(o, VariationArchiveClassification)
+    ]
+    assert len(classification) == 1
+    classification = classification[0]
+    assert classification.entity_type == "variation_archive_classification"
+    assert classification.review_status == "criteria provided, single submitter"
+    assert classification.interp_description == "Pathogenic"
+    assert classification.date_last_evaluated == "2023-09-12"
 
 
 def test_read_original_clinvar_variation_10():
