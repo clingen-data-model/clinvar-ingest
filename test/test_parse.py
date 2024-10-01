@@ -507,7 +507,10 @@ def test_read_original_clinvar_variation_10():
     with open(filename) as f:
         objects = list(read_clinvar_vcv_xml(f))
 
-    scv372036 = [o for o in objects if isinstance(o, ClinicalAssertion)][0]
+    scvs = [o for o in objects if isinstance(o, ClinicalAssertion)]
+    assert len(scvs) == 50
+
+    scv372036 = [o for o in scvs if o.internal_id == "372036"][0]
     assert scv372036.internal_id == "372036"
     scv372036_trait_set = [
         o
@@ -541,6 +544,23 @@ def test_read_original_clinvar_variation_10():
     # Name
     # assert scv372036_traits[0].name == "Hereditary hemochromatosis"
     assert scv372036_traits[0].name is None
+
+    classification = [
+        o for o in objects if isinstance(o, VariationArchiveClassification)
+    ]
+    assert len(classification) == 1
+    classification = classification[0]
+    assert (
+        classification.review_status
+        == "criteria provided, multiple submitters, no conflicts"
+    )
+    assert (
+        classification.interp_description
+        == "Pathogenic/Likely pathogenic/Pathogenic, low penetrance; other"
+    )
+    assert classification.num_submissions == 50
+    assert classification.num_submitters == 49
+    assert classification.date_last_evaluated == "2024-03-26"
 
     # Check an observation with a trait
     # ClinicalAssertion ID="3442424"
