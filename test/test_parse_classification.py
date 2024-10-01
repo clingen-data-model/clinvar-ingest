@@ -138,3 +138,11 @@ def test_vcv_VCV000000002():
     assert rcv.variation_archive_id == "VCV000000002"
     assert rcv.version == 5
     assert rcv.version == 5
+
+
+def test_vcv_VCV000013961():
+    filename = "test/data/multi-classification/VCV000013961.xml"
+    with open(filename) as f:
+        objects = list(read_clinvar_vcv_xml(f))
+
+    assert False

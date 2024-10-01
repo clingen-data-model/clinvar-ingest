@@ -40,7 +40,12 @@ def parse_args(argv) -> dict:
     return parsed
 
 
-def get_classifications(variation_archive_elem):
+def get_classifications(variation_archive_elem: ET.Element) -> list[ET.Element]:
+    """
+    Get each classification element from the Classifications element of a VariationArchive element.
+    Includes only those in ClassifiedRecords, not IncludedRecords, since IncludedRecord
+    adds empty placeholders for missing classifications.
+    """
 
     classifications = variation_archive_elem.find("ClassifiedRecord/Classifications")
     # if classifications is None:
@@ -61,8 +66,8 @@ def main(opts):
     Main entrypoint for CLI.
     """
     with gzip.open(opts["input_filename"], "rt") as f_in:
-        # Use ElementTree to iterate over f_in, and when a VariationArchive
-        # element is completed, write it to f_out.
+        # Use ElementTree to iterate over f_in, and when a VariationArchive meets
+        # the criteria write it to a file.
         opening_tag = None
         closing_tag = "</ClinVarVariationRelease>"
         item_count = 0

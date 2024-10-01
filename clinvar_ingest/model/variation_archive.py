@@ -1039,7 +1039,6 @@ class VariationArchive(Model):
                 extract(interp_record, "RCVList", "RCVAccession") or []
             )
         ]
-        # TODO update ClinicalAssertion to include Classification
         raw_clinical_assertions = ensure_list(
             extract(
                 extract(interp_record, "ClinicalAssertionList"),
