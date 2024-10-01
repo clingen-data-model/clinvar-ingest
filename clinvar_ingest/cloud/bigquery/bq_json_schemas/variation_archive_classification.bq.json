@@ -28,6 +28,10 @@
     "type": "DATE"
   },
   {
+    "name": "date_last_evaluated",
+    "type": "DATE"
+  },
+  {
     "name": "clinical_impact_assertion_type",
     "type": "STRING"
   },

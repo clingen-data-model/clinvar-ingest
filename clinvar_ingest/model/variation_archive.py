@@ -922,6 +922,7 @@ class VariationArchiveClassification(Model):
     num_submitters: int | None
     num_submissions: int | None
     date_created: str
+    date_last_evaluated: str
     interp_description: str
     most_recent_submission: str
 
@@ -953,6 +954,7 @@ class VariationArchiveClassification(Model):
             date_created=sanitize_date(extract(inp, "@DateCreated")),
             interp_description=extract(interp_description, "$"),
             most_recent_submission=sanitize_date(extract(inp, "@MostRecentSubmission")),
+            date_last_evaluated=sanitize_date(extract(inp, "@DateLastEvaluated")),
             clinical_impact_assertion_type=extract(
                 interp_description, "@ClinicalImpactAssertionType"
             ),
