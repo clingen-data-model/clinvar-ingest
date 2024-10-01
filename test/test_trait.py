@@ -252,9 +252,9 @@ def test_trait_from_xml_406155():
         content = f.read()
     root = _parse_xml_document(content)
     release = root["ClinVarVariationRelease"]
-    interp_record = release["VariationArchive"]["InterpretedRecord"]
+    interp_record = release["VariationArchive"]["ClassifiedRecord"]
     rcv_id = interp_record["RCVList"]["RCVAccession"]["@Accession"]
-    interp = interp_record["Interpretations"]["Interpretation"]
+    interp = interp_record["Classifications"]["GermlineClassification"]
     interp_traitset = interp["ConditionList"]["TraitSet"]
     raw_trait = interp_traitset["Trait"]  # only 1 trait in this example
 
