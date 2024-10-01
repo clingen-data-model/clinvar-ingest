@@ -284,75 +284,72 @@ def test_trait_set_from_xml_10():
         content = f.read()
     root = _parse_xml_document(content)
     release = root["ClinVarVariationRelease"]
-    interp_record = release["VariationArchive"]["InterpretedRecord"]
+    interp_record = release["VariationArchive"]["ClassifiedRecord"]
     rcv_accessions = interp_record["RCVList"]["RCVAccession"]
-    interp = interp_record["Interpretations"]["Interpretation"]
+    interp = interp_record["Classifications"]["GermlineClassification"]
     interp_traitset = ensure_list(interp["ConditionList"]["TraitSet"])
 
     trait_set_id_to_rcv_id = {
-        r["InterpretedConditionList"]["@TraitSetID"]: r["@Accession"]
+        r["ClassifiedConditionList"]["@TraitSetID"]: r["@Accession"]
         for r in rcv_accessions
     }
     trait_sets = [
         TraitSet.from_xml(raw_traitset, trait_set_id_to_rcv_id[raw_traitset["@ID"]])
         for raw_traitset in interp_traitset
     ]
-    assert len(trait_sets) == 11
+    assert len(trait_sets) == 10
     assert [ts.id for ts in trait_sets] == [
         "55473",
-        "7",
-        "13451",
-        "21210",
         "9460",
-        "9590",
         "8589",
+        "16994",
+        "13451",
+        "9590",
+        "7",
+        "21210",
         "2387",
         "1961",
-        "52490",
-        "16994",
     ]
     assert [ts.rcv_id for ts in trait_sets] == [
         "RCV001248831",
-        "RCV000000026",
-        "RCV000763144",
-        "RCV000394716",
         "RCV000175607",
-        "RCV000844708",
         "RCV001731265",
+        "RCV004584302",
+        "RCV000763144",
+        "RCV000844708",
+        "RCV000000026",
+        "RCV000394716",
         "RCV002272003",
         "RCV000991133",
-        "RCV002227011",
-        "RCV002251839",
     ]
     assert [ts.type for ts in trait_sets] == [
         "Disease",
         "Disease",
         "Disease",
-        "Disease",
-        "Disease",
-        "Disease",
-        "Disease",
-        "Disease",
-        "Disease",
-        "Finding",
         "PhenotypeInstruction",
+        "Disease",
+        "Disease",
+        "Disease",
+        "Disease",
+        "Disease",
+        "Disease",
     ]
 
     # test traits
-    ts13451 = trait_sets[2]
+    ts13451 = trait_sets[4]
     assert ts13451.id == "13451"
     assert len(ts13451.traits) == 6
     assert [t.id for t in ts13451.traits] == [
+        "5535",
         "3370",
-        "222",
+        "9587",
         "9601",
         "9582",
-        "9587",
-        "5535",
+        "222",
     ]
 
     # test content
-    assert ts13451.content == {"@ContributesToAggregateClinsig": "true"}
+    assert ts13451.content == {"@ContributesToAggregateClassification": "true"}
 
 
 def test_trait_mapping_10():
