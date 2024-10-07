@@ -11,7 +11,7 @@ def test_parse(log_conf):
     with open(filename, "r", encoding="utf-8") as f:
         objects = list(read_clinvar_vcv_xml(f))
 
-    assert len(objects) == 18
+    assert len(objects) == 19
 
     clinical_assertion_variations: list[ClinicalAssertionVariation] = [
         o for o in objects if o.entity_type == "clinical_assertion_variation"  # type: ignore

@@ -14,6 +14,7 @@ from clinvar_ingest.model.variation_archive import (
     Gene,
     GeneAssociation,
     RcvAccession,
+    RcvAccessionClassification,
     Submission,
     Submitter,
     Variation,
@@ -33,7 +34,7 @@ def test_read_original_clinvar_variation_2():
         objects = list(read_clinvar_vcv_xml(f))
 
     # print("\n".join([str(dictify(o)) for o in objects]))
-    assert len(objects) == 24
+    assert len(objects) == 25
     expected_types = [
         Variation,
         Gene,
@@ -56,6 +57,7 @@ def test_read_original_clinvar_variation_2():
         ClinicalAssertionTraitSet,
         ClinicalAssertion,
         ClinicalAssertionVariation,
+        RcvAccessionClassification,
         RcvAccession,
         VariationArchiveClassification,
         VariationArchive,
@@ -134,15 +136,27 @@ def test_read_original_clinvar_variation_2():
     assert rcv.id == "RCV000000012"
     assert rcv.variation_archive_id == "VCV000000002"
     assert rcv.variation_id == "2"
-    assert rcv.date_last_evaluated is None
     assert rcv.version == 5
     assert (
         rcv.title
         == "NM_014855.3(AP5Z1):c.80_83delinsTGCTGTAAACTGTAACTGTAAA (p.Arg27_Ile28delinsLeuLeuTer) AND Hereditary spastic paraplegia 48"
     )
     assert rcv.trait_set_id == "2"
-    assert rcv.review_status == "criteria provided, single submitter"
-    assert rcv.interpretation == "Pathogenic"
+
+    # Rcv Accession Classification
+    rcv_classification: RcvAccessionClassification = list(
+        filter(lambda o: isinstance(o, RcvAccessionClassification), objects)
+    )
+    assert len(rcv_classification) == 1
+    rcv_classification = rcv_classification[0]
+    assert rcv_classification.rcv_id == "RCV000000012"
+    assert rcv_classification.statement_type == "GermlineClassification"
+    assert rcv_classification.review_status == "criteria provided, single submitter"
+    assert rcv_classification.interp_description == "Pathogenic"
+    assert rcv_classification.date_last_evaluated is None
+    assert rcv_classification.num_submissions == 2
+    assert rcv_classification.clinical_impact_assertion_type is None
+    assert rcv_classification.clinical_impact_clinical_significance is None
 
 
 def test_read_original_clinvar_variation_634266(log_conf):
