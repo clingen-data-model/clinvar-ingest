@@ -149,7 +149,7 @@ def test_vcv_VCV000000002():
 
 
 def test_rcv_multi_classifications():
-    filename = "test/data/multi-classification/VCV000013961.xml"
+    filename = "test/data/VCV000013961.xml"
     with open(filename) as f:
         objects = list(read_clinvar_vcv_xml(f))
 

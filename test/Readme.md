@@ -54,3 +54,10 @@ The comprehensive [OriginalTestDataSet.xml.gz](data/OriginalTestDataSet.xml.gz) 
 ## New XML Test Data Set (Germline | SomaticImpact | Oncogenicity Classifications)
 
    - TBD
+
+
+## New XML RCVs with Multiple Classifications
+- test/data/multi-classification/VCV000013961.xml
+- test/data/multi-classification/VCV000097006.xml
+- test/data/multi-classification/VCV000177881.xml
+- test/data/multi-classification/VCV000375881.xml
