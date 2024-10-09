@@ -167,7 +167,7 @@ def test_read_original_clinvar_variation_634266(log_conf):
     with open(filename) as f:
         objects = list(read_clinvar_vcv_xml(f))
 
-    assert len(objects) == 71
+    assert len(objects) == 75
     expected_types = [
         Variation,
         TraitMapping,
@@ -234,9 +234,13 @@ def test_read_original_clinvar_variation_634266(log_conf):
         ClinicalAssertionVariation,
         ClinicalAssertionVariation,
         ClinicalAssertionVariation,
+        RcvAccessionClassification,
         RcvAccession,
+        RcvAccessionClassification,
         RcvAccession,
+        RcvAccessionClassification,
         RcvAccession,
+        RcvAccessionClassification,
         RcvAccession,
         VariationArchiveClassification,
         VariationArchive,
@@ -464,13 +468,7 @@ def test_read_original_clinvar_variation_1264328():
     with open(filename) as f:
         objects = list(read_clinvar_vcv_xml(f))
 
-    assert 18 == len(objects)
-    # assert isinstance(objects[0], Variation)
-    # assert isinstance(objects[1], Gene)
-    # assert isinstance(objects[2], GeneAssociation)
-    # assert isinstance(objects[3], Gene)
-    # assert isinstance(objects[4], GeneAssociation)
-    # assert isinstance(objects[5], VariationArchive)
+    assert len(objects) == 19
     expected_types = [
         Variation,
         Gene,
@@ -487,6 +485,7 @@ def test_read_original_clinvar_variation_1264328():
         ClinicalAssertionTraitSet,
         ClinicalAssertion,
         ClinicalAssertionVariation,
+        RcvAccessionClassification,
         RcvAccession,
         VariationArchiveClassification,
         VariationArchive,
@@ -498,7 +497,7 @@ def test_read_original_clinvar_variation_1264328():
         ), f"Expected {expected_types[i]} at index {i}, got {type(obj)}"
 
     clinical_assertions = [obj for obj in objects if isinstance(obj, ClinicalAssertion)]
-    assert 1 == len(clinical_assertions)
+    assert len(clinical_assertions) == 1
 
     # test for variationarchiveclassification
     classification = [
