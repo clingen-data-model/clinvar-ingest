@@ -2,6 +2,7 @@ from clinvar_ingest.model.common import dictify
 from clinvar_ingest.model.variation_archive import (
     ClinicalAssertion,
     RcvAccession,
+    RcvAccessionClassification,
     StatementType,
     VariationArchive,
     VariationArchiveClassification,
@@ -120,16 +121,12 @@ def test_vcv_VCV000000002():
     rcvs = [o for o in objects if isinstance(o, RcvAccession)]
     assert len(rcvs) == 1
     rcv: RcvAccession = rcvs[0]
-    assert rcv.clinical_impact_assertion_type is None
-    assert rcv.clinical_impact_clinical_significance is None
-    assert rcv.date_last_evaluated is None
+    # assert rcv.clinical_impact_assertion_type is None
+    # assert rcv.clinical_impact_clinical_significance is None
+    # assert rcv.date_last_evaluated is None
     assert rcv.entity_type == "rcv_accession"
     assert rcv.id == "RCV000000012"
     assert rcv.independent_observations is None
-    assert rcv.interpretation == "Pathogenic"
-    assert rcv.review_status == "criteria provided, single submitter"
-    assert rcv.statement_type == StatementType.GermlineClassification
-    assert rcv.submission_count is None
     assert (
         rcv.title
         == "NM_014855.3(AP5Z1):c.80_83delinsTGCTGTAAACTGTAACTGTAAA (p.Arg27_Ile28delinsLeuLeuTer) AND Hereditary spastic paraplegia 48"
@@ -137,7 +134,25 @@ def test_vcv_VCV000000002():
     assert rcv.trait_set_id == "2"
     assert rcv.variation_archive_id == "VCV000000002"
     assert rcv.version == 5
-    assert rcv.version == 5
+
+    # RCV Classification
+    rcv_classifications = [
+        o for o in objects if isinstance(o, RcvAccessionClassification)
+    ]
+    assert len(rcv_classifications) == 1
+    rcv_classification: RcvAccessionClassification = rcv_classifications[0]
+    assert rcv_classification.entity_type == "rcv_accession_classification"
+    assert rcv_classification.statement_type == StatementType.GermlineClassification
+    assert rcv_classification.clinical_impact_assertion_type is None
+    assert rcv_classification.clinical_impact_clinical_significance is None
+    assert rcv_classification.date_last_evaluated is None
+    assert rcv_classification.num_submissions == 2
+    assert rcv_classification.interp_description == "Pathogenic"
+    assert rcv_classification.review_status == "criteria provided, single submitter"
+
+
+def test_rcv_multi_classifications():
+    assert False
 
 
 def test_vcv_VCV000013961():
