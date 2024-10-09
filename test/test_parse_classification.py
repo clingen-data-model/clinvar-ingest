@@ -15,9 +15,6 @@ def test_vcv_VCV000000002():
     with open(filename) as f:
         objects = list(read_clinvar_vcv_xml(f))
 
-    # for obj in objects:
-    #     print(dictify(obj))
-
     vcv_classification = [
         o for o in objects if isinstance(o, VariationArchiveClassification)
     ]
@@ -152,12 +149,81 @@ def test_vcv_VCV000000002():
 
 
 def test_rcv_multi_classifications():
-    assert False
-
-
-def test_vcv_VCV000013961():
     filename = "test/data/multi-classification/VCV000013961.xml"
     with open(filename) as f:
         objects = list(read_clinvar_vcv_xml(f))
 
-    assert False
+    rcvs = [o for o in objects if isinstance(o, RcvAccession)]
+    assert len(rcvs) == 30
+
+    rcv_classifications = [
+        o for o in objects if isinstance(o, RcvAccessionClassification)
+    ]
+    assert len(rcv_classifications) == 32
+    # Germline + Somatic
+    # RCV000067669
+    RCV000067669 = [o for o in rcvs if o.id == "RCV000067669"]
+    assert len(RCV000067669) == 1
+    RCV000067669 = RCV000067669[0]
+    RCV000067669_classifications = [
+        o for o in rcv_classifications if o.rcv_id == "RCV000067669"
+    ]
+    assert len(RCV000067669_classifications) == 2
+    RCV000067669_c0 = RCV000067669_classifications[0]
+    assert RCV000067669_c0.statement_type == StatementType.GermlineClassification
+    assert RCV000067669_c0.interp_description == "Pathogenic"
+    assert RCV000067669_c0.review_status == "no assertion criteria provided"
+    assert RCV000067669_c0.date_last_evaluated == "2016-03-10"
+    assert RCV000067669_c0.num_submissions == 2
+
+    RCV000067669_c1 = RCV000067669_classifications[1]
+    assert RCV000067669_c1.statement_type == StatementType.SomaticClinicalImpact
+    assert RCV000067669_c1.interp_description == "Tier I - Strong"
+    assert RCV000067669_c1.review_status == "criteria provided, multiple submitters"
+    assert RCV000067669_c1.date_last_evaluated == "2018-05-15"
+    assert RCV000067669_c1.num_submissions == 2
+    assert RCV000067669_c1.clinical_impact_assertion_type == "therapeutic"
+    assert (
+        RCV000067669_c1.clinical_impact_clinical_significance == "sensitivity/response"
+    )
+
+    # Germline + Oncogenicity
+    # RCV000443448
+    RCV000443448 = [o for o in rcvs if o.id == "RCV000443448"]
+    assert len(RCV000443448) == 1
+    RCV000443448 = RCV000443448[0]
+    RCV000443448_classifications = [
+        o for o in rcv_classifications if o.rcv_id == RCV000443448.id
+    ]
+    assert len(RCV000443448_classifications) == 2
+    RCV000443448_c0 = RCV000443448_classifications[0]
+    assert RCV000443448_c0.statement_type == StatementType.GermlineClassification
+    assert RCV000443448_c0.interp_description == "Likely pathogenic"
+    assert RCV000443448_c0.review_status == "no assertion criteria provided"
+    assert RCV000443448_c0.date_last_evaluated == "2016-05-13"
+    assert RCV000443448_c0.num_submissions == 1
+
+    RCV000443448_c1 = RCV000443448_classifications[1]
+    assert RCV000443448_c1.statement_type == StatementType.OncogenicityClassification
+    assert RCV000443448_c1.interp_description == "Oncogenic"
+    assert RCV000443448_c1.review_status == "criteria provided, single submitter"
+    assert RCV000443448_c1.date_last_evaluated == "2024-07-31"
+    assert RCV000443448_c1.num_submissions == 1
+
+    # Somatic alone
+    # RCV001030023
+    RCV001030023 = [o for o in rcvs if o.id == "RCV001030023"]
+    assert len(RCV001030023) == 1
+    RCV001030023 = RCV001030023[0]
+    RCV001030023_classifications = [
+        o for o in rcv_classifications if o.rcv_id == RCV001030023.id
+    ]
+    assert len(RCV001030023_classifications) == 1
+    RCV001030023_c0 = RCV001030023_classifications[0]
+    assert RCV001030023_c0.statement_type == StatementType.SomaticClinicalImpact
+    assert RCV001030023_c0.interp_description == "Tier I - Strong"
+    assert RCV001030023_c0.review_status == "criteria provided, single submitter"
+    assert RCV001030023_c0.date_last_evaluated == "2019-02-28"
+    assert RCV001030023_c0.num_submissions == 1
+    assert RCV001030023_c0.clinical_impact_assertion_type == "prognostic"
+    assert RCV001030023_c0.clinical_impact_clinical_significance == "poor outcome"

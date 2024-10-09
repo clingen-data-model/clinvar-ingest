@@ -72,7 +72,6 @@ def main(opts):
         closing_tag = "</ClinVarVariationRelease>"
         item_count = 0
         item_limit = opts["max_count"]
-        found_accessions = set()
         for event, elem in ET.iterparse(f_in, events=["start", "end"]):
             if event == "end" and elem.tag == "VariationArchive":
                 # Check if the VCV accession is in the filter list
