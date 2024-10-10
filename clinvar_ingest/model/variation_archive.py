@@ -1073,7 +1073,10 @@ class VariationArchive(Model):
         # TODO don't include empty classifications from IncludedRecord
         # Find a submitted Haplotype with a SimpleAllele IncludedRecord with a non-empty Classification
 
-        interp_record = inp.get("ClassifiedRecord", inp.get("IncludedRecord"))
+        record_type = (
+            "ClassifiedRecord" if "ClassifiedRecord" in inp else "IncludedRecord"
+        )
+        interp_record = inp[record_type]
 
         variation = Variation.from_xml(interp_record, vcv_accession)
         rcv_accessions = [
@@ -1111,7 +1114,10 @@ class VariationArchive(Model):
             )
         ]
         # Collect TraitSet dicts from each Classification type
-        raw_classifications = extract(interp_record, "Classifications")
+        if record_type == "ClassifiedRecord":
+            raw_classifications = extract(interp_record, "Classifications")
+        else:
+            raw_classifications = {}
         raw_classification_types = set([r.value for r in StatementType]).intersection(
             set(raw_classifications.keys())
         )
