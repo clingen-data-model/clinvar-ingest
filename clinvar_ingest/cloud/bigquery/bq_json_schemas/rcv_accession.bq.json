@@ -1,13 +1,5 @@
 [
   {
-    "name": "independent_observations",
-    "type": "INTEGER"
-  },
-  {
-    "name": "variation_id",
-    "type": "STRING"
-  },
-  {
     "name": "release_date",
     "type": "DATE"
   },
@@ -16,12 +8,16 @@
     "type": "STRING"
   },
   {
-    "name": "variation_archive_id",
+    "name": "variation_id",
     "type": "STRING"
   },
   {
-    "name": "date_last_evaluated",
-    "type": "DATE"
+    "name": "independent_observations",
+    "type": "INTEGER"
+  },
+  {
+    "name": "variation_archive_id",
+    "type": "STRING"
   },
   {
     "name": "version",
@@ -36,31 +32,7 @@
     "type": "STRING"
   },
   {
-    "name": "review_status",
-    "type": "STRING"
-  },
-  {
-    "name": "interpretation",
-    "type": "STRING"
-  },
-  {
-    "name": "submission_count",
-    "type": "INTEGER"
-  },
-  {
     "name": "content",
-    "type": "STRING"
-  },
-  {
-    "name": "statement_type",
-    "type": "STRING"
-  },
-  {
-    "name": "clinical_impact_assertion_type",
-    "type": "STRING"
-  },
-  {
-    "name": "clinical_impact_clinical_significance",
     "type": "STRING"
   }
 ]

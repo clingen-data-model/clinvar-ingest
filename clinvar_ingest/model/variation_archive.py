@@ -214,6 +214,8 @@ class ClinicalAssertion(Model):
         variation_id: str = None,
         variation_archive_id: str = None,
     ):
+        # TODO
+        # if _logger.isEnabledFor(logging.DEBUG):
         _logger.debug(f"ClinicalAssertion.from_xml(inp={json.dumps(inp)})")
         obj_id = extract(inp, "@ID")
         raw_accession = extract(inp, "ClinVarAccession")
@@ -296,7 +298,7 @@ class ClinicalAssertion(Model):
 
         # Classification fields
         review_status = extract(classification_raw, "ReviewStatus", "$")
-        _logger.info(f"review_status: {review_status}")
+        _logger.debug(f"review_status: {review_status}")
         statement_type = None
         # The VariationArchiveClassification can be used to extract the few fields we care about
         _classification = VariationArchiveClassification.from_xml(classification_raw)
@@ -843,9 +845,9 @@ class RcvAccessionClassification(Model):
 
 @dataclasses.dataclass
 class RcvAccession(Model):
-    independent_observations: int
-    variation_id: int
     id: str
+    variation_id: int
+    independent_observations: int
     variation_archive_id: str
     version: int | None
     title: str

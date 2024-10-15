@@ -1,0 +1,38 @@
+[
+  {
+    "name": "release_date",
+    "type": "DATE"
+  },
+  {
+    "name": "rcv_id",
+    "type": "STRING"
+  },
+  {
+    "name": "statement_type",
+    "type": "STRING"
+  },
+  {
+    "name": "review_status",
+    "type": "STRING"
+  },
+  {
+    "name": "num_submissions",
+    "type": "INTEGER"
+  },
+  {
+    "name": "date_last_evaluated",
+    "type": "DATE"
+  },
+  {
+    "name": "interp_description",
+    "type": "STRING"
+  },
+  {
+    "name": "clinical_impact_assertion_type",
+    "type": "STRING"
+  },
+  {
+    "name": "clinical_impact_clinical_significance",
+    "type": "STRING"
+  }
+]
