@@ -115,7 +115,7 @@ if [ -n "$file_format" ]; then
 fi
 
 if [ ! -v CLINVAR_INGEST_BQ_META_DATASET ]; then
-    env_vars="$env_vars,CLINVAR_INGEST_BQ_META_DATASET=clinvar_ingest"
+    CLINVAR_INGEST_BQ_META_DATASET=clinvar_ingest
 fi
 env_vars="$env_vars,CLINVAR_INGEST_BQ_META_DATASET=${CLINVAR_INGEST_BQ_META_DATASET}"
 
