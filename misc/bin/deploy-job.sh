@@ -114,10 +114,16 @@ if [ -n "$file_format" ]; then
     env_vars="$env_vars,file_format=${file_format}"
 fi
 
+if [ ! -v CLINVAR_INGEST_BQ_META_DATASET ]; then
+    env_vars="$env_vars,CLINVAR_INGEST_BQ_META_DATASET=clinvar_ingest"
+fi
+env_vars="$env_vars,CLINVAR_INGEST_BQ_META_DATASET=${CLINVAR_INGEST_BQ_META_DATASET}"
+
 # if instance_name contains bq_ingest - add extra env vars
 if [[ $instance_name =~ ^.*bq-ingest.*$ ]]; then
     env_vars="$env_vars,BQ_DEST_PROJECT=clingen-dev,CLINVAR_INGEST_BQ_META_DATASET=clinvar_ingest"
 fi
+
 
 gcloud run jobs $command $instance_name \
       --cpu=2 \
