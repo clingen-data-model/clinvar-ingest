@@ -121,7 +121,11 @@ env_vars="$env_vars,CLINVAR_INGEST_BQ_META_DATASET=${CLINVAR_INGEST_BQ_META_DATA
 
 # if instance_name contains bq_ingest - add extra env vars
 if [[ $instance_name =~ ^.*bq-ingest.*$ ]]; then
-    env_vars="$env_vars,BQ_DEST_PROJECT=clingen-dev,CLINVAR_INGEST_BQ_META_DATASET=clinvar_ingest"
+    # If BQ_DEST_PROJECT is not set, default to clingen-dev
+    if [ ! -v BQ_DEST_PROJECT ]; then
+        BQ_DEST_PROJECT=clingen-dev
+    fi
+    env_vars="$env_vars,BQ_DEST_PROJECT=${BQ_DEST_PROJECT}"
 fi
 
 
