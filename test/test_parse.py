@@ -14,10 +14,12 @@ from clinvar_ingest.model.variation_archive import (
     Gene,
     GeneAssociation,
     RcvAccession,
+    RcvAccessionClassification,
     Submission,
     Submitter,
     Variation,
     VariationArchive,
+    VariationArchiveClassification,
 )
 from clinvar_ingest.parse import clean_object
 from clinvar_ingest.reader import read_clinvar_vcv_xml
@@ -27,12 +29,12 @@ def test_read_original_clinvar_variation_2():
     """
     Test a SimpleAllele record
     """
-    filename = "test/data/original-clinvar-variation-2.xml"
+    filename = "test/data/VCV000000002.xml"
     with open(filename) as f:
         objects = list(read_clinvar_vcv_xml(f))
 
     # print("\n".join([str(dictify(o)) for o in objects]))
-    assert len(objects) == 23
+    assert len(objects) == 25
     expected_types = [
         Variation,
         Gene,
@@ -55,7 +57,9 @@ def test_read_original_clinvar_variation_2():
         ClinicalAssertionTraitSet,
         ClinicalAssertion,
         ClinicalAssertionVariation,
+        RcvAccessionClassification,
         RcvAccession,
+        VariationArchiveClassification,
         VariationArchive,
     ]
     for i, obj in enumerate(objects):
@@ -132,26 +136,38 @@ def test_read_original_clinvar_variation_2():
     assert rcv.id == "RCV000000012"
     assert rcv.variation_archive_id == "VCV000000002"
     assert rcv.variation_id == "2"
-    assert rcv.date_last_evaluated is None
     assert rcv.version == 5
     assert (
         rcv.title
         == "NM_014855.3(AP5Z1):c.80_83delinsTGCTGTAAACTGTAACTGTAAA (p.Arg27_Ile28delinsLeuLeuTer) AND Hereditary spastic paraplegia 48"
     )
     assert rcv.trait_set_id == "2"
-    assert rcv.review_status == "criteria provided, single submitter"
-    assert rcv.interpretation == "Pathogenic"
+
+    # Rcv Accession Classification
+    rcv_classification: RcvAccessionClassification = list(
+        filter(lambda o: isinstance(o, RcvAccessionClassification), objects)
+    )
+    assert len(rcv_classification) == 1
+    rcv_classification = rcv_classification[0]
+    assert rcv_classification.rcv_id == "RCV000000012"
+    assert rcv_classification.statement_type == "GermlineClassification"
+    assert rcv_classification.review_status == "criteria provided, single submitter"
+    assert rcv_classification.interp_description == "Pathogenic"
+    assert rcv_classification.date_last_evaluated is None
+    assert rcv_classification.num_submissions == 2
+    assert rcv_classification.clinical_impact_assertion_type is None
+    assert rcv_classification.clinical_impact_clinical_significance is None
 
 
 def test_read_original_clinvar_variation_634266(log_conf):
     """
     Test a Genotype record
     """
-    filename = "test/data/original-clinvar-variation-634266.xml"
+    filename = "test/data/VCV000634266.xml"
     with open(filename) as f:
         objects = list(read_clinvar_vcv_xml(f))
 
-    assert len(objects) == 70
+    assert len(objects) == 75
     expected_types = [
         Variation,
         TraitMapping,
@@ -218,10 +234,15 @@ def test_read_original_clinvar_variation_634266(log_conf):
         ClinicalAssertionVariation,
         ClinicalAssertionVariation,
         ClinicalAssertionVariation,
+        RcvAccessionClassification,
         RcvAccession,
+        RcvAccessionClassification,
         RcvAccession,
+        RcvAccessionClassification,
         RcvAccession,
+        RcvAccessionClassification,
         RcvAccession,
+        VariationArchiveClassification,
         VariationArchive,
     ]
 
@@ -256,14 +277,9 @@ def test_read_original_clinvar_variation_634266(log_conf):
     assert variation_archive.date_created == "2019-06-17"
     assert variation_archive.record_status == "current"
     assert variation_archive.species == "Homo sapiens"
-    assert variation_archive.review_status == "practice guideline"
-    assert variation_archive.interp_description == "drug response"
     assert variation_archive.num_submitters == 1
     assert variation_archive.num_submissions == 4
-    assert variation_archive.date_last_updated == "2023-10-07"
-    assert variation_archive.interp_type == "Clinical significance"
-    assert variation_archive.interp_explanation is None
-    assert variation_archive.interp_date_last_evaluated is None
+    assert variation_archive.date_last_updated == "2024-07-29"
     # assert variation_archive.interp_content
     # assert variation_archive.content
     assert variation_archive.variation_id == "634266"
@@ -277,6 +293,17 @@ def test_read_original_clinvar_variation_634266(log_conf):
         ]
         == "CYP2C19"
     )
+
+    # test for variationarchiveclassification
+    classification = [
+        o for o in objects if isinstance(o, VariationArchiveClassification)
+    ]
+    assert len(classification) == 1
+    classification = classification[0]
+    assert classification.entity_type == "variation_archive_classification"
+    assert classification.review_status == "practice guideline"
+    assert classification.interp_description == "drug response"
+    assert classification.date_last_evaluated is None
 
     # SCVs - TODO build out further
     # SCV 1
@@ -437,19 +464,51 @@ def test_read_original_clinvar_variation_1264328():
     This tests an IncludedRecord with no ClinicalAssertions.
     Exercises this bug fix: https://github.com/clingen-data-model/clinvar-ingest/issues/101
     """
-    filename = "test/data/original-clinvar-variation-1264328.xml"
+    filename = "test/data/VCV001264328.xml"
     with open(filename) as f:
         objects = list(read_clinvar_vcv_xml(f))
 
-    assert 6 == len(objects)
-    assert isinstance(objects[0], Variation)
-    assert isinstance(objects[1], Gene)
-    assert isinstance(objects[2], GeneAssociation)
-    assert isinstance(objects[3], Gene)
-    assert isinstance(objects[4], GeneAssociation)
-    assert isinstance(objects[5], VariationArchive)
+    assert len(objects) == 19
+    expected_types = [
+        Variation,
+        Gene,
+        GeneAssociation,
+        Gene,
+        GeneAssociation,
+        TraitMapping,
+        Trait,
+        TraitSet,
+        Submitter,
+        Submission,
+        ClinicalAssertionObservation,
+        ClinicalAssertionTrait,
+        ClinicalAssertionTraitSet,
+        ClinicalAssertion,
+        ClinicalAssertionVariation,
+        RcvAccessionClassification,
+        RcvAccession,
+        VariationArchiveClassification,
+        VariationArchive,
+    ]
+
+    for i, obj in enumerate(objects):
+        assert isinstance(
+            obj, expected_types[i]
+        ), f"Expected {expected_types[i]} at index {i}, got {type(obj)}"
+
     clinical_assertions = [obj for obj in objects if isinstance(obj, ClinicalAssertion)]
-    assert 0 == len(clinical_assertions)
+    assert len(clinical_assertions) == 1
+
+    # test for variationarchiveclassification
+    classification = [
+        o for o in objects if isinstance(o, VariationArchiveClassification)
+    ]
+    assert len(classification) == 1
+    classification = classification[0]
+    assert classification.entity_type == "variation_archive_classification"
+    assert classification.review_status == "criteria provided, single submitter"
+    assert classification.interp_description == "Pathogenic"
+    assert classification.date_last_evaluated == "2023-09-12"
 
 
 def test_read_original_clinvar_variation_10():
@@ -457,12 +516,14 @@ def test_read_original_clinvar_variation_10():
     This tests an IncludedRecord with no ClinicalAssertions.
     Exercises this bug fix:
     """
-    # filename = "test/data/original-clinvar-variation-10.xml"
-    filename = "test/data/original-clinvar-variation-10.xml"
+    filename = "test/data/VCV000000010.xml"
     with open(filename) as f:
         objects = list(read_clinvar_vcv_xml(f))
 
-    scv372036 = [o for o in objects if isinstance(o, ClinicalAssertion)][0]
+    scvs = [o for o in objects if isinstance(o, ClinicalAssertion)]
+    assert len(scvs) == 50
+
+    scv372036 = [o for o in scvs if o.internal_id == "372036"][0]
     assert scv372036.internal_id == "372036"
     scv372036_trait_set = [
         o
@@ -496,6 +557,23 @@ def test_read_original_clinvar_variation_10():
     # Name
     # assert scv372036_traits[0].name == "Hereditary hemochromatosis"
     assert scv372036_traits[0].name is None
+
+    classification = [
+        o for o in objects if isinstance(o, VariationArchiveClassification)
+    ]
+    assert len(classification) == 1
+    classification = classification[0]
+    assert (
+        classification.review_status
+        == "criteria provided, multiple submitters, no conflicts"
+    )
+    assert (
+        classification.interp_description
+        == "Pathogenic/Likely pathogenic/Pathogenic, low penetrance; other"
+    )
+    assert classification.num_submissions == 50
+    assert classification.num_submitters == 49
+    assert classification.date_last_evaluated == "2024-03-26"
 
     # Check an observation with a trait
     # ClinicalAssertion ID="3442424"
@@ -594,7 +672,7 @@ def test_read_original_clinvar_variation_10():
 
     """
     Get trait set ids from the vcv
-    xq -x '//ClinVarVariationRelease/VariationArchive/InterpretedRecord/Interpretations/Interpretation/ConditionList/TraitSet/@ID' original-clinvar-variation-10.xml
+    xq -x '//ClinVarVariationRelease/VariationArchive/InterpretedRecord/Interpretations/Interpretation/ConditionList/TraitSet/@ID' VCV000000010.xml
     """
 
     clinical_assertion_traits = [

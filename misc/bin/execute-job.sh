@@ -3,7 +3,7 @@
 ########
 
 # Example:
-# release_tag=local_dev instance_name=clinvar-ingest-local-dev CLINVAR_INGEST_SLACK_CHANNEL='' bash misc/bin/execute-job.shz
+# CLINVAR_INGEST_RELEASE_TAG=local_dev instance_name=clinvar-ingest-local-dev CLINVAR_INGEST_SLACK_CHANNEL='' bash misc/bin/execute-job.shz
 ########
 
 
@@ -33,24 +33,27 @@ else
 fi
 
 if [ "$input_flag" == "vcv-small" ]; then
-    host="https://raw.githubusercontent.com"
-    directory="/clingen-data-model/clinvar-ingest/main/test/data"
-    name="OriginalTestDataSet.xml.gz"
-    size=50735
-    last_modified="2023-10-07T15:47:16"
-    released="2023-10-07T15:47:16"
-    release_date="2023-10-07"
-    file_format="vcv"
+    # Small VCV test input
+    # https://raw.githubusercontent.com/clingen-data-model/clinvar-ingest/refs/heads/clinvar-new/test/data/combined.xml.gz
+    host=https://raw.githubusercontent.com
+    directory=/clingen-data-model/clinvar-ingest/refs/heads/clinvar-new/test/data
+    name=combined.xml.gz
+    size=185664
+    last_modified=2024-10-10T12:00:00
+    released=2024-10-10T12:00:00
+    release_date=2024-10-10
+    file_format=vcv
 elif [ "$input_flag" == "rcv-small" ]; then
-    # https://raw.githubusercontent.com/clingen-data-model/clinvar-ingest/issue-187-rcv-workflow/test/data/rcv/combined.xml.gz
-    host="https://raw.githubusercontent.com"
-    directory="/clingen-data-model/clinvar-ingest/main/test/data/rcv"
+    # Small RCV test input
+    # https://raw.githubusercontent.com/clingen-data-model/clinvar-ingest/refs/heads/clinvar-new/test/data/rcv/combined.xml.gz
+    host=https://raw.githubusercontent.com
+    directory=/clingen-data-model/clinvar-ingest/refs/heads/clinvar-new/test/data/rcv
     name=combined.xml.gz
     size=5220
-    last_modified="2024-06-10T12:00:00"
-    released="2024-06-10T12:00:00"
-    release_date="2024-06-10"
-    file_format="rcv"
+    last_modified=2024-10-10T12:00:00
+    released=2024-10-10T12:00:00
+    release_date=2024-10-10
+    file_format=rcv
 else
     echo "Invalid input flag"
     exit 1
@@ -115,6 +118,11 @@ fi
 if [[ -v CLINVAR_INGEST_RELEASE_TAG ]]; then
     env_vars="$env_vars,CLINVAR_INGEST_RELEASE_TAG=$CLINVAR_INGEST_RELEASE_TAG"
 fi
+if [[ -v CLINVAR_INGEST_BQ_META_DATASET ]]; then
+    env_vars="$env_vars,CLINVAR_INGEST_BQ_META_DATASET=$CLINVAR_INGEST_BQ_META_DATASET"
+fi
+
+
 env_vars="$env_vars,host=$host"
 env_vars="$env_vars,directory=$directory"
 env_vars="$env_vars,name=$name"

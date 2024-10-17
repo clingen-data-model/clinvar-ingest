@@ -1,26 +1,26 @@
-<ClinVarVariationRelease>
-<VariationArchive VariationID="32" VariationName="NM_138413.4(HOGA1):c.700+4G&gt;T" VariationType="single nucleotide variant" Accession="VCV000000032" Version="1" RecordType="interpreted" NumberOfSubmissions="1" NumberOfSubmitters="1" DateLastUpdated="2022-04-25" DateCreated="2013-04-04" MostRecentSubmission="2013-04-04">
+<ClinVarVariationRelease xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://ftp.ncbi.nlm.nih.gov/pub/clinvar/xsd_public/ClinVar_VCV_2.0.xsd" ReleaseDate="2024-07-30">
+<VariationArchive RecordType="classified" VariationID="32" VariationName="NM_138413.4(HOGA1):c.700+4G&gt;T" VariationType="single nucleotide variant" Accession="VCV000000032" Version="1" NumberOfSubmissions="1" NumberOfSubmitters="1" DateLastUpdated="2022-04-25" DateCreated="2013-04-04" MostRecentSubmission="2013-04-04">
   <RecordStatus>current</RecordStatus>
   <Species>Homo sapiens</Species>
-  <InterpretedRecord>
+  <ClassifiedRecord>
     <SimpleAllele AlleleID="15071" VariationID="32">
       <GeneList>
         <Gene Symbol="HOGA1" FullName="4-hydroxy-2-oxoglutarate aldolase 1" GeneID="112817" HGNC_ID="HGNC:25155" Source="submitted" RelationshipType="within single gene">
           <Location>
             <CytogeneticLocation>10q24.2</CytogeneticLocation>
-            <SequenceLocation Assembly="GRCh38" AssemblyAccessionVersion="GCF_000001405.38" AssemblyStatus="current" Chr="10" Accession="NC_000010.11" start="97584389" stop="97612802" display_start="97584389" display_stop="97612802" Strand="+"/>
-            <SequenceLocation Assembly="GRCh37" AssemblyAccessionVersion="GCF_000001405.25" AssemblyStatus="previous" Chr="10" Accession="NC_000010.10" start="99344101" stop="99372558" display_start="99344101" display_stop="99372558" Strand="+"/>
+            <SequenceLocation Assembly="GRCh38" AssemblyAccessionVersion="GCF_000001405.38" AssemblyStatus="current" Chr="10" Accession="NC_000010.11" start="97584389" stop="97612802" display_start="97584389" display_stop="97612802" Strand="+" />
+            <SequenceLocation Assembly="GRCh37" AssemblyAccessionVersion="GCF_000001405.25" AssemblyStatus="previous" Chr="10" Accession="NC_000010.10" start="99344101" stop="99372558" display_start="99344101" display_stop="99372558" Strand="+" />
           </Location>
           <OMIM>613597</OMIM>
         </Gene>
       </GeneList>
       <Name>NM_138413.4(HOGA1):c.700+4G&gt;T</Name>
-      <CanonicalSPDI>NC_000010.11: 97600166:G:T</CanonicalSPDI>
+      <CanonicalSPDI>NC_000010.11:97600166:G:T</CanonicalSPDI>
       <VariantType>single nucleotide variant</VariantType>
       <Location>
         <CytogeneticLocation>10q24.2</CytogeneticLocation>
-        <SequenceLocation Assembly="GRCh38" AssemblyAccessionVersion="GCF_000001405.38" forDisplay="true" AssemblyStatus="current" Chr="10" Accession="NC_000010.11" start="97600167" stop="97600167" display_start="97600167" display_stop="97600167" variantLength="1" positionVCF="97600167" referenceAlleleVCF="G" alternateAlleleVCF="T"/>
-        <SequenceLocation Assembly="GRCh37" AssemblyAccessionVersion="GCF_000001405.25" AssemblyStatus="previous" Chr="10" Accession="NC_000010.10" start="99359924" stop="99359924" display_start="99359924" display_stop="99359924" variantLength="1" positionVCF="99359924" referenceAlleleVCF="G" alternateAlleleVCF="T"/>
+        <SequenceLocation Assembly="GRCh38" AssemblyAccessionVersion="GCF_000001405.38" forDisplay="true" AssemblyStatus="current" Chr="10" Accession="NC_000010.11" start="97600167" stop="97600167" display_start="97600167" display_stop="97600167" variantLength="1" positionVCF="97600167" referenceAlleleVCF="G" alternateAlleleVCF="T" />
+        <SequenceLocation Assembly="GRCh37" AssemblyAccessionVersion="GCF_000001405.25" AssemblyStatus="previous" Chr="10" Accession="NC_000010.10" start="99359924" stop="99359924" display_start="99359924" display_stop="99359924" variantLength="1" positionVCF="99359924" referenceAlleleVCF="G" alternateAlleleVCF="T" />
       </Location>
       <OtherNameList>
         <Name>IVS, G-T, +4</Name>
@@ -45,52 +45,58 @@
           <NucleotideExpression sequenceAccessionVersion="NM_138413.4" sequenceAccession="NM_138413" sequenceVersion="4" change="c.700+4G&gt;T" MANESelect="true">
             <Expression>NM_138413.4:c.700+4G&gt;T</Expression>
           </NucleotideExpression>
-          <MolecularConsequence ID="SO:0001627" Type="intron variant" DB="SO"/>
+          <MolecularConsequence ID="SO:0001627" Type="intron variant" DB="SO" />
         </HGVS>
         <HGVS Type="coding">
           <NucleotideExpression sequenceAccessionVersion="NM_001134670.2" sequenceAccession="NM_001134670" sequenceVersion="2" change="c.212-1690G&gt;T">
             <Expression>NM_001134670.2:c.212-1690G&gt;T</Expression>
           </NucleotideExpression>
-          <MolecularConsequence ID="SO:0001627" Type="intron variant" DB="SO"/>
+          <MolecularConsequence ID="SO:0001627" Type="intron variant" DB="SO" />
         </HGVS>
       </HGVSlist>
       <XRefList>
-        <XRef ID="HOGA1_000005" DB="LOVD 3"/>
-        <XRef Type="Allelic variant" ID="613597.0004" DB="OMIM"/>
-        <XRef Type="rs" ID="2041105506" DB="dbSNP"/>
+        <XRef ID="HOGA1_000005" DB="LOVD 3" />
+        <XRef Type="Allelic variant" ID="613597.0004" DB="OMIM" />
+        <XRef Type="rs" ID="2041105506" DB="dbSNP" />
       </XRefList>
     </SimpleAllele>
-    <ReviewStatus>no assertion criteria provided</ReviewStatus>
     <RCVList>
-      <RCVAccession Title="NM_138413.4(HOGA1):c.700+4G&gt;T AND Primary hyperoxaluria type 3" DateLastEvaluated="2010-09-10" ReviewStatus="no assertion criteria provided" Interpretation="Pathogenic" SubmissionCount="1" Accession="RCV000000049" Version="2">
-        <InterpretedConditionList TraitSetID="19">
-          <InterpretedCondition DB="MedGen" ID="C3150878">Primary hyperoxaluria type 3</InterpretedCondition>
-        </InterpretedConditionList>
+      <RCVAccession Title="NM_138413.4(HOGA1):c.700+4G&gt;T AND Primary hyperoxaluria type 3" Accession="RCV000000049" Version="2">
+        <ClassifiedConditionList TraitSetID="19">
+          <ClassifiedCondition DB="MedGen" ID="C3150878">Primary hyperoxaluria type 3</ClassifiedCondition>
+        </ClassifiedConditionList>
+        <RCVClassifications>
+          <GermlineClassification>
+            <ReviewStatus>no assertion criteria provided</ReviewStatus>
+            <Description DateLastEvaluated="2010-09-10" SubmissionCount="1">Pathogenic</Description>
+          </GermlineClassification>
+        </RCVClassifications>
       </RCVAccession>
     </RCVList>
-    <Interpretations>
-      <Interpretation DateLastEvaluated="2010-09-10" NumberOfSubmissions="1" NumberOfSubmitters="1" Type="Clinical significance">
+    <Classifications>
+      <GermlineClassification DateLastEvaluated="2010-09-10" NumberOfSubmissions="1" NumberOfSubmitters="1" DateCreated="2013-04-04" MostRecentSubmission="2013-04-04">
+        <ReviewStatus>no assertion criteria provided</ReviewStatus>
         <Description>Pathogenic</Description>
         <Citation Type="general">
           <ID Source="PubMed">20797690</ID>
         </Citation>
         <ConditionList>
-          <TraitSet ID="19" Type="Disease" ContributesToAggregateClinsig="true">
+          <TraitSet ID="19" Type="Disease" ContributesToAggregateClassification="true">
             <Trait ID="9592" Type="Disease">
               <Name>
                 <ElementValue Type="Preferred">Primary hyperoxaluria type 3</ElementValue>
-                <XRef ID="MONDO:0013327" DB="MONDO"/>
+                <XRef ID="MONDO:0013327" DB="MONDO" />
               </Name>
               <Name>
                 <ElementValue Type="Alternate">PH III</ElementValue>
               </Name>
               <Name>
                 <ElementValue Type="Alternate">Primary hyperoxaluria, type III</ElementValue>
-                <XRef ID="Primary+Hyperoxaluria+Type+3/8596" DB="Genetic Alliance"/>
+                <XRef ID="Primary+Hyperoxaluria+Type+3/8596" DB="Genetic Alliance" />
               </Name>
               <Symbol>
                 <ElementValue Type="Alternate">HP3</ElementValue>
-                <XRef Type="MIM" ID="613616" DB="OMIM"/>
+                <XRef Type="MIM" ID="613616" DB="OMIM" />
               </Symbol>
               <Symbol>
                 <ElementValue Type="Alternate">HOGA1</ElementValue>
@@ -100,35 +106,35 @@
               </Symbol>
               <AttributeSet>
                 <Attribute Type="disease mechanism" integerValue="273">loss of function</Attribute>
-                <XRef ID="GTR000561373" DB="Genetic Testing Registry (GTR)"/>
+                <XRef ID="GTR000561373" DB="Genetic Testing Registry (GTR)" />
               </AttributeSet>
               <AttributeSet>
-                <Attribute Type="GARD id" integerValue="10738"/>
-                <XRef ID="10738" DB="Office of Rare Diseases"/>
+                <Attribute Type="GARD id" integerValue="10738" />
+                <XRef ID="10738" DB="Office of Rare Diseases" />
               </AttributeSet>
               <Citation Type="review" Abbrev="GeneReviews">
                 <ID Source="PubMed">26401545</ID>
                 <ID Source="BookShelf">NBK316514</ID>
               </Citation>
-              <XRef ID="416" DB="Orphanet"/>
-              <XRef ID="93600" DB="Orphanet"/>
-              <XRef ID="C3150878" DB="MedGen"/>
-              <XRef ID="MONDO:0013327" DB="MONDO"/>
-              <XRef Type="MIM" ID="613616" DB="OMIM"/>
+              <XRef ID="416" DB="Orphanet" />
+              <XRef ID="93600" DB="Orphanet" />
+              <XRef ID="C3150878" DB="MedGen" />
+              <XRef ID="MONDO:0013327" DB="MONDO" />
+              <XRef Type="MIM" ID="613616" DB="OMIM" />
             </Trait>
           </TraitSet>
         </ConditionList>
-      </Interpretation>
-    </Interpretations>
+      </GermlineClassification>
+    </Classifications>
     <ClinicalAssertionList>
       <ClinicalAssertion ID="20192" SubmissionDate="2012-11-21" DateLastUpdated="2013-04-04" DateCreated="2013-04-04">
-        <ClinVarSubmissionID localKey="613597.0004_HYPEROXALURIA, PRIMARY, TYPE III" title="HOGA1, IVS, G-T, +4_HYPEROXALURIA, PRIMARY, TYPE III"/>
-        <ClinVarAccession Accession="SCV000020192" DateUpdated="2013-04-04" DateCreated="2013-04-04" Type="SCV" Version="1" SubmitterName="OMIM" OrgID="3" OrganizationCategory="resource"/>
+        <ClinVarSubmissionID localKey="613597.0004_HYPEROXALURIA, PRIMARY, TYPE III" title="HOGA1, IVS, G-T, +4_HYPEROXALURIA, PRIMARY, TYPE III" />
+        <ClinVarAccession Accession="SCV000020192" DateUpdated="2013-04-04" DateCreated="2013-04-04" Type="SCV" Version="1" SubmitterName="OMIM" OrgID="3" OrganizationCategory="resource" />
         <RecordStatus>current</RecordStatus>
-        <ReviewStatus>no assertion criteria provided</ReviewStatus>
-        <Interpretation DateLastEvaluated="2010-09-10">
-          <Description>Pathogenic</Description>
-        </Interpretation>
+        <Classification DateLastEvaluated="2010-09-10">
+          <ReviewStatus>no assertion criteria provided</ReviewStatus>
+          <GermlineClassification>Pathogenic</GermlineClassification>
+        </Classification>
         <Assertion>variation to disease</Assertion>
         <ObservedInList>
           <ObservedIn>
@@ -145,13 +151,13 @@
               <Citation>
                 <ID Source="PubMed">20797690</ID>
               </Citation>
-              <XRef DB="OMIM" ID="613616" Type="MIM"/>
+              <XRef DB="OMIM" ID="613616" Type="MIM" />
             </ObservedData>
           </ObservedIn>
         </ObservedInList>
         <SimpleAllele>
           <GeneList>
-            <Gene Symbol="HOGA1"/>
+            <Gene Symbol="HOGA1" />
           </GeneList>
           <Name>HOGA1, IVS, G-T, +4</Name>
           <VariantType>Variation</VariantType>
@@ -159,7 +165,7 @@
             <Name Type="NonHGVS">IVS, G-T, +4</Name>
           </OtherNameList>
           <XRefList>
-            <XRef DB="OMIM" ID="613597.0004" Type="Allelic variant"/>
+            <XRef DB="OMIM" ID="613597.0004" Type="Allelic variant" />
           </XRefList>
         </SimpleAllele>
         <TraitSet Type="Disease">
@@ -173,9 +179,9 @@
     </ClinicalAssertionList>
     <TraitMappingList>
       <TraitMapping ClinicalAssertionID="20192" TraitType="Disease" MappingType="Name" MappingValue="HYPEROXALURIA, PRIMARY, TYPE III" MappingRef="Preferred">
-        <MedGen CUI="C3150878" Name="Primary hyperoxaluria type 3"/>
+        <MedGen CUI="C3150878" Name="Primary hyperoxaluria type 3" />
       </TraitMapping>
     </TraitMappingList>
-  </InterpretedRecord>
+  </ClassifiedRecord>
 </VariationArchive>
 </ClinVarVariationRelease>

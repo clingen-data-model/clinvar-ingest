@@ -1,15 +1,15 @@
-<ClinVarVariationRelease>
-<VariationArchive VariationID="51" VariationName="NM_022098.4(XPNPEP3):c.1357G&gt;T (p.Gly453Cys)" VariationType="single nucleotide variant" Accession="VCV000000051" Version="2" RecordType="interpreted" NumberOfSubmissions="1" NumberOfSubmitters="1" DateLastUpdated="2022-04-25" DateCreated="2021-08-11" MostRecentSubmission="2021-08-11">
+<ClinVarVariationRelease xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://ftp.ncbi.nlm.nih.gov/pub/clinvar/xsd_public/ClinVar_VCV_2.0.xsd" ReleaseDate="2024-07-30">
+<VariationArchive RecordType="classified" VariationID="51" VariationName="NM_022098.4(XPNPEP3):c.1357G&gt;T (p.Gly453Cys)" VariationType="single nucleotide variant" Accession="VCV000000051" Version="2" NumberOfSubmissions="1" NumberOfSubmitters="1" DateLastUpdated="2022-04-25" DateCreated="2021-08-11" MostRecentSubmission="2021-08-11">
   <RecordStatus>current</RecordStatus>
   <Species>Homo sapiens</Species>
-  <InterpretedRecord>
+  <ClassifiedRecord>
     <SimpleAllele AlleleID="15090" VariationID="51">
       <GeneList>
         <Gene Symbol="XPNPEP3" FullName="X-prolyl aminopeptidase 3" GeneID="63929" HGNC_ID="HGNC:28052" Source="submitted" RelationshipType="within single gene">
           <Location>
             <CytogeneticLocation>22q13.2</CytogeneticLocation>
-            <SequenceLocation Assembly="GRCh38" AssemblyAccessionVersion="GCF_000001405.38" AssemblyStatus="current" Chr="22" Accession="NC_000022.11" start="40857148" stop="40932815" display_start="40857148" display_stop="40932815" Strand="+"/>
-            <SequenceLocation Assembly="GRCh37" AssemblyAccessionVersion="GCF_000001405.25" AssemblyStatus="previous" Chr="22" Accession="NC_000022.10" start="41253084" stop="41328822" display_start="41253084" display_stop="41328822" Strand="+"/>
+            <SequenceLocation Assembly="GRCh38" AssemblyAccessionVersion="GCF_000001405.38" AssemblyStatus="current" Chr="22" Accession="NC_000022.11" start="40857148" stop="40932815" display_start="40857148" display_stop="40932815" Strand="+" />
+            <SequenceLocation Assembly="GRCh37" AssemblyAccessionVersion="GCF_000001405.25" AssemblyStatus="previous" Chr="22" Accession="NC_000022.10" start="41253084" stop="41328822" display_start="41253084" display_stop="41328822" Strand="+" />
           </Location>
           <OMIM>613553</OMIM>
         </Gene>
@@ -19,8 +19,8 @@
       <VariantType>single nucleotide variant</VariantType>
       <Location>
         <CytogeneticLocation>22q13.2</CytogeneticLocation>
-        <SequenceLocation Assembly="GRCh38" AssemblyAccessionVersion="GCF_000001405.38" forDisplay="true" AssemblyStatus="current" Chr="22" Accession="NC_000022.11" start="40924482" stop="40924482" display_start="40924482" display_stop="40924482" variantLength="1" positionVCF="40924482" referenceAlleleVCF="G" alternateAlleleVCF="T"/>
-        <SequenceLocation Assembly="GRCh37" AssemblyAccessionVersion="GCF_000001405.25" AssemblyStatus="previous" Chr="22" Accession="NC_000022.10" start="41320486" stop="41320486" display_start="41320486" display_stop="41320486" variantLength="1" positionVCF="41320486" referenceAlleleVCF="G" alternateAlleleVCF="T"/>
+        <SequenceLocation Assembly="GRCh38" AssemblyAccessionVersion="GCF_000001405.38" forDisplay="true" AssemblyStatus="current" Chr="22" Accession="NC_000022.11" start="40924482" stop="40924482" display_start="40924482" display_stop="40924482" variantLength="1" positionVCF="40924482" referenceAlleleVCF="G" alternateAlleleVCF="T" />
+        <SequenceLocation Assembly="GRCh37" AssemblyAccessionVersion="GCF_000001405.25" AssemblyStatus="previous" Chr="22" Accession="NC_000022.10" start="41320486" stop="41320486" display_start="41320486" display_stop="41320486" variantLength="1" positionVCF="41320486" referenceAlleleVCF="G" alternateAlleleVCF="T" />
       </Location>
       <ProteinChange>G453C</ProteinChange>
       <HGVSlist>
@@ -36,7 +36,7 @@
           <ProteinExpression sequenceAccessionVersion="NP_071381.1" sequenceAccession="NP_071381" sequenceVersion="1" change="p.Gly453Cys">
             <Expression>NP_071381.1:p.Gly453Cys</Expression>
           </ProteinExpression>
-          <MolecularConsequence ID="SO:0001583" Type="missense variant" DB="SO"/>
+          <MolecularConsequence ID="SO:0001583" Type="missense variant" DB="SO" />
         </HGVS>
         <HGVS Assembly="GRCh37" Type="genomic, top-level">
           <NucleotideExpression sequenceAccessionVersion="NC_000022.10" sequenceAccession="NC_000022" sequenceVersion="10" change="g.41320486G&gt;T" Assembly="GRCh37">
@@ -50,67 +50,73 @@
         </HGVS>
       </HGVSlist>
       <XRefList>
-        <XRef ID="CA113823" DB="ClinGen"/>
-        <XRef Type="Allelic variant" ID="613553.0001" DB="OMIM"/>
-        <XRef Type="rs" ID="267607179" DB="dbSNP"/>
+        <XRef ID="CA113823" DB="ClinGen" />
+        <XRef Type="Allelic variant" ID="613553.0001" DB="OMIM" />
+        <XRef Type="rs" ID="267607179" DB="dbSNP" />
       </XRefList>
       <AlleleFrequencyList>
-        <AlleleFrequency Value="0.00001" Source="Trans-Omics for Precision Medicine (TOPMed)"/>
-        <AlleleFrequency Value="0.00005" Source="Exome Aggregation Consortium (ExAC)"/>
+        <AlleleFrequency Value="0.00001" Source="Trans-Omics for Precision Medicine (TOPMed)" />
+        <AlleleFrequency Value="0.00005" Source="Exome Aggregation Consortium (ExAC)" />
       </AlleleFrequencyList>
     </SimpleAllele>
-    <ReviewStatus>no assertion criteria provided</ReviewStatus>
     <RCVList>
-      <RCVAccession Title="NM_022098.4(XPNPEP3):c.1357G&gt;T (p.Gly453Cys) AND Nephronophthisis-like nephropathy 1" DateLastEvaluated="2010-03-01" ReviewStatus="no assertion criteria provided" Interpretation="Pathogenic" SubmissionCount="1" Accession="RCV000000068" Version="4">
-        <InterpretedConditionList TraitSetID="26">
-          <InterpretedCondition DB="MedGen" ID="C3150419">Nephronophthisis-like nephropathy 1</InterpretedCondition>
-        </InterpretedConditionList>
+      <RCVAccession Title="NM_022098.4(XPNPEP3):c.1357G&gt;T (p.Gly453Cys) AND Nephronophthisis-like nephropathy 1" Accession="RCV000000068" Version="4">
+        <ClassifiedConditionList TraitSetID="26">
+          <ClassifiedCondition DB="MedGen" ID="C3150419">Nephronophthisis-like nephropathy 1</ClassifiedCondition>
+        </ClassifiedConditionList>
+        <RCVClassifications>
+          <GermlineClassification>
+            <ReviewStatus>no assertion criteria provided</ReviewStatus>
+            <Description DateLastEvaluated="2010-03-01" SubmissionCount="1">Pathogenic</Description>
+          </GermlineClassification>
+        </RCVClassifications>
       </RCVAccession>
     </RCVList>
-    <Interpretations>
-      <Interpretation DateLastEvaluated="2010-03-01" NumberOfSubmissions="1" NumberOfSubmitters="1" Type="Clinical significance">
+    <Classifications>
+      <GermlineClassification DateLastEvaluated="2010-03-01" NumberOfSubmissions="1" NumberOfSubmitters="1" DateCreated="2021-08-11" MostRecentSubmission="2021-08-11">
+        <ReviewStatus>no assertion criteria provided</ReviewStatus>
         <Description>Pathogenic</Description>
         <Citation Type="general">
           <ID Source="PubMed">20179356</ID>
         </Citation>
         <ConditionList>
-          <TraitSet ID="26" Type="Disease" ContributesToAggregateClinsig="true">
+          <TraitSet ID="26" Type="Disease" ContributesToAggregateClassification="true">
             <Trait ID="9598" Type="Disease">
               <Name>
                 <ElementValue Type="Preferred">Nephronophthisis-like nephropathy 1</ElementValue>
-                <XRef ID="Nephronophthisis-like+nephropathy+1/8986" DB="Genetic Alliance"/>
-                <XRef ID="MONDO:0013163" DB="MONDO"/>
+                <XRef ID="Nephronophthisis-like+nephropathy+1/8986" DB="Genetic Alliance" />
+                <XRef ID="MONDO:0013163" DB="MONDO" />
               </Name>
               <Symbol>
                 <ElementValue Type="Preferred">NPHPL1</ElementValue>
-                <XRef Type="MIM" ID="613159" DB="OMIM"/>
+                <XRef Type="MIM" ID="613159" DB="OMIM" />
               </Symbol>
               <AttributeSet>
-                <Attribute Type="public definition">The nephronophthisis (NPH) phenotype is characterized by reduced renal concentrating ability, chronic tubulointerstitial nephritis, cystic renal disease, and progression to end-stage renal disease (ESRD) before age 30 years. Three age-based clinical subtypes are recognized: infantile, juvenile, and adolescent/adult. Infantile NPH can present in utero with oligohydramnios sequence (limb contractures, pulmonary hypoplasia, and facial dysmorphisms) or postnatally with renal manifestations that progress to ESRD before age 3 years. Juvenile NPH, the most prevalent subtype, typically presents with polydipsia and polyuria, growth retardation, chronic iron-resistant anemia, or other findings related to chronic kidney disease (CKD). Hypertension is typically absent due to salt wasting. ESRD develops at a median age of 13 years. Ultrasound findings are increased echogenicity, reduced corticomedullary differentiation, and renal cysts (in 50% of affected individuals). Histologic findings include tubulointerstitial fibrosis, thickened and disrupted tubular basement membrane, sporadic corticomedullary cysts, and normal or reduced kidney size. Adolescent/adult NPH is clinically similar to juvenile NPH, but ESRD develops at a median age of 19 years. Within a subtype, inter- and intrafamilial variability in rate of progression to ESRD is considerable. Approximately 80%-90% of individuals with the NPH phenotype have no extrarenal features (i.e., they have isolated NPH); ~10%-20% have extrarenal manifestations that constitute a recognizable syndrome (e.g., Joubert syndrome, Bardet-Biedl syndrome, Jeune syndrome and related skeletal disorders, Meckel-Gruber syndrome, Senior-Løken syndrome, Leber congenital amaurosis, COACH syndrome, and oculomotor apraxia, Cogan type).</Attribute>
-                <XRef ID="NBK368475" DB="GeneReviews"/>
+                <Attribute Type="public definition">The nephronophthisis (NPH) phenotype is characterized by reduced renal concentrating ability, chronic tubulointerstitial nephritis, cystic renal disease, and progression to end-stage renal disease (ESRD) before age 30 years. Three age-based clinical subtypes are recognized: infantile, juvenile, and adolescent/adult. Infantile NPH can present in utero with oligohydramnios sequence (limb contractures, pulmonary hypoplasia, and facial dysmorphisms) or postnatally with renal manifestations that progress to ESRD before age 3 years. Juvenile NPH, the most prevalent subtype, typically presents with polydipsia and polyuria, growth retardation, chronic iron-resistant anemia, or other findings related to chronic kidney disease (CKD). Hypertension is typically absent due to salt wasting. ESRD develops at a median age of 13 years. Ultrasound findings are increased echogenicity, reduced corticomedullary differentiation, and renal cysts (in 50% of affected individuals). Histologic findings include tubulointerstitial fibrosis, thickened and disrupted tubular basement membrane, sporadic corticomedullary cysts, and normal or reduced kidney size. Adolescent/adult NPH is clinically similar to juvenile NPH, but ESRD develops at a median age of 19 years. Within a subtype, inter- and intrafamilial variability in rate of progression to ESRD is considerable. Approximately 80%-90% of individuals with the NPH phenotype have no extrarenal features (i.e., they have isolated NPH); ~10%-20% have extrarenal manifestations that constitute a recognizable syndrome (e.g., Joubert syndrome, Bardet-Biedl syndrome, Jeune syndrome and related skeletal disorders, Meckel-Gruber syndrome, Senior-L&#248;ken syndrome, Leber congenital amaurosis, COACH syndrome, and oculomotor apraxia, Cogan type).</Attribute>
+                <XRef ID="NBK368475" DB="GeneReviews" />
               </AttributeSet>
               <Citation Type="review" Abbrev="GeneReviews">
                 <ID Source="PubMed">27336129</ID>
                 <ID Source="BookShelf">NBK368475</ID>
               </Citation>
-              <XRef ID="655" DB="Orphanet"/>
-              <XRef ID="C3150419" DB="MedGen"/>
-              <XRef ID="MONDO:0013163" DB="MONDO"/>
-              <XRef Type="MIM" ID="613159" DB="OMIM"/>
+              <XRef ID="655" DB="Orphanet" />
+              <XRef ID="C3150419" DB="MedGen" />
+              <XRef ID="MONDO:0013163" DB="MONDO" />
+              <XRef Type="MIM" ID="613159" DB="OMIM" />
             </Trait>
           </TraitSet>
         </ConditionList>
-      </Interpretation>
-    </Interpretations>
+      </GermlineClassification>
+    </Classifications>
     <ClinicalAssertionList>
       <ClinicalAssertion ID="20211" SubmissionDate="2021-08-09" DateLastUpdated="2021-08-11" DateCreated="2013-04-04">
-        <ClinVarSubmissionID localKey="613553.0001_NEPHRONOPHTHISIS-LIKE NEPHROPATHY 1" title="XPNPEP3, GLY453CYS_NEPHRONOPHTHISIS-LIKE NEPHROPATHY 1"/>
-        <ClinVarAccession Accession="SCV000020211" DateUpdated="2021-08-11" DateCreated="2013-04-04" Type="SCV" Version="3" SubmitterName="OMIM" OrgID="3" OrganizationCategory="resource"/>
+        <ClinVarSubmissionID localKey="613553.0001_NEPHRONOPHTHISIS-LIKE NEPHROPATHY 1" title="XPNPEP3, GLY453CYS_NEPHRONOPHTHISIS-LIKE NEPHROPATHY 1" />
+        <ClinVarAccession Accession="SCV000020211" DateUpdated="2021-08-11" DateCreated="2013-04-04" Type="SCV" Version="3" SubmitterName="OMIM" OrgID="3" OrganizationCategory="resource" />
         <RecordStatus>current</RecordStatus>
-        <ReviewStatus>no assertion criteria provided</ReviewStatus>
-        <Interpretation DateLastEvaluated="2010-03-01">
-          <Description>Pathogenic</Description>
-        </Interpretation>
+        <Classification DateLastEvaluated="2010-03-01">
+          <ReviewStatus>no assertion criteria provided</ReviewStatus>
+          <GermlineClassification>Pathogenic</GermlineClassification>
+        </Classification>
         <Assertion>variation to disease</Assertion>
         <ObservedInList>
           <ObservedIn>
@@ -127,13 +133,13 @@
               <Citation>
                 <ID Source="PubMed">20179356</ID>
               </Citation>
-              <XRef DB="OMIM" ID="613159" Type="MIM"/>
+              <XRef DB="OMIM" ID="613159" Type="MIM" />
             </ObservedData>
           </ObservedIn>
         </ObservedInList>
         <SimpleAllele>
           <GeneList>
-            <Gene Symbol="XPNPEP3"/>
+            <Gene Symbol="XPNPEP3" />
           </GeneList>
           <Name>XPNPEP3, GLY453CYS</Name>
           <VariantType>Variation</VariantType>
@@ -141,7 +147,7 @@
             <Name Type="NonHGVS">GLY453CYS</Name>
           </OtherNameList>
           <XRefList>
-            <XRef DB="OMIM" ID="613553.0001" Type="Allelic variant"/>
+            <XRef DB="OMIM" ID="613553.0001" Type="Allelic variant" />
           </XRefList>
         </SimpleAllele>
         <TraitSet Type="Disease">
@@ -155,9 +161,9 @@
     </ClinicalAssertionList>
     <TraitMappingList>
       <TraitMapping ClinicalAssertionID="20211" TraitType="Disease" MappingType="Name" MappingValue="NEPHRONOPHTHISIS-LIKE NEPHROPATHY 1" MappingRef="Preferred">
-        <MedGen CUI="C3150419" Name="Nephronophthisis-like nephropathy 1"/>
+        <MedGen CUI="C3150419" Name="Nephronophthisis-like nephropathy 1" />
       </TraitMapping>
     </TraitMappingList>
-  </InterpretedRecord>
+  </ClassifiedRecord>
 </VariationArchive>
 </ClinVarVariationRelease>

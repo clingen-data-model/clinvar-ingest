@@ -1,18 +1,16 @@
-from typing import List
-
 from clinvar_ingest.model.common import dictify
 from clinvar_ingest.model.trait import Trait, TraitMapping, TraitSet
 from clinvar_ingest.reader import _parse_xml_document
 from clinvar_ingest.utils import ensure_list
 
 
-def unordered_dict_list_equal(list1: List[dict], list2: List[dict]) -> bool:
+def unordered_dict_list_equal(list1: list[dict], list2: list[dict]) -> bool:
     set1 = set([tuple(elem.items()) for elem in list1])
     set2 = set([tuple(elem.items()) for elem in list2])
     return len(list1) == len(list2) and set1 == set2
 
 
-def distinct_dict_set(list1: List[dict]) -> List[dict]:
+def distinct_dict_set(list1: list[dict]) -> list[dict]:
     """
     N^2 algorithm to remove duplicates from a list of dicts
     """
@@ -24,15 +22,15 @@ def distinct_dict_set(list1: List[dict]) -> List[dict]:
 
 
 def test_trait_from_xml_32():
-    filename = "test/data/original-clinvar-variation-32.xml"
+    filename = "test/data/VCV000000032.xml"
     with open(filename) as f:
         content = f.read()
     root = _parse_xml_document(content)
 
     release = root["ClinVarVariationRelease"]
-    interp_record = release["VariationArchive"]["InterpretedRecord"]
+    interp_record = release["VariationArchive"]["ClassifiedRecord"]
     rcv_id = interp_record["RCVList"]["RCVAccession"]["@Accession"]
-    interp = interp_record["Interpretations"]["Interpretation"]
+    interp = interp_record["Classifications"]["GermlineClassification"]
     interp_traitset = interp["ConditionList"]["TraitSet"]
     raw_trait = interp_traitset["Trait"]  # only 1 trait in this example
 
@@ -136,13 +134,13 @@ def test_trait_from_xml_32():
 
 
 def test_trait_from_xml_6619():
-    with open("test/data/original-clinvar-variation-222476.xml") as f:
+    with open("test/data/VCV000222476.xml") as f:
         content = f.read()
     root = _parse_xml_document(content)
     release = root["ClinVarVariationRelease"]
-    interp_record = release["VariationArchive"]["InterpretedRecord"]
+    interp_record = release["VariationArchive"]["ClassifiedRecord"]
     rcv_id = interp_record["RCVList"]["RCVAccession"]["@Accession"]
-    interp = interp_record["Interpretations"]["Interpretation"]
+    interp = interp_record["Classifications"]["GermlineClassification"]
     interp_traitset = interp["ConditionList"]["TraitSet"]
     raw_trait = interp_traitset["Trait"]  # only 1 trait in this example
 
@@ -217,42 +215,44 @@ def test_trait_from_xml_6619():
 
 
 def test_trait_from_xml_3510():
-    # test/data/original-clinvar-variation-4897.xml
-    with open("test/data/original-clinvar-variation-4897.xml") as f:
+    with open("test/data/VCV000004897.xml") as f:
         content = f.read()
     root = _parse_xml_document(content)
     release = root["ClinVarVariationRelease"]
-    interp_record = release["VariationArchive"]["InterpretedRecord"]
+    interp_record = release["VariationArchive"]["ClassifiedRecord"]
     rcv_id = interp_record["RCVList"]["RCVAccession"]["@Accession"]
-    interp = interp_record["Interpretations"]["Interpretation"]
+    interp = interp_record["Classifications"]["GermlineClassification"]
     interp_traitset = interp["ConditionList"]["TraitSet"]
     raw_trait = interp_traitset["Trait"]  # only 1 trait in this example
 
     trait = Trait.from_xml(raw_trait, rcv_id)
     assert trait.id == "3510"
     assert trait.rcv_id == "RCV000005175"
+    assert trait.gard_id == 5289
 
     # This trait has an attribute_content array because it has multiple GARD ids
+    # The first GARD ID is the one that is used as the trait's GARD ID,
+    # and the rest are stored in the attribute_content array
     assert len(trait.attribute_content) == 1
     assert trait.attribute_content == [
         {
             "Attribute": {
                 "@Type": "GARD id",
-                "@integerValue": "5289",
+                "@integerValue": "4260",
             },
-            "XRef": {"@ID": "5289", "@DB": "Office of Rare Diseases"},
+            "XRef": {"@ID": "4260", "@DB": "Office of Rare Diseases"},
         }
     ]
 
 
 def test_trait_from_xml_406155():
-    with open("test/data/original-clinvar-variation-406155.xml") as f:
+    with open("test/data/VCV000406155.xml") as f:
         content = f.read()
     root = _parse_xml_document(content)
     release = root["ClinVarVariationRelease"]
-    interp_record = release["VariationArchive"]["InterpretedRecord"]
+    interp_record = release["VariationArchive"]["ClassifiedRecord"]
     rcv_id = interp_record["RCVList"]["RCVAccession"]["@Accession"]
-    interp = interp_record["Interpretations"]["Interpretation"]
+    interp = interp_record["Classifications"]["GermlineClassification"]
     interp_traitset = interp["ConditionList"]["TraitSet"]
     raw_trait = interp_traitset["Trait"]  # only 1 trait in this example
 
@@ -278,87 +278,84 @@ def test_trait_from_xml_406155():
 
 
 def test_trait_set_from_xml_10():
-    with open("test/data/original-clinvar-variation-10.xml") as f:
+    with open("test/data/VCV000000010.xml") as f:
         content = f.read()
     root = _parse_xml_document(content)
     release = root["ClinVarVariationRelease"]
-    interp_record = release["VariationArchive"]["InterpretedRecord"]
+    interp_record = release["VariationArchive"]["ClassifiedRecord"]
     rcv_accessions = interp_record["RCVList"]["RCVAccession"]
-    interp = interp_record["Interpretations"]["Interpretation"]
+    interp = interp_record["Classifications"]["GermlineClassification"]
     interp_traitset = ensure_list(interp["ConditionList"]["TraitSet"])
 
     trait_set_id_to_rcv_id = {
-        r["InterpretedConditionList"]["@TraitSetID"]: r["@Accession"]
+        r["ClassifiedConditionList"]["@TraitSetID"]: r["@Accession"]
         for r in rcv_accessions
     }
     trait_sets = [
         TraitSet.from_xml(raw_traitset, trait_set_id_to_rcv_id[raw_traitset["@ID"]])
         for raw_traitset in interp_traitset
     ]
-    assert len(trait_sets) == 11
+    assert len(trait_sets) == 10
     assert [ts.id for ts in trait_sets] == [
         "55473",
-        "7",
-        "13451",
-        "21210",
         "9460",
-        "9590",
         "8589",
+        "16994",
+        "13451",
+        "9590",
+        "7",
+        "21210",
         "2387",
         "1961",
-        "52490",
-        "16994",
     ]
     assert [ts.rcv_id for ts in trait_sets] == [
         "RCV001248831",
-        "RCV000000026",
-        "RCV000763144",
-        "RCV000394716",
         "RCV000175607",
-        "RCV000844708",
         "RCV001731265",
+        "RCV004584302",
+        "RCV000763144",
+        "RCV000844708",
+        "RCV000000026",
+        "RCV000394716",
         "RCV002272003",
         "RCV000991133",
-        "RCV002227011",
-        "RCV002251839",
     ]
     assert [ts.type for ts in trait_sets] == [
         "Disease",
         "Disease",
         "Disease",
-        "Disease",
-        "Disease",
-        "Disease",
-        "Disease",
-        "Disease",
-        "Disease",
-        "Finding",
         "PhenotypeInstruction",
+        "Disease",
+        "Disease",
+        "Disease",
+        "Disease",
+        "Disease",
+        "Disease",
     ]
 
     # test traits
-    ts13451 = trait_sets[2]
+    ts13451 = trait_sets[4]
     assert ts13451.id == "13451"
     assert len(ts13451.traits) == 6
     assert [t.id for t in ts13451.traits] == [
+        "5535",
         "3370",
-        "222",
+        "9587",
         "9601",
         "9582",
-        "9587",
-        "5535",
+        "222",
     ]
 
     # test content
-    assert ts13451.content == {"@ContributesToAggregateClinsig": "true"}
+    assert ts13451.content == {"@ContributesToAggregateClassification": "true"}
 
 
 def test_trait_mapping_10():
-    with open("test/data/original-clinvar-variation-10.xml") as f:
+    with open("test/data/VCV000000010.xml") as f:
         content = f.read()
     root = _parse_xml_document(content)
     release = root["ClinVarVariationRelease"]
-    interp_record = release["VariationArchive"]["InterpretedRecord"]
+    interp_record = release["VariationArchive"]["ClassifiedRecord"]
     clinical_assertion_id_to_accession = {
         clinical_assertion["@ID"]: clinical_assertion["ClinVarAccession"]["@Accession"]
         for clinical_assertion in ensure_list(
@@ -366,10 +363,10 @@ def test_trait_mapping_10():
         )
     }
     trait_mappings_raw = ensure_list(interp_record["TraitMappingList"]["TraitMapping"])
-    assert len(trait_mappings_raw) == 344
+    assert len(trait_mappings_raw) == 353
 
     trait_mappings_raw_distinct = distinct_dict_set(trait_mappings_raw)
-    assert len(trait_mappings_raw_distinct) == 175
+    assert len(trait_mappings_raw_distinct) == 185
 
     trait_mappings = [
         TraitMapping.from_xml(raw, clinical_assertion_id_to_accession)

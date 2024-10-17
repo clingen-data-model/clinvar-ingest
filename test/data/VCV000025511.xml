@@ -1,0 +1,119 @@
+<ClinVarVariationRelease xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://ftp.ncbi.nlm.nih.gov/pub/clinvar/xsd_public/ClinVar_VCV_2.0.xsd" ReleaseDate="2024-09-17">
+<VariationArchive VariationID="25511" VariationName="NM_001337.4(CX3CR1):c.839C&gt;T (p.Thr280Met)" VariationType="single nucleotide variant" Accession="VCV000025511" Version="1" RecordType="included" NumberOfSubmissions="0" NumberOfSubmitters="0" DateLastUpdated="2024-01-26" DateCreated="2014-09-08">
+  <RecordStatus>current</RecordStatus>
+  <Species>Homo sapiens</Species>
+  <IncludedRecord>
+    <SimpleAllele AlleleID="36774" VariationID="25511">
+      <GeneList>
+        <Gene Symbol="CX3CR1" FullName="C-X3-C motif chemokine receptor 1" GeneID="1524" HGNC_ID="HGNC:2558" Source="submitted" RelationshipType="within single gene">
+          <Location>
+            <CytogeneticLocation>3p22.2</CytogeneticLocation>
+            <SequenceLocation Assembly="GRCh38" AssemblyAccessionVersion="GCF_000001405.38" AssemblyStatus="current" Chr="3" Accession="NC_000003.12" start="39263494" stop="39292966" display_start="39263494" display_stop="39292966" Strand="-" />
+            <SequenceLocation Assembly="GRCh37" AssemblyAccessionVersion="GCF_000001405.25" AssemblyStatus="previous" Chr="3" Accession="NC_000003.11" start="39304984" stop="39323225" display_start="39304984" display_stop="39323225" Strand="-" />
+          </Location>
+          <OMIM>601470</OMIM>
+        </Gene>
+      </GeneList>
+      <Name>NM_001337.4(CX3CR1):c.839C&gt;T (p.Thr280Met)</Name>
+      <CanonicalSPDI>NC_000003.12:39265670:G:A</CanonicalSPDI>
+      <VariantType>single nucleotide variant</VariantType>
+      <Location>
+        <CytogeneticLocation>3p22.2</CytogeneticLocation>
+        <SequenceLocation Assembly="GRCh38" AssemblyAccessionVersion="GCF_000001405.38" forDisplay="true" AssemblyStatus="current" Chr="3" Accession="NC_000003.12" start="39265671" stop="39265671" display_start="39265671" display_stop="39265671" variantLength="1" positionVCF="39265671" referenceAlleleVCF="G" alternateAlleleVCF="A" />
+        <SequenceLocation Assembly="GRCh37" AssemblyAccessionVersion="GCF_000001405.25" AssemblyStatus="previous" Chr="3" Accession="NC_000003.11" start="39307162" stop="39307162" display_start="39307162" display_stop="39307162" variantLength="1" positionVCF="39307162" referenceAlleleVCF="G" alternateAlleleVCF="A" />
+      </Location>
+      <ProteinChange>T280M</ProteinChange>
+      <ProteinChange>T312M</ProteinChange>
+      <HGVSlist>
+        <HGVS Assembly="GRCh37" Type="genomic, top-level">
+          <NucleotideExpression sequenceAccessionVersion="NC_000003.11" sequenceAccession="NC_000003" sequenceVersion="11" change="g.39307162G&gt;A" Assembly="GRCh37">
+            <Expression>NC_000003.11:g.39307162G&gt;A</Expression>
+          </NucleotideExpression>
+        </HGVS>
+        <HGVS Assembly="GRCh38" Type="genomic, top-level">
+          <NucleotideExpression sequenceAccessionVersion="NC_000003.12" sequenceAccession="NC_000003" sequenceVersion="12" change="g.39265671G&gt;A" Assembly="GRCh38">
+            <Expression>NC_000003.12:g.39265671G&gt;A</Expression>
+          </NucleotideExpression>
+        </HGVS>
+        <HGVS Type="genomic">
+          <NucleotideExpression sequenceAccessionVersion="NG_016362.1" sequenceAccession="NG_016362" sequenceVersion="1" change="g.21065C&gt;T">
+            <Expression>NG_016362.1:g.21065C&gt;T</Expression>
+          </NucleotideExpression>
+        </HGVS>
+        <HGVS Type="coding">
+          <NucleotideExpression sequenceAccessionVersion="NM_001171171.2" sequenceAccession="NM_001171171" sequenceVersion="2" change="c.839C&gt;T">
+            <Expression>NM_001171171.2:c.839C&gt;T</Expression>
+          </NucleotideExpression>
+          <ProteinExpression sequenceAccessionVersion="NP_001164642.1" sequenceAccession="NP_001164642" sequenceVersion="1" change="p.Thr280Met">
+            <Expression>NP_001164642.1:p.Thr280Met</Expression>
+          </ProteinExpression>
+          <MolecularConsequence ID="SO:0001583" Type="missense variant" DB="SO" />
+        </HGVS>
+        <HGVS Type="coding">
+          <NucleotideExpression sequenceAccessionVersion="NM_001171172.2" sequenceAccession="NM_001171172" sequenceVersion="2" change="c.839C&gt;T">
+            <Expression>NM_001171172.2:c.839C&gt;T</Expression>
+          </NucleotideExpression>
+          <ProteinExpression sequenceAccessionVersion="NP_001164643.1" sequenceAccession="NP_001164643" sequenceVersion="1" change="p.Thr280Met">
+            <Expression>NP_001164643.1:p.Thr280Met</Expression>
+          </ProteinExpression>
+          <MolecularConsequence ID="SO:0001583" Type="missense variant" DB="SO" />
+        </HGVS>
+        <HGVS Type="coding">
+          <NucleotideExpression sequenceAccessionVersion="NM_001171174.1" sequenceAccession="NM_001171174" sequenceVersion="1" change="c.935C&gt;T">
+            <Expression>NM_001171174.1:c.935C&gt;T</Expression>
+          </NucleotideExpression>
+          <ProteinExpression sequenceAccessionVersion="NP_001164645.1" sequenceAccession="NP_001164645" sequenceVersion="1" change="p.Thr312Met">
+            <Expression>NP_001164645.1:p.Thr312Met</Expression>
+          </ProteinExpression>
+          <MolecularConsequence ID="SO:0001583" Type="missense variant" DB="SO" />
+        </HGVS>
+        <HGVS Type="coding">
+          <NucleotideExpression sequenceAccessionVersion="NM_001337.4" sequenceAccession="NM_001337" sequenceVersion="4" change="c.839C&gt;T" MANESelect="true">
+            <Expression>NM_001337.4:c.839C&gt;T</Expression>
+          </NucleotideExpression>
+          <ProteinExpression sequenceAccessionVersion="NP_001328.1" sequenceAccession="NP_001328" sequenceVersion="1" change="p.Thr280Met">
+            <Expression>NP_001328.1:p.Thr280Met</Expression>
+          </ProteinExpression>
+          <MolecularConsequence ID="SO:0001583" Type="missense variant" DB="SO" />
+        </HGVS>
+      </HGVSlist>
+      <XRefList>
+        <XRef Type="Allelic variant" ID="601470.0001" DB="OMIM" />
+        <XRef Type="rs" ID="3732378" DB="dbSNP" />
+        <XRef Type="Interpreted" ID="8152" DB="ClinVar" />
+      </XRefList>
+      <AlleleFrequencyList>
+        <AlleleFrequency Value="0.08526" Source="1000 Genomes Project 30x" />
+        <AlleleFrequency Value="0.08546" Source="1000 Genomes Project" />
+        <AlleleFrequency Value="0.11423" Source="Trans-Omics for Precision Medicine (TOPMed)" />
+        <AlleleFrequency Value="0.12116" Source="The Genome Aggregation Database (gnomAD)" />
+        <AlleleFrequency Value="0.13624" Source="Exome Aggregation Consortium (ExAC)" />
+        <AlleleFrequency Value="0.13958" Source="The Genome Aggregation Database (gnomAD), exomes" />
+      </AlleleFrequencyList>
+      <GlobalMinorAlleleFrequency Value="0.08546" Source="1000 Genomes Project" MinorAllele="A" />
+    </SimpleAllele>
+    <Classifications>
+      <GermlineClassification NumberOfSubmissions="0" NumberOfSubmitters="0">
+        <ReviewStatus>no classification for the single variant</ReviewStatus>
+        <Description>no classification for the single variant</Description>
+      </GermlineClassification>
+      <SomaticClinicalImpact NumberOfSubmissions="0" NumberOfSubmitters="0">
+        <ReviewStatus>no classification for the single variant</ReviewStatus>
+        <Description>no classification for the single variant</Description>
+      </SomaticClinicalImpact>
+      <OncogenicityClassification NumberOfSubmissions="0" NumberOfSubmitters="0">
+        <ReviewStatus>no classification for the single variant</ReviewStatus>
+        <Description>no classification for the single variant</Description>
+      </OncogenicityClassification>
+    </Classifications>
+    <SubmittedClassificationList>
+      <SCV Title="CX3CR1, VAL249ILE/THR280MET_HUMAN IMMUNODEFICIENCY VIRUS TYPE 1, RAPID PROGRESSION TO AIDS" Accession="SCV000028837" Version="3" />
+      <SCV Title="CX3CR1, VAL249ILE/THR280MET_CORONARY ARTERY DISEASE, RESISTANCE TO" Accession="SCV000028838" Version="3" />
+      <SCV Title="CX3CR1, VAL249ILE/THR280MET_MACULAR DEGENERATION, AGE-RELATED, 12, SUSCEPTIBILITY TO" Accession="SCV000044400" Version="3" />
+    </SubmittedClassificationList>
+    <ClassifiedVariationList>
+      <ClassifiedVariation VariationID="8152" Accession="VCV000008152" Version="1" />
+    </ClassifiedVariationList>
+  </IncludedRecord>
+</VariationArchive>
+</ClinVarVariationRelease>

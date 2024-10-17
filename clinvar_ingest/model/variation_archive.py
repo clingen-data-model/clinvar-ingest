@@ -2,15 +2,13 @@
 Data model for ClinVar Variation XML files.
 """
 
-# TODO https://github.com/jpvanhal/inflection does good conversion
-# between PascalCase and snake_case for entity_type. If Model names are
-# reliable we could generate entity_type strings.
 from __future__ import annotations
 
 import dataclasses
 import json
 import logging
 import re
+from enum import StrEnum
 from typing import List
 
 from clinvar_ingest.model.common import (
@@ -36,6 +34,12 @@ from clinvar_ingest.utils import (
 )
 
 _logger = logging.getLogger("clinvar_ingest")
+
+
+class StatementType(StrEnum):
+    GermlineClassification = "GermlineClassification"
+    SomaticClinicalImpact = "SomaticClinicalImpact"
+    OncogenicityClassification = "OncogenicityClassification"
 
 
 @dataclasses.dataclass
@@ -163,32 +167,40 @@ class ClinicalAssertion(Model):
     id: str
     title: str
     local_key: str
-    assertion_accession: str
     version: str
     assertion_type: str
     date_created: str
     date_last_updated: str
     submitted_assembly: str
     record_status: str
+    # (CHANGED) Moved to ClinicalAssertion.Classification.ReviewStatus.$
     review_status: str
+    # (CHANGED) Moved to ClinicalAssertion.Classification.@DateLastEvaluated
     interpretation_date_last_evaluated: str
+    # (CHANGED) Moved to ClinicalAssertion.Classification.<StatementType>.$
     interpretation_description: str
-    interpretation_comments: List[dict]
+    interpretation_comments: list[dict]
     submitter_id: str
-    submitters: List[Submitter]
+    submitters: list[Submitter]
     submission: Submission
     submission_id: str
-    submission_names: List[str]
+    submission_names: list[str]
     variation_id: str
     variation_archive_id: str
     content: dict
 
-    clinical_assertion_observations: List[ClinicalAssertionObservation]
+    clinical_assertion_observations: list[ClinicalAssertionObservation]
     clinical_assertion_trait_set: ClinicalAssertionTraitSet | None
-    clinical_assertion_variations: List[ClinicalAssertionVariation]
+    clinical_assertion_variations: list[ClinicalAssertionVariation]
+
+    # (NEW) From ClinicalAssertion.Classification [<StatementType>]
+    statement_type: StatementType
+    # Only for SomaticClinicalImpact
+    clinical_impact_assertion_type: str
+    clinical_impact_clinical_significance: str
 
     @staticmethod
-    def jsonifiable_fields() -> List[str]:
+    def jsonifiable_fields() -> list[str]:
         return ["content", "interpretation_comments"]
 
     def __post_init__(self):
@@ -197,17 +209,19 @@ class ClinicalAssertion(Model):
     @staticmethod
     def from_xml(
         inp: dict,
-        normalized_traits: List[Trait] = [],
-        trait_mappings: List[TraitMapping] = [],
+        normalized_traits: list[Trait] = [],
+        trait_mappings: list[TraitMapping] = [],
         variation_id: str = None,
         variation_archive_id: str = None,
     ):
+        # TODO
+        # if _logger.isEnabledFor(logging.DEBUG):
         _logger.debug(f"ClinicalAssertion.from_xml(inp={json.dumps(inp)})")
         obj_id = extract(inp, "@ID")
         raw_accession = extract(inp, "ClinVarAccession")
         scv_accession = extract(raw_accession, "@Accession")
         clinvar_submission = extract(inp, "ClinVarSubmissionID")
-        interpretation = extract(inp, "Interpretation")
+        classification_raw = extract(inp, "Classification")
         additional_submitters = [
             Submitter.from_xml(a, scv_accession)
             for a in ensure_list(
@@ -272,7 +286,7 @@ class ClinicalAssertion(Model):
         )
 
         interpretation_comments = []
-        for raw_comment in ensure_list(extract(interpretation, "Comment") or []):
+        for raw_comment in ensure_list(extract(classification_raw, "Comment") or []):
             comment = {"text": extract(raw_comment, "$")}
             if "@Type" in raw_comment:
                 comment["type"] = extract(raw_comment, "@Type")
@@ -282,25 +296,44 @@ class ClinicalAssertion(Model):
             extract(inp, "SubmissionNameList", "SubmissionName") or []
         )
 
+        # Classification fields
+        review_status = extract(classification_raw, "ReviewStatus", "$")
+        _logger.debug(f"review_status: {review_status}")
+        statement_type = None
+        # The VariationArchiveClassification can be used to extract the few fields we care about
+        _classification = VariationArchiveClassification.from_xml(
+            classification_raw, None
+        )
+        if len(_classification) != 1:
+            raise ValueError(
+                f"Expected a single Classification node in SCV {scv_accession},"
+                f" got: {_classification}"
+            )
+        _classification = _classification[0]
+        statement_type = _classification.statement_type
+        clinical_impact_assertion_type = _classification.clinical_impact_assertion_type
+        clinical_impact_clinical_significance = (
+            _classification.clinical_impact_clinical_significance
+        )
+        # In SCVs it's just the inner text, not a Description node like in VCVs
+        interpretation_description = extract(classification_raw, "$")
+
         obj = ClinicalAssertion(
             internal_id=obj_id,
             id=scv_accession,
             title=extract(clinvar_submission, "@title"),
             local_key=extract(clinvar_submission, "@localKey"),
-            assertion_accession=scv_accession,
             version=extract(raw_accession, "@Version"),
             assertion_type=extract(extract(inp, "Assertion"), "$"),
             date_created=sanitize_date(extract(inp, "@DateCreated")),
             date_last_updated=sanitize_date(extract(inp, "@DateLastUpdated")),
             submitted_assembly=extract(clinvar_submission, "@submittedAssembly"),
             record_status=extract(extract(inp, "RecordStatus"), "$"),
-            review_status=extract(extract(inp, "ReviewStatus"), "$"),
+            review_status=review_status,
             interpretation_date_last_evaluated=sanitize_date(
-                extract(interpretation, "@DateLastEvaluated")
+                extract(classification_raw, "@DateLastEvaluated")
             ),
-            interpretation_description=extract(
-                extract(interpretation, "Description"), "$"
-            ),
+            interpretation_description=interpretation_description,
             interpretation_comments=interpretation_comments,
             submitter_id=submitter.id,
             submitters=submitters,
@@ -312,6 +345,9 @@ class ClinicalAssertion(Model):
             clinical_assertion_observations=observations,
             clinical_assertion_trait_set=assertion_trait_set,
             clinical_assertion_variations=submitted_variations,
+            statement_type=statement_type,
+            clinical_impact_assertion_type=clinical_impact_assertion_type,
+            clinical_impact_clinical_significance=clinical_impact_clinical_significance,
             content=inp,
         )
         return obj
@@ -739,35 +775,108 @@ class Variation(Model):
 
 
 @dataclasses.dataclass
-class RcvAccession(Model):
-    independent_observations: int
-    variation_id: int
-    id: str
-    variation_archive_id: int
+class RcvAccessionClassification(Model):
+    # TODO Add RCV_ID as a field to link this back to the VariationArchive
+    # maybe another name? Use a field name that exists elsewhere.
+    rcv_id: str
+    statement_type: StatementType
+    review_status: str
+
+    # Description
+    num_submissions: int | None
     date_last_evaluated: str
-    version: int
+    interp_description: str
+
+    # Only for SomaticClinicalImpact
+    clinical_impact_assertion_type: str
+    clinical_impact_clinical_significance: str
+
+    @staticmethod
+    def jsonifiable_fields() -> list[str]:
+        return []
+
+    def __post_init__(self):
+        self.entity_type = "rcv_accession_classification"
+
+    @staticmethod
+    def from_xml_single(inp: dict, statement_type: StatementType, rcv_id: str):
+        """
+        The input is a single Classification node contents.
+        Either the value of a GermlineClassification, SomaticClinicalImpact,
+        or OncogenicityClassification entry. The statement_type is the key
+        from the original `Classifications` XML/dict, indicating the type.
+        """
+        raw_description = extract(inp, "Description")
+        return RcvAccessionClassification(
+            rcv_id=rcv_id,
+            statement_type=statement_type,
+            review_status=extract(inp, "ReviewStatus", "$"),
+            num_submissions=int_or_none(extract(raw_description, "@SubmissionCount")),
+            interp_description=extract(raw_description, "$"),
+            date_last_evaluated=sanitize_date(
+                extract(raw_description, "@DateLastEvaluated")
+            ),
+            clinical_impact_assertion_type=extract(
+                raw_description, "@ClinicalImpactAssertionType"
+            ),
+            clinical_impact_clinical_significance=extract(
+                raw_description,
+                "@ClinicalImpactClinicalSignificance",
+            ),
+        )
+
+    @staticmethod
+    def from_xml(inp: dict, rcv_id: str):
+        outputs: list[RcvAccessionClassification] = []
+
+        # StrEnum objects to values dict
+        statement_types = {o: o.value for o in StatementType}
+        for statement_type, statement_type_str in statement_types.items():
+            if statement_type_str in inp:
+                outputs.append(
+                    RcvAccessionClassification.from_xml_single(
+                        inp[statement_type_str], statement_type, rcv_id
+                    )
+                )
+        return outputs
+
+    def disassemble(self):
+        yield self
+
+
+@dataclasses.dataclass
+class RcvAccession(Model):
+    id: str
+    variation_id: int
+    independent_observations: int
+    variation_archive_id: str
+    version: int | None
     title: str
     trait_set_id: str
-    review_status: str
-    interpretation: str
-    submission_count: int
 
     content: dict
 
+    classifications: list[RcvAccessionClassification]
+
     @staticmethod
-    def jsonifiable_fields() -> List[str]:
+    def jsonifiable_fields() -> list[str]:
         return ["content"]
 
     def __post_init__(self):
         self.entity_type = "rcv_accession"
+
+    # @staticmethod
+    # def classifications_from_xml(rcv_classifications_raw: list[dict]) -> list[dict]:
 
     @staticmethod
     def from_xml(
         inp: dict,
         variation_id: int = None,
         variation_archive_id: str = None,
-    ) -> RcvAccession:
+    ):
         """
+        OLD:
+
         <RCVAccession
             Title="CYP2C19*12/*34 AND Sertraline response"
             ReviewStatus="practice guideline"
@@ -781,25 +890,139 @@ class RcvAccession(Model):
             </InterpretedCondition>
         </InterpretedConditionList>
         </RCVAccession>
+
+        NEW:
+
+        <RCVAccession Title="CYP2C19*12/*34 AND Sertraline response"
+                      Accession="RCV000783230" Version="10">
+            <ClassifiedConditionList TraitSetID="20745">
+                <ClassifiedCondition DB="MedGen" ID="CN221265">Sertraline response</ClassifiedCondition>
+            </ClassifiedConditionList>
+            <RCVClassifications>
+                <GermlineClassification>
+                    <ReviewStatus>practice guideline</ReviewStatus>
+                    <Description SubmissionCount="1">drug response</Description>
+                </GermlineClassification>
+            </RCVClassifications>
+        </RCVAccession>
+
+        SomaticClinicalImpact:
+        <RCVAccession Title="NM_024426.6(WT1):c.1400G&gt;T (p.Arg467Leu) AND Acute myeloid leukemia"
+                      Accession="RCV003883245" Version="1">
+            <ClassifiedConditionList TraitSetID="6288">
+                <ClassifiedCondition DB="MedGen" ID="C0023467">Acute myeloid leukemia</ClassifiedCondition>
+            </ClassifiedConditionList>
+            <RCVClassifications>
+                <SomaticClinicalImpact>
+                    <ReviewStatus>no assertion criteria provided</ReviewStatus>
+                    <Description
+                        ClinicalImpactAssertionType="prognostic"
+                        ClinicalImpactClinicalSignificance="poor outcome"
+                        DateLastEvaluated="2024-01-24"
+                        SubmissionCount="1">
+                        Tier I - Strong
+                    </Description>
+                </SomaticClinicalImpact>
+            </RCVClassifications>
+        </RCVAccession>
         """
         # org.broadinstitute.monster.clinvar.parsers.VCV.scala : 259 : parseRawRcv
+        rcv_id = extract(inp, "@Accession")
+        rcv_classifications_raw = extract(inp, "RCVClassifications") or {}
 
         # TODO independentObservations always null?
         obj = RcvAccession(
             independent_observations=extract(inp, "@independentObservations"),
             variation_id=variation_id,
-            id=extract(inp, "@Accession"),
+            id=rcv_id,
             variation_archive_id=variation_archive_id,
-            date_last_evaluated=extract(inp, "@DateLastEvaluated"),
             version=int_or_none(extract(inp, "@Version")),
             title=extract(inp, "@Title"),
-            trait_set_id=extract(inp, "InterpretedConditionList", "@TraitSetID"),
-            review_status=extract(inp, "@ReviewStatus"),
-            interpretation=extract(inp, "@Interpretation"),
-            submission_count=int_or_none(extract(inp, "@SubmissionCount")),
+            trait_set_id=extract(inp, "ClassifiedConditionList", "@TraitSetID"),
+            classifications=RcvAccessionClassification.from_xml(
+                rcv_classifications_raw, rcv_id
+            ),
             content=inp,
         )
         return obj
+
+    def disassemble(self):
+        self_copy = model_copy(self)
+
+        for c in self_copy.classifications:
+            for subobj in c.disassemble():
+                yield subobj
+        del self_copy.classifications
+
+        yield self
+
+
+@dataclasses.dataclass
+class VariationArchiveClassification(Model):
+    vcv_id: str
+    statement_type: StatementType
+    review_status: str
+
+    num_submitters: int | None
+    num_submissions: int | None
+    date_created: str
+    date_last_evaluated: str
+    interp_description: str
+    most_recent_submission: str
+
+    # Only for SomaticClinicalImpact
+    clinical_impact_assertion_type: str
+    clinical_impact_clinical_significance: str
+
+    @staticmethod
+    def jsonifiable_fields() -> list[str]:
+        return []
+
+    def __post_init__(self):
+        self.entity_type = "variation_archive_classification"
+
+    @staticmethod
+    def from_xml_single(inp: dict, statement_type: StatementType, vcv_id: str):
+        """
+        The input is a single Classification node contents.
+        Either the value of a GermlineClassification, SomaticClinicalImpact,
+        or OncogenicityClassification entry. The statement_type is the key
+        from the original `Classifications` XML/dict, indicating the type.
+        """
+        interp_description = extract(inp, "Description")
+        return VariationArchiveClassification(
+            vcv_id=vcv_id,
+            statement_type=statement_type,
+            review_status=extract(inp, "ReviewStatus", "$"),
+            num_submitters=int_or_none(extract(inp, "@NumberOfSubmitters")),
+            num_submissions=int_or_none(extract(inp, "@NumberOfSubmissions")),
+            date_created=sanitize_date(extract(inp, "@DateCreated")),
+            interp_description=extract(interp_description, "$"),
+            most_recent_submission=sanitize_date(extract(inp, "@MostRecentSubmission")),
+            date_last_evaluated=sanitize_date(extract(inp, "@DateLastEvaluated")),
+            clinical_impact_assertion_type=extract(
+                interp_description, "@ClinicalImpactAssertionType"
+            ),
+            clinical_impact_clinical_significance=extract(
+                interp_description,
+                "@ClinicalImpactClinicalSignificance",
+            ),
+        )
+
+    @staticmethod
+    def from_xml(inp: dict, vcv_id: str):
+        outputs: list[VariationArchiveClassification] = []
+
+        # StrEnum objects to values dict
+        statement_types = {o: o.value for o in StatementType}
+        for statement_type, statement_type_str in statement_types.items():
+            if statement_type_str in inp:
+                outputs.append(
+                    VariationArchiveClassification.from_xml_single(
+                        inp[statement_type_str], statement_type, vcv_id
+                    )
+                )
+        return outputs
 
     def disassemble(self):
         yield self
@@ -811,28 +1034,23 @@ class VariationArchive(Model):
     name: str
     version: str
     variation: Variation
-    clinical_assertions: List[ClinicalAssertion]
+    clinical_assertions: list[ClinicalAssertion]
     date_created: str
     record_status: str
     species: str
-    review_status: str
-    interp_description: str
-    num_submitters: str
-    num_submissions: str
+    num_submitters: int | None
+    num_submissions: int | None
     date_last_updated: str
-    interp_type: str
-    interp_explanation: str
-    interp_date_last_evaluated: str
-    interp_content: dict
-    content: str
+    content: dict
 
-    trait_sets: List[TraitSet]
-    trait_mappings: List[TraitMapping]
+    trait_sets: list[TraitSet]
+    trait_mappings: list[TraitMapping]
 
-    rcv_accessions: List[RcvAccession]
+    rcv_accessions: list[RcvAccession]
+    classifications: list[VariationArchiveClassification]
 
     @staticmethod
-    def jsonifiable_fields() -> List[str]:
+    def jsonifiable_fields() -> list[str]:
         return ["content", "interp_content"]
 
     def __post_init__(self):
@@ -842,10 +1060,16 @@ class VariationArchive(Model):
     @staticmethod
     def from_xml(inp: dict):
         _logger.debug(f"VariationArchive.from_xml(inp={json.dumps(inp)})")
-        interp_record = inp.get("InterpretedRecord", inp.get("IncludedRecord"))
-        interpretations = extract(interp_record, "Interpretations")
-        interpretation = interpretations["Interpretation"]
         vcv_accession = extract(inp, "@Accession")
+
+        # TODO don't include empty classifications from IncludedRecord
+        # Find a submitted Haplotype with a SimpleAllele IncludedRecord with a non-empty Classification
+
+        record_type = (
+            "ClassifiedRecord" if "ClassifiedRecord" in inp else "IncludedRecord"
+        )
+        interp_record = inp[record_type]
+
         variation = Variation.from_xml(interp_record, vcv_accession)
         rcv_accessions = [
             RcvAccession.from_xml(
@@ -881,18 +1105,42 @@ class VariationArchive(Model):
                 or []
             )
         ]
+        # Collect TraitSet dicts from each Classification type
+        if record_type == "ClassifiedRecord":
+            raw_classifications = extract(interp_record, "Classifications")
+        else:
+            raw_classifications = {}
+        raw_classification_types = set([r.value for r in StatementType]).intersection(
+            set(raw_classifications.keys())
+        )
+        raw_trait_sets = flatten1(
+            [
+                ensure_list(
+                    extract(
+                        raw_classifications[raw_classification_type],
+                        "ConditionList",
+                        "TraitSet",
+                    )
+                    or []
+                )
+                for raw_classification_type in raw_classification_types
+            ]
+        )
+
         trait_set_id_to_rcv_id = {r.trait_set_id: r.id for r in rcv_accessions}
         trait_sets = [
             TraitSet.from_xml(ts, trait_set_id_to_rcv_id[get(ts, "@ID")])
-            for ts in ensure_list(
-                extract(
-                    interpretation,
-                    "ConditionList",
-                    "TraitSet",
-                )
-                or []
-            )
+            for ts in raw_trait_sets
         ]
+
+        # Classifications is a single node containing multiple Classification subclass nodes
+        # e.g. "Classifications": {
+        #  "GermlineClassification": {...},
+        #  "SomaticClinicalImpact": {...}}
+        classifications = VariationArchiveClassification.from_xml(
+            raw_classifications, vcv_accession
+        )
+
         obj = VariationArchive(
             id=vcv_accession,
             name=extract(inp, "@VariationName"),
@@ -912,22 +1160,12 @@ class VariationArchive(Model):
             date_last_updated=sanitize_date(extract(inp, "@DateLastUpdated")),
             record_status=extract(extract(inp, "RecordStatus"), "$"),
             species=extract(extract(inp, "Species"), "$"),
-            review_status=extract(extract(interp_record, "ReviewStatus"), "$"),
-            interp_type=extract(interpretation, "@Type"),
-            interp_description=extract(extract(interpretation, "Description"), "$"),
-            interp_explanation=extract(extract(interpretation, "Explanation"), "$"),
-            # num_submitters and num_submissions are at top and interp level
-            num_submitters=int_or_none(extract(interpretation, "@NumberOfSubmitters")),
-            num_submissions=int_or_none(
-                extract(interpretation, "@NumberOfSubmissions")
-            ),
-            interp_date_last_evaluated=sanitize_date(
-                extract(interpretation, "@DateLastEvaluated")
-            ),
+            num_submitters=int_or_none(extract(inp, "@NumberOfSubmitters")),
+            num_submissions=int_or_none(extract(inp, "@NumberOfSubmissions")),
             trait_sets=trait_sets,
             trait_mappings=trait_mappings,
             rcv_accessions=rcv_accessions,
-            interp_content=interpretation,
+            classifications=classifications,
             content=inp,
         )
         return obj
@@ -954,5 +1192,11 @@ class VariationArchive(Model):
             for sub_obj in rcv.disassemble():
                 yield sub_obj
         del self_copy.rcv_accessions
+
+        # TODO classifications
+        for classification in self_copy.classifications:
+            for sub_obj in classification.disassemble():
+                yield sub_obj
+        del self_copy.classifications
 
         yield self_copy

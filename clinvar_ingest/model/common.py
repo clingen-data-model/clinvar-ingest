@@ -2,6 +2,7 @@ import dataclasses
 import logging
 import re
 from abc import ABCMeta, abstractmethod
+from enum import StrEnum
 from typing import Any
 
 _logger = logging.getLogger("clinvar_ingest")
@@ -129,7 +130,7 @@ def sanitize_date(s: str) -> str:
 
 def dictify(
     obj,
-) -> dict | list[dict | Any]:  # recursive type truncated at 2nd level
+) -> dict | list[dict | Any] | str:  # recursive type truncated at 2nd level
     """
     Recursively dictify Python objects into dicts. Objects may be Model instances.
     """
@@ -139,6 +140,8 @@ def dictify(
         return {k: dictify(v) for k, v in obj.items()}
     if isinstance(obj, list):
         return [dictify(v) for v in obj]
+    if isinstance(obj, StrEnum):
+        return str(obj)
     # Replaced isinstance(obj, Model) with this because of interactive class reloading
     if getattr(obj, "__dict__", None):
         return dictify(vars(obj))

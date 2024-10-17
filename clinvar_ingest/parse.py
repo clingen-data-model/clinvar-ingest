@@ -3,11 +3,11 @@ import json
 import logging
 import os
 import pathlib
-from typing import IO, Any, TextIO
+from typing import IO, Any, Callable, Iterator, TextIO
 
 from clinvar_ingest.cloud.gcs import blob_reader, blob_size, blob_writer
 from clinvar_ingest.fs import BinaryOpenMode, ReadCounter, fs_open
-from clinvar_ingest.model.common import dictify
+from clinvar_ingest.model.common import Model, dictify
 from clinvar_ingest.reader import (
     get_clinvar_rcv_xml_releaseinfo,
     get_clinvar_vcv_xml_releaseinfo,
@@ -134,6 +134,19 @@ def _jsonify_non_empties(obj: list | dict | str) -> dict | list | str | None:
         return json.dumps(obj) if obj not in [None, ""] else None
 
 
+def reader_fn_for_format(
+    file_format: ClinVarIngestFileFormat,
+) -> Callable[[TextIO, bool], Iterator[Model]]:
+    match file_format:
+        case ClinVarIngestFileFormat.VCV:
+            reader_fn = read_clinvar_vcv_xml
+        case ClinVarIngestFileFormat.RCV:
+            reader_fn = read_clinvar_rcv_xml
+        case _:
+            raise ValueError(f"Unknown file format: {file_format}")
+    return reader_fn
+
+
 def parse_and_write_files(
     input_filename: str,
     output_directory: str,
@@ -182,11 +195,7 @@ def parse_and_write_files(
         interval=60,
     )
 
-    reader_fn = (
-        read_clinvar_vcv_xml
-        if file_format == ClinVarIngestFileFormat.VCV
-        else read_clinvar_rcv_xml
-    )
+    reader_fn = reader_fn_for_format(file_format)
     _logger.info(f"Reading file format: {file_format} with reader: {reader_fn}")
 
     try:

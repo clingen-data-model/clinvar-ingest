@@ -1,8 +1,8 @@
-<ClinVarVariationRelease xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://ftp.ncbi.nlm.nih.gov/pub/clinvar/xsd_public/clinvar_variation/variation_archive_1.17.xsd" ReleaseDate="2024-05-19">
-<VariationArchive VariationID="424711" VariationName="NM_004990.3(MARS1):c.[1031A&gt;G];[1177G&gt;A[1700C&gt;T]" VariationType="CompoundHeterozygote" Accession="VCV000424711" Version="1" RecordType="interpreted" NumberOfSubmissions="1" NumberOfSubmitters="1" DateLastUpdated="2023-12-25" DateCreated="2015-04-11" MostRecentSubmission="2015-04-11">
+<ClinVarVariationRelease xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://ftp.ncbi.nlm.nih.gov/pub/clinvar/xsd_public/ClinVar_VCV_2.0.xsd" ReleaseDate="2024-07-30">
+<VariationArchive VariationID="424711" VariationName="NM_004990.3(MARS1):c.[1031A&gt;G];[1177G&gt;A[1700C&gt;T]" VariationType="CompoundHeterozygote" Accession="VCV000424711" Version="1" RecordType="classified" NumberOfSubmissions="1" NumberOfSubmitters="1" DateLastUpdated="2024-07-29" DateCreated="2015-04-11" MostRecentSubmission="2015-04-11">
   <RecordStatus>current</RecordStatus>
   <Species>Homo sapiens</Species>
-  <InterpretedRecord>
+  <ClassifiedRecord>
     <Genotype VariationID="424711">
       <SimpleAllele AlleleID="187251" VariationID="192373">
         <GeneList>
@@ -55,14 +55,74 @@
             <MolecularConsequence ID="SO:0001583" Type="missense variant" DB="SO" />
           </HGVS>
         </HGVSlist>
-        <Interpretations>
-          <Interpretation DateLastEvaluated="2015-05-07" NumberOfSubmissions="1" NumberOfSubmitters="1" Type="Clinical significance">
-            <Description>Pathogenic</Description>
+        <Classifications>
+          <GermlineClassification DateLastEvaluated="2023-12-30" DateCreated="2015-06-24" MostRecentSubmission="2024-02-25" NumberOfSubmissions="2" NumberOfSubmitters="2">
+            <ReviewStatus>criteria provided, single submitter</ReviewStatus>
+            <Description>Uncertain significance</Description>
             <Citation Type="general">
               <ID Source="PubMed">25913036</ID>
             </Citation>
+            <Citation Type="general">
+              <ID Source="PubMed">29775242</ID>
+            </Citation>
+            <DescriptionHistory Dated="2024-02-25">
+              <Description>Pathogenic</Description>
+            </DescriptionHistory>
             <ConditionList>
-              <TraitSet ID="12067" Type="Disease" ContributesToAggregateClinsig="true">
+              <TraitSet ID="28071" Type="Disease" ContributesToAggregateClassification="true">
+                <Trait ID="18331" Type="Disease">
+                  <Name>
+                    <ElementValue Type="Preferred">Severe early-onset pulmonary alveolar proteinosis due to MARS deficiency</ElementValue>
+                    <XRef ID="MONDO:0014206" DB="MONDO" />
+                  </Name>
+                  <Name>
+                    <ElementValue Type="Alternate">PULMONARY ALVEOLAR PROTEINOSIS, REUNION ISLAND</ElementValue>
+                    <XRef Type="MIM" ID="615486" DB="OMIM" />
+                  </Name>
+                  <Name>
+                    <ElementValue Type="Alternate">Interstitial lung and liver disease</ElementValue>
+                  </Name>
+                  <Symbol>
+                    <ElementValue Type="Alternate">ILLD</ElementValue>
+                    <XRef Type="MIM" ID="615486" DB="OMIM" />
+                  </Symbol>
+                  <AttributeSet>
+                    <Attribute Type="GARD id" integerValue="17746" />
+                    <XRef ID="17746" DB="Office of Rare Diseases" />
+                  </AttributeSet>
+                  <XRef ID="440427" DB="Orphanet" />
+                  <XRef ID="C4225400" DB="MedGen" />
+                  <XRef ID="MONDO:0014206" DB="MONDO" />
+                  <XRef Type="MIM" ID="615486" DB="OMIM" />
+                </Trait>
+                <Trait ID="33047" Type="Disease">
+                  <Name>
+                    <ElementValue Type="Preferred">Charcot-Marie-Tooth disease axonal type 2U</ElementValue>
+                    <XRef ID="MONDO:0014566" DB="MONDO" />
+                  </Name>
+                  <Name>
+                    <ElementValue Type="Alternate">CHARCOT-MARIE-TOOTH NEUROPATHY, TYPE 2U</ElementValue>
+                    <XRef Type="MIM" ID="616280" DB="OMIM" />
+                  </Name>
+                  <Name>
+                    <ElementValue Type="Alternate">CHARCOT-MARIE-TOOTH DISEASE, AXONAL, AUTOSOMAL DOMINANT, TYPE 2U</ElementValue>
+                    <XRef Type="MIM" ID="616280" DB="OMIM" />
+                  </Name>
+                  <Symbol>
+                    <ElementValue Type="Alternate">CMT2U</ElementValue>
+                    <XRef Type="MIM" ID="616280" DB="OMIM" />
+                  </Symbol>
+                  <AttributeSet>
+                    <Attribute Type="GARD id" integerValue="17638" />
+                    <XRef ID="17638" DB="Office of Rare Diseases" />
+                  </AttributeSet>
+                  <XRef ID="397735" DB="Orphanet" />
+                  <XRef ID="C4084821" DB="MedGen" />
+                  <XRef ID="MONDO:0014566" DB="MONDO" />
+                  <XRef Type="MIM" ID="616280" DB="OMIM" />
+                </Trait>
+              </TraitSet>
+              <TraitSet ID="12067" Type="Disease" ContributesToAggregateClassification="false">
                 <Trait ID="18331" Type="Disease">
                   <Name>
                     <ElementValue Type="Preferred">Severe early-onset pulmonary alveolar proteinosis due to MARS deficiency</ElementValue>
@@ -90,8 +150,8 @@
                 </Trait>
               </TraitSet>
             </ConditionList>
-          </Interpretation>
-        </Interpretations>
+          </GermlineClassification>
+        </Classifications>
         <XRefList>
           <XRef ID="CA200223" DB="ClinGen" />
           <XRef ID="P56192#VAR_075361" DB="UniProtKB" />
@@ -100,8 +160,8 @@
           <XRef Type="Interpreted" ID="424711" DB="ClinVar" />
         </XRefList>
         <AlleleFrequencyList>
-          <AlleleFrequency Value="0.00001" Source="The Genome Aggregation Database (gnomAD), exomes" />
           <AlleleFrequency Value="0.00000" Source="Trans-Omics for Precision Medicine (TOPMed)" />
+          <AlleleFrequency Value="0.00001" Source="The Genome Aggregation Database (gnomAD), exomes" />
           <AlleleFrequency Value="0.00002" Source="Exome Aggregation Consortium (ExAC)" />
         </AlleleFrequencyList>
       </SimpleAllele>
@@ -157,11 +217,20 @@
               </ProteinExpression>
             </HGVS>
           </HGVSlist>
-          <Interpretations>
-            <Interpretation NumberOfSubmissions="0" NumberOfSubmitters="0" Type="Clinical significance">
-              <Description>no interpretation for the single variant</Description>
-            </Interpretation>
-          </Interpretations>
+          <Classifications>
+            <GermlineClassification NumberOfSubmissions="0" NumberOfSubmitters="0">
+              <ReviewStatus>no classification for the single variant</ReviewStatus>
+              <Description>no classification for the single variant</Description>
+            </GermlineClassification>
+            <SomaticClinicalImpact NumberOfSubmissions="0" NumberOfSubmitters="0">
+              <ReviewStatus>no classification for the single variant</ReviewStatus>
+              <Description>no classification for the single variant</Description>
+            </SomaticClinicalImpact>
+            <OncogenicityClassification NumberOfSubmissions="0" NumberOfSubmitters="0">
+              <ReviewStatus>no classification for the single variant</ReviewStatus>
+              <Description>no classification for the single variant</Description>
+            </OncogenicityClassification>
+          </Classifications>
           <XRefList>
             <XRef ID="P56192#VAR_075363" DB="UniProtKB" />
             <XRef Type="Allelic variant" ID="156560.0007" DB="OMIM" />
@@ -228,28 +297,60 @@
               </ProteinExpression>
             </HGVS>
           </HGVSlist>
-          <Interpretations>
-            <Interpretation DateLastEvaluated="2022-08-23" NumberOfSubmissions="2" NumberOfSubmitters="2" Type="Clinical significance">
-              <Description>Likely benign</Description>
+          <Classifications>
+            <GermlineClassification DateLastEvaluated="2024-01-11" DateCreated="2020-04-12" MostRecentSubmission="2024-04-28" NumberOfSubmissions="3" NumberOfSubmitters="3">
+              <ReviewStatus>criteria provided, conflicting classifications</ReviewStatus>
+              <Description>Conflicting classifications of pathogenicity</Description>
+              <Explanation DataSource="ClinVar" Type="public">Uncertain significance(1); Likely benign(2)</Explanation>
+              <Citation Type="general">
+                <ID Source="PubMed">25913036</ID>
+              </Citation>
+              <Citation Type="general">
+                <ID Source="PubMed">29775242</ID>
+              </Citation>
+              <Citation Type="general">
+                <ID Source="PubMed">34496286</ID>
+              </Citation>
+              <Citation Type="general">
+                <ID Source="PubMed">34813128</ID>
+              </Citation>
+              <Comment DataSource="ClinVar" Type="public">Uncertain significance(1); Likely benign(2)</Comment>
+              <DescriptionHistory Dated="2024-03-29">
+                <Description>Likely benign</Description>
+              </DescriptionHistory>
               <DescriptionHistory Dated="2023-02-02">
-                <Description>Conflicting interpretations of pathogenicity</Description>
+                <Description>Conflicting classifications of pathogenicity</Description>
               </DescriptionHistory>
               <DescriptionHistory Dated="2022-12-01">
                 <Description>Uncertain significance</Description>
               </DescriptionHistory>
               <DescriptionHistory Dated="2020-04-15">
-                <Description>no interpretation for the single variant</Description>
+                <Description>no classification for the single variant</Description>
               </DescriptionHistory>
               <ConditionList>
-                <TraitSet ID="28071" Type="Disease" ContributesToAggregateClinsig="true">
-                  <Trait ID="18331" Type="Disease">
+                <TraitSet ID="9590" Type="Disease" ContributesToAggregateClassification="true">
+                  <Trait ID="16789" Type="Disease">
                     <Name>
-                      <ElementValue Type="Alternate">PULMONARY ALVEOLAR PROTEINOSIS, REUNION ISLAND</ElementValue>
-                      <XRef Type="MIM" ID="615486" DB="OMIM" />
+                      <ElementValue Type="Alternate">AllHighlyPenetrant</ElementValue>
                     </Name>
+                    <Name>
+                      <ElementValue Type="Preferred">not specified</ElementValue>
+                    </Name>
+                    <AttributeSet>
+                      <Attribute Type="public definition">The term 'not specified' was created for use in ClinVar so that submitters can convey the concept that a variant is benign, likely benign, or of uncertain significance for an unspecified set of disorders.  This usage was introduced in 2014 to replace AllHighlyPenetrant.</Attribute>
+                    </AttributeSet>
+                    <XRef ID="CN169374" DB="MedGen" />
+                  </Trait>
+                </TraitSet>
+                <TraitSet ID="28071" Type="Disease" ContributesToAggregateClassification="true">
+                  <Trait ID="18331" Type="Disease">
                     <Name>
                       <ElementValue Type="Preferred">Severe early-onset pulmonary alveolar proteinosis due to MARS deficiency</ElementValue>
                       <XRef ID="MONDO:0014206" DB="MONDO" />
+                    </Name>
+                    <Name>
+                      <ElementValue Type="Alternate">PULMONARY ALVEOLAR PROTEINOSIS, REUNION ISLAND</ElementValue>
+                      <XRef Type="MIM" ID="615486" DB="OMIM" />
                     </Name>
                     <Name>
                       <ElementValue Type="Alternate">Interstitial lung and liver disease</ElementValue>
@@ -294,54 +395,9 @@
                     <XRef Type="MIM" ID="616280" DB="OMIM" />
                   </Trait>
                 </TraitSet>
-                <TraitSet ID="25797" Type="Disease" ContributesToAggregateClinsig="true">
-                  <Trait ID="32761" Type="Disease">
-                    <Name>
-                      <ElementValue Type="Preferred">Inborn genetic diseases</ElementValue>
-                    </Name>
-                    <Citation Type="general" Abbrev="Langer et al., 2012">
-                      <ID Source="PubMed">22947299</ID>
-                    </Citation>
-                    <Citation Type="general" Abbrev="SACHDNC, 2013">
-                      <ID Source="PubMed">23037933</ID>
-                    </Citation>
-                    <Citation Type="general" Abbrev="EASAC/FEAM, 2013">
-                      <ID Source="PubMed">23169492</ID>
-                    </Citation>
-                    <Citation Type="general" Abbrev="ESHG/P3G/HUGO/PHGF, 2015">
-                      <ID Source="PubMed">25626707</ID>
-                    </Citation>
-                    <Citation Type="general" Abbrev="Alpha-1 Foundation, 2014">
-                      <ID Source="PubMed">24121147</ID>
-                    </Citation>
-                    <Citation Type="general" Abbrev="NBSTRN, 2015">
-                      <ID Source="PubMed">24394680</ID>
-                    </Citation>
-                    <Citation Type="general" Abbrev="EUNENBS, 2014">
-                      <ID Source="PubMed">23652378</ID>
-                    </Citation>
-                    <Citation Type="general" Abbrev="NSGC, 2014">
-                      <ID Source="PubMed">23881473</ID>
-                    </Citation>
-                    <Citation Type="general" Abbrev="ACMG/ACOG/NSGC/PQF/SMFM, 2015">
-                      <ID Source="PubMed">25730230</ID>
-                    </Citation>
-                    <Citation Type="general" Abbrev="Skirton et al., 2014">
-                      <ID Source="PubMed">24022298</ID>
-                    </Citation>
-                    <Citation Type="general" Abbrev="ACMG, 2013">
-                      <ID Source="PubMed">23619275</ID>
-                    </Citation>
-                    <Citation Type="general" Abbrev="ACOG, 2019">
-                      <ID Source="PubMed">31022120</ID>
-                    </Citation>
-                    <XRef ID="C0950123" DB="MedGen" />
-                    <XRef ID="D030342" DB="MeSH" />
-                  </Trait>
-                </TraitSet>
               </ConditionList>
-            </Interpretation>
-          </Interpretations>
+            </GermlineClassification>
+          </Classifications>
           <XRefList>
             <XRef Type="Interpreted" ID="189364" DB="ClinVar" />
             <XRef Type="Interpreted" ID="424711" DB="ClinVar" />
@@ -382,25 +438,26 @@
             </NucleotideExpression>
           </HGVS>
         </HGVSlist>
-        <Interpretations>
-          <Interpretation DateLastEvaluated="2015-05-07" NumberOfSubmissions="2" NumberOfSubmitters="2" Type="Clinical significance">
+        <Classifications>
+          <GermlineClassification DateLastEvaluated="2015-05-07" DateCreated="2015-04-10" MostRecentSubmission="2024-06-20" NumberOfSubmissions="2" NumberOfSubmitters="2">
+            <ReviewStatus>no assertion criteria provided</ReviewStatus>
             <Description>Pathogenic</Description>
             <Citation Type="general">
               <ID Source="PubMed">25913036</ID>
             </Citation>
             <ConditionList>
-              <TraitSet ID="12067" Type="Disease" ContributesToAggregateClinsig="true">
+              <TraitSet ID="12067" Type="Disease" ContributesToAggregateClassification="true">
                 <Trait ID="18331" Type="Disease">
-                  <Name>
-                    <ElementValue Type="Preferred">Severe early-onset pulmonary alveolar proteinosis due to MARS deficiency</ElementValue>
-                    <XRef ID="MONDO:0014206" DB="MONDO" />
-                  </Name>
                   <Name>
                     <ElementValue Type="Alternate">PULMONARY ALVEOLAR PROTEINOSIS, REUNION ISLAND</ElementValue>
                     <XRef Type="MIM" ID="615486" DB="OMIM" />
                   </Name>
                   <Name>
                     <ElementValue Type="Alternate">Interstitial lung and liver disease</ElementValue>
+                  </Name>
+                  <Name>
+                    <ElementValue Type="Preferred">Severe early-onset pulmonary alveolar proteinosis due to MARS deficiency</ElementValue>
+                    <XRef ID="MONDO:0014206" DB="MONDO" />
                   </Name>
                   <Symbol>
                     <ElementValue Type="Alternate">ILLD</ElementValue>
@@ -416,18 +473,18 @@
                   <XRef Type="MIM" ID="615486" DB="OMIM" />
                 </Trait>
               </TraitSet>
-              <TraitSet ID="21110" Type="Disease" ContributesToAggregateClinsig="true">
+              <TraitSet ID="21110" Type="Disease" ContributesToAggregateClassification="true">
                 <Trait ID="17519" Type="Disease">
+                  <Name>
+                    <ElementValue Type="Preferred">Pulmonary alveolar proteinosis</ElementValue>
+                    <XRef ID="MONDO:0001437" DB="MONDO" />
+                    <XRef ID="10501004" DB="SNOMED CT" />
+                  </Name>
                   <Name>
                     <ElementValue Type="Alternate">infantile pulmonary alveolar proteinosis</ElementValue>
                   </Name>
                   <Name>
                     <ElementValue Type="Alternate">familial interstitial lung disease</ElementValue>
-                  </Name>
-                  <Name>
-                    <ElementValue Type="Preferred">Pulmonary alveolar proteinosis</ElementValue>
-                    <XRef ID="MONDO:0001437" DB="MONDO" />
-                    <XRef ID="10501004" DB="SNOMED CT" />
                   </Name>
                   <Symbol>
                     <ElementValue Type="Preferred">PAP</ElementValue>
@@ -438,8 +495,8 @@
                 </Trait>
               </TraitSet>
             </ConditionList>
-          </Interpretation>
-        </Interpretations>
+          </GermlineClassification>
+        </Classifications>
         <XRefList>
           <XRef ID="CA212197" DB="ClinGen" />
           <XRef Type="Allelic variant" ID="156560.0007" DB="OMIM" />
@@ -456,33 +513,39 @@
         </HGVS>
       </HGVSlist>
     </Genotype>
-    <ReviewStatus>no assertion criteria provided</ReviewStatus>
     <RCVList>
-      <RCVAccession Title="NM_004990.3(MARS1):c.[1031A&gt;G];[1177G&gt;A[1700C&gt;T] AND Pulmonary alveolar proteinosis" DateLastEvaluated="2014-12-02" ReviewStatus="no assertion criteria provided" Interpretation="Pathogenic" SubmissionCount="1" Accession="RCV000169767" Version="1">
-        <InterpretedConditionList TraitSetID="21110">
-          <InterpretedCondition DB="MedGen" ID="C5400698">Pulmonary alveolar proteinosis</InterpretedCondition>
-        </InterpretedConditionList>
+      <RCVAccession Title="NM_004990.3(MARS1):c.[1031A&gt;G];[1177G&gt;A[1700C&gt;T] AND Pulmonary alveolar proteinosis" Accession="RCV000169767" Version="5">
+        <ClassifiedConditionList TraitSetID="21110">
+          <ClassifiedCondition DB="MedGen" ID="C5400698">Pulmonary alveolar proteinosis</ClassifiedCondition>
+        </ClassifiedConditionList>
+        <RCVClassifications>
+          <GermlineClassification>
+            <ReviewStatus>no assertion criteria provided</ReviewStatus>
+            <Description DateLastEvaluated="2014-12-02" SubmissionCount="1">Pathogenic</Description>
+          </GermlineClassification>
+        </RCVClassifications>
       </RCVAccession>
     </RCVList>
-    <Interpretations>
-      <Interpretation DateLastEvaluated="2014-12-02" NumberOfSubmissions="1" NumberOfSubmitters="1" Type="Clinical significance">
+    <Classifications>
+      <GermlineClassification DateLastEvaluated="2014-12-02" NumberOfSubmissions="1" NumberOfSubmitters="1" DateCreated="2015-04-11" MostRecentSubmission="2015-04-11">
+        <ReviewStatus>no assertion criteria provided</ReviewStatus>
         <Description>Pathogenic</Description>
         <Citation Type="general">
           <ID Source="PubMed">25913036</ID>
         </Citation>
         <ConditionList>
-          <TraitSet ID="21110" Type="Disease" ContributesToAggregateClinsig="true">
+          <TraitSet ID="21110" Type="Disease" ContributesToAggregateClassification="true">
             <Trait ID="17519" Type="Disease">
+              <Name>
+                <ElementValue Type="Preferred">Pulmonary alveolar proteinosis</ElementValue>
+                <XRef ID="MONDO:0001437" DB="MONDO" />
+                <XRef ID="10501004" DB="SNOMED CT" />
+              </Name>
               <Name>
                 <ElementValue Type="Alternate">infantile pulmonary alveolar proteinosis</ElementValue>
               </Name>
               <Name>
                 <ElementValue Type="Alternate">familial interstitial lung disease</ElementValue>
-              </Name>
-              <Name>
-                <ElementValue Type="Preferred">Pulmonary alveolar proteinosis</ElementValue>
-                <XRef ID="MONDO:0001437" DB="MONDO" />
-                <XRef ID="10501004" DB="SNOMED CT" />
               </Name>
               <Symbol>
                 <ElementValue Type="Preferred">PAP</ElementValue>
@@ -493,17 +556,17 @@
             </Trait>
           </TraitSet>
         </ConditionList>
-      </Interpretation>
-    </Interpretations>
+      </GermlineClassification>
+    </Classifications>
     <ClinicalAssertionList>
       <ClinicalAssertion ID="400178" SubmissionDate="2014-12-02" DateLastUpdated="2015-04-11" DateCreated="2015-04-11">
         <ClinVarSubmissionID localKey="3" localKeyIsSubmitted="1" />
-        <ClinVarAccession Accession="SCV000196710" DateUpdated="2015-04-11" DateCreated="2015-04-11" Type="SCV" Version="2" SubmitterName="Institute of Human Genetics, Klinikum rechts der Isar" OrgID="500240" OrganizationCategory="laboratory" OrgAbbreviation="IHG-MRI-TUM" />
+        <ClinVarAccession Accession="SCV000196710" DateUpdated="2015-04-11" DateCreated="2015-04-11" Type="SCV" Version="2" SubmitterName="Institute of Human Genetics Munich, Klinikum Rechts Der Isar, TU M&#252;nchen" OrgID="500240" OrganizationCategory="clinic" OrgAbbreviation="IHG-MRI-TUM" />
         <RecordStatus>current</RecordStatus>
-        <ReviewStatus>no assertion criteria provided</ReviewStatus>
-        <Interpretation DateLastEvaluated="2014-12-02">
-          <Description>Pathogenic</Description>
-        </Interpretation>
+        <Classification DateLastEvaluated="2014-12-02">
+          <ReviewStatus>no assertion criteria provided</ReviewStatus>
+          <GermlineClassification>Pathogenic</GermlineClassification>
+        </Classification>
         <Assertion>variation to disease</Assertion>
         <ObservedInList>
           <ObservedIn>
@@ -580,6 +643,6 @@
         <MedGen CUI="C5400698" Name="Pulmonary alveolar proteinosis" />
       </TraitMapping>
     </TraitMappingList>
-  </InterpretedRecord>
+  </ClassifiedRecord>
 </VariationArchive>
 </ClinVarVariationRelease>

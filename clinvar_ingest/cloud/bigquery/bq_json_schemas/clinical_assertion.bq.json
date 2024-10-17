@@ -101,5 +101,17 @@
     "mode": "REPEATED",
     "name": "submission_names",
     "type": "STRING"
+  },
+  {
+    "name": "statement_type",
+    "type": "STRING"
+  },
+  {
+    "name": "clinical_impact_assertion_type",
+    "type": "STRING"
+  },
+  {
+    "name": "clinical_impact_clinical_significance",
+    "type": "STRING"
   }
 ]

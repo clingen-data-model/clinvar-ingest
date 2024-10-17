@@ -1,0 +1,42 @@
+[
+  {
+    "name": "statement_type",
+    "type": "STRING"
+  },
+  {
+    "name": "review_status",
+    "type": "STRING"
+  },
+  {
+    "name": "num_submitters",
+    "type": "INTEGER"
+  },
+  {
+    "name": "num_submissions",
+    "type": "INTEGER"
+  },
+  {
+    "name": "date_created",
+    "type": "DATE"
+  },
+  {
+    "name": "interp_description",
+    "type": "STRING"
+  },
+  {
+    "name": "most_recent_submission",
+    "type": "DATE"
+  },
+  {
+    "name": "date_last_evaluated",
+    "type": "DATE"
+  },
+  {
+    "name": "clinical_impact_assertion_type",
+    "type": "STRING"
+  },
+  {
+    "name": "clinical_impact_clinical_significance",
+    "type": "STRING"
+  }
+]
