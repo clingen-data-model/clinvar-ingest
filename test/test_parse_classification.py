@@ -1,4 +1,3 @@
-from clinvar_ingest.model.common import dictify
 from clinvar_ingest.model.variation_archive import (
     ClinicalAssertion,
     RcvAccession,
