@@ -1,5 +1,6 @@
 from clinvar_ingest.model.common import dictify
 from clinvar_ingest.model.trait import Trait, TraitMapping, TraitSet
+from clinvar_ingest.model.variation_archive import VariationArchive
 from clinvar_ingest.reader import _parse_xml_document
 from clinvar_ingest.utils import ensure_list
 
@@ -386,3 +387,17 @@ def test_trait_mapping_10():
     tm0 = tm0[0]
     assert tm0.medgen_id == "C4025727"
     assert tm0.medgen_name == "Abnormality of the upper respiratory tract"
+
+
+def test_traits_from_multiple_classifications():
+    """
+    This ensures the VCV traitsets from all classification types are included
+    """
+    filename = "test/data/VCV000013961.xml"
+    with open(filename) as f:
+        content = f.read()
+    root = _parse_xml_document(content)
+    release = root["ClinVarVariationRelease"]
+    variation_archive_xml = release["VariationArchive"]
+    vcv = VariationArchive.from_xml(variation_archive_xml)
+    assert len(vcv.trait_sets) == 32

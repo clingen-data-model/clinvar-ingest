@@ -275,6 +275,7 @@ def test_read_original_clinvar_variation_634266(log_conf):
     assert variation_archive.id == "VCV000634266"
     assert variation_archive.name == "CYP2C19*12/*34"
     assert variation_archive.date_created == "2019-06-17"
+    assert variation_archive.most_recent_submission == "2019-06-17"
     assert variation_archive.record_status == "current"
     assert variation_archive.species == "Homo sapiens"
     assert variation_archive.num_submitters == 1

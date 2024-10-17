@@ -1034,18 +1034,20 @@ class VariationArchive(Model):
     name: str
     version: str
     variation: Variation
-    clinical_assertions: list[ClinicalAssertion]
-    date_created: str
     record_status: str
     species: str
     num_submitters: int | None
     num_submissions: int | None
+
+    date_created: str
     date_last_updated: str
+    most_recent_submission: str
+
     content: dict
 
     trait_sets: list[TraitSet]
     trait_mappings: list[TraitMapping]
-
+    clinical_assertions: list[ClinicalAssertion]
     rcv_accessions: list[RcvAccession]
     classifications: list[VariationArchiveClassification]
 
@@ -1158,6 +1160,7 @@ class VariationArchive(Model):
             ],
             date_created=sanitize_date(extract(inp, "@DateCreated")),
             date_last_updated=sanitize_date(extract(inp, "@DateLastUpdated")),
+            most_recent_submission=sanitize_date(extract(inp, "@MostRecentSubmission")),
             record_status=extract(extract(inp, "RecordStatus"), "$"),
             species=extract(extract(inp, "Species"), "$"),
             num_submitters=int_or_none(extract(inp, "@NumberOfSubmitters")),
