@@ -301,7 +301,9 @@ class ClinicalAssertion(Model):
         _logger.debug(f"review_status: {review_status}")
         statement_type = None
         # The VariationArchiveClassification can be used to extract the few fields we care about
-        _classification = VariationArchiveClassification.from_xml(classification_raw)
+        _classification = VariationArchiveClassification.from_xml(
+            classification_raw, None
+        )
         if len(_classification) != 1:
             raise ValueError(
                 f"Expected a single Classification node in SCV {scv_accession},"
@@ -836,7 +838,6 @@ class RcvAccessionClassification(Model):
                         inp[statement_type_str], statement_type, rcv_id
                     )
                 )
-
         return outputs
 
     def disassemble(self):
@@ -958,8 +959,7 @@ class RcvAccession(Model):
 
 @dataclasses.dataclass
 class VariationArchiveClassification(Model):
-    # TODO Add VCV_ID as a field to link this back to the VariationArchive
-    # maybe another name? Use a field name that exists elsewhere.
+    vcv_id: str
     statement_type: StatementType
     review_status: str
 
@@ -982,7 +982,7 @@ class VariationArchiveClassification(Model):
         self.entity_type = "variation_archive_classification"
 
     @staticmethod
-    def from_xml_single(inp: dict, statement_type: StatementType):
+    def from_xml_single(inp: dict, statement_type: StatementType, vcv_id: str):
         """
         The input is a single Classification node contents.
         Either the value of a GermlineClassification, SomaticClinicalImpact,
@@ -991,6 +991,7 @@ class VariationArchiveClassification(Model):
         """
         interp_description = extract(inp, "Description")
         return VariationArchiveClassification(
+            vcv_id=vcv_id,
             statement_type=statement_type,
             review_status=extract(inp, "ReviewStatus", "$"),
             num_submitters=int_or_none(extract(inp, "@NumberOfSubmitters")),
@@ -1009,29 +1010,18 @@ class VariationArchiveClassification(Model):
         )
 
     @staticmethod
-    def from_xml(inp: dict):
+    def from_xml(inp: dict, vcv_id: str):
         outputs: list[VariationArchiveClassification] = []
 
-        if "GermlineClassification" in inp:
-            outputs.append(
-                VariationArchiveClassification.from_xml_single(
-                    inp["GermlineClassification"], StatementType.GermlineClassification
+        # StrEnum objects to values dict
+        statement_types = {o: o.value for o in StatementType}
+        for statement_type, statement_type_str in statement_types.items():
+            if statement_type_str in inp:
+                outputs.append(
+                    VariationArchiveClassification.from_xml_single(
+                        inp[statement_type_str], statement_type, vcv_id
+                    )
                 )
-            )
-        if "SomaticClinicalImpact" in inp:
-            outputs.append(
-                VariationArchiveClassification.from_xml_single(
-                    inp["SomaticClinicalImpact"], StatementType.SomaticClinicalImpact
-                )
-            )
-        if "OncogenicityClassification" in inp:
-            outputs.append(
-                VariationArchiveClassification.from_xml_single(
-                    inp["OncogenicityClassification"],
-                    StatementType.OncogenicityClassification,
-                )
-            )
-
         return outputs
 
     def disassemble(self):
@@ -1147,7 +1137,9 @@ class VariationArchive(Model):
         # e.g. "Classifications": {
         #  "GermlineClassification": {...},
         #  "SomaticClinicalImpact": {...}}
-        classifications = VariationArchiveClassification.from_xml(raw_classifications)
+        classifications = VariationArchiveClassification.from_xml(
+            raw_classifications, vcv_accession
+        )
 
         obj = VariationArchive(
             id=vcv_accession,

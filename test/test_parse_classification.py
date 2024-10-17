@@ -15,20 +15,6 @@ def test_vcv_VCV000000002():
     with open(filename) as f:
         objects = list(read_clinvar_vcv_xml(f))
 
-    vcv_classification = [
-        o for o in objects if isinstance(o, VariationArchiveClassification)
-    ]
-    assert len(vcv_classification) == 1
-    vcv_classification = vcv_classification[0]
-    assert vcv_classification.entity_type == "variation_archive_classification"
-    assert vcv_classification.date_created == "2017-01-30"
-    assert vcv_classification.interp_description == "Pathogenic"
-    assert vcv_classification.most_recent_submission == "2021-05-16"
-    assert vcv_classification.num_submissions == 2
-    assert vcv_classification.num_submitters == 2
-    assert vcv_classification.review_status == "criteria provided, single submitter"
-    assert vcv_classification.statement_type == StatementType.GermlineClassification
-
     # VariationArchive
     vcv = [o for o in objects if isinstance(o, VariationArchive)]
     assert len(vcv) == 1
@@ -48,7 +34,21 @@ def test_vcv_VCV000000002():
     assert vcv.variation_id == "2"
     assert vcv.version == "3"
 
-    print(dictify(vcv_classification))
+    # VCV Classification
+    vcv_classification = [
+        o for o in objects if isinstance(o, VariationArchiveClassification)
+    ]
+    assert len(vcv_classification) == 1
+    vcv_classification = vcv_classification[0]
+    assert vcv_classification.vcv_id == vcv.id
+    assert vcv_classification.entity_type == "variation_archive_classification"
+    assert vcv_classification.date_created == "2017-01-30"
+    assert vcv_classification.interp_description == "Pathogenic"
+    assert vcv_classification.most_recent_submission == "2021-05-16"
+    assert vcv_classification.num_submissions == 2
+    assert vcv_classification.num_submitters == 2
+    assert vcv_classification.review_status == "criteria provided, single submitter"
+    assert vcv_classification.statement_type == StatementType.GermlineClassification
 
     # ClinicalAssertion
     scv = [o for o in objects if isinstance(o, ClinicalAssertion)]
@@ -177,6 +177,7 @@ def test_rcv_multi_classifications():
     assert RCV000067669_c0.num_submissions == 2
 
     RCV000067669_c1 = RCV000067669_classifications[1]
+    assert RCV000067669_c1.rcv_id == RCV000067669.id
     assert RCV000067669_c1.statement_type == StatementType.SomaticClinicalImpact
     assert RCV000067669_c1.interp_description == "Tier I - Strong"
     assert RCV000067669_c1.review_status == "criteria provided, multiple submitters"
