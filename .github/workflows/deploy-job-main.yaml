@@ -28,11 +28,34 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
 
 
-      ## Deploy + test VCV pipeline
+      # ## Deploy + test VCV pipeline
+      # - name: set env vars
+      #   run: |
+      #     export CLINVAR_INGEST_RELEASE_TAG=${{ github.ref_name }}
+      #     export instance_name=clinvar-vcv-ingest
+      #     export file_format=vcv
+      #     echo "instance_name=$instance_name" >> $GITHUB_ENV
+      #     echo "CLINVAR_INGEST_RELEASE_TAG=$CLINVAR_INGEST_RELEASE_TAG" >> $GITHUB_ENV
+      #     echo "file_format=$file_format" >> $GITHUB_ENV
+
+      # - name: build and deploy
+      #   run: |
+      #     bash misc/bin/deploy-job.sh
+
+      # - name: run test vcv pipeline (without issuing slack messages)
+      #   run: |
+      #     export JOB_WAIT=1
+      #     echo "JOB_WAIT=$JOB_WAIT" >> $GITHUB_ENV
+      #     # Override variables for testing.
+      #     # Send no slack message and write outputs to a directory including the github run number to avoid collisions.
+      #     CLINVAR_INGEST_SLACK_CHANNEL='' CLINVAR_INGEST_RELEASE_TAG="${CLINVAR_INGEST_RELEASE_TAG}_gh_${{ github.run_number }}" bash misc/bin/execute-job.sh vcv-small
+
+
+      ## Deploy clinvar-new pipeline (clinvar-vcv-ingest left alone for now, running v1_1_0)
       - name: set env vars
         run: |
           export CLINVAR_INGEST_RELEASE_TAG=${{ github.ref_name }}
-          export instance_name=clinvar-vcv-ingest
+          export instance_name=clinvar-vcv-ingest-new
           export file_format=vcv
           echo "instance_name=$instance_name" >> $GITHUB_ENV
           echo "CLINVAR_INGEST_RELEASE_TAG=$CLINVAR_INGEST_RELEASE_TAG" >> $GITHUB_ENV
@@ -42,7 +65,7 @@ jobs:
         run: |
           bash misc/bin/deploy-job.sh
 
-      - name: run test vcv pipeline (without issuing slack messages)
+      - name: run test vcv new pipeline (without issuing slack messages)
         run: |
           export JOB_WAIT=1
           echo "JOB_WAIT=$JOB_WAIT" >> $GITHUB_ENV
