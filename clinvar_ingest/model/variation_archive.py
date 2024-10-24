@@ -118,6 +118,7 @@ class Submission(Model):
             additional_submitter_ids=[s.id for s in additional_submitters],
             submission_date=submission_date,
             scv_id=scv_id,
+            # TODO is this overly broad? The `inp` here is the ClinicalAssertion node
             content=inp,
         )
         return obj
@@ -221,7 +222,8 @@ class ClinicalAssertion(Model):
         raw_accession = extract(inp, "ClinVarAccession")
         scv_accession = extract(raw_accession, "@Accession")
         clinvar_submission = extract(inp, "ClinVarSubmissionID")
-        classification_raw = extract(inp, "Classification")
+        # Do not extract Classification, leave behind remainder in content
+        classification_raw = inp["Classification"]
         additional_submitters = [
             Submitter.from_xml(a, scv_accession)
             for a in ensure_list(
@@ -298,25 +300,31 @@ class ClinicalAssertion(Model):
 
         # Classification fields
         review_status = extract(classification_raw, "ReviewStatus", "$")
-        _logger.debug(f"review_status: {review_status}")
+        interpretation_date_last_evaluated = sanitize_date(
+            extract(classification_raw, "@DateLastEvaluated")
+        )
         statement_type = None
-        # The VariationArchiveClassification can be used to extract the few fields we care about
-        _classification = VariationArchiveClassification.from_xml(
-            classification_raw, None
-        )
-        if len(_classification) != 1:
-            raise ValueError(
-                f"Expected a single Classification node in SCV {scv_accession},"
-                f" got: {_classification}"
-            )
-        _classification = _classification[0]
-        statement_type = _classification.statement_type
-        clinical_impact_assertion_type = _classification.clinical_impact_assertion_type
-        clinical_impact_clinical_significance = (
-            _classification.clinical_impact_clinical_significance
-        )
-        # In SCVs it's just the inner text, not a Description node like in VCVs
-        interpretation_description = extract(classification_raw, "$")
+        clinical_impact_assertion_type = None
+        clinical_impact_clinical_significance = None
+        interpretation_description = None
+
+        for st in StatementType:
+            if st.value in classification_raw:
+                if statement_type is not None:
+                    raise ValueError(
+                        f"Multiple statement types found! {scv_accession}: {classification_raw}"
+                    )
+                statement_type = st
+                # The node, e.g. GermlineClassification
+                cls = classification_raw[st.value]
+                # In SCVs it's the inner text, not under a Description node like in VCVs
+                interpretation_description = extract(cls, "$")
+                clinical_impact_assertion_type = extract(
+                    cls, "@ClinicalImpactAssertionType"
+                )
+                clinical_impact_clinical_significance = extract(
+                    cls, "@ClinicalImpactClinicalSignificance"
+                )
 
         obj = ClinicalAssertion(
             internal_id=obj_id,
@@ -330,9 +338,7 @@ class ClinicalAssertion(Model):
             submitted_assembly=extract(clinvar_submission, "@submittedAssembly"),
             record_status=extract(extract(inp, "RecordStatus"), "$"),
             review_status=review_status,
-            interpretation_date_last_evaluated=sanitize_date(
-                extract(classification_raw, "@DateLastEvaluated")
-            ),
+            interpretation_date_last_evaluated=interpretation_date_last_evaluated,
             interpretation_description=interpretation_description,
             interpretation_comments=interpretation_comments,
             submitter_id=submitter.id,

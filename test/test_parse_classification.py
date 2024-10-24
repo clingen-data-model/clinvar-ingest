@@ -66,7 +66,7 @@ def test_vcv_VCV000000002():
     assert scv20155.internal_id == "20155"
     assert scv20155.interpretation_comments == []
     assert scv20155.interpretation_date_last_evaluated == "2010-06-29"
-    assert scv20155.interpretation_description is None
+    assert scv20155.interpretation_description == "Pathogenic"
     assert (
         scv20155.local_key == "613653.0001_SPASTIC PARAPLEGIA 48, AUTOSOMAL RECESSIVE"
     )
@@ -96,7 +96,7 @@ def test_vcv_VCV000000002():
     assert scv2865972.internal_id == "2865972"
     assert scv2865972.interpretation_comments == []
     assert scv2865972.interpretation_date_last_evaluated is None
-    assert scv2865972.interpretation_description is None
+    assert scv2865972.interpretation_description == "Pathogenic"
     assert (
         scv2865972.local_key
         == "NM_014855.3:c.80_83delinsTGCTGTAAACTGTAACTGTAAA|OMIM:613647"

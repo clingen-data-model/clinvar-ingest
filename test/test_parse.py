@@ -15,6 +15,7 @@ from clinvar_ingest.model.variation_archive import (
     GeneAssociation,
     RcvAccession,
     RcvAccessionClassification,
+    StatementType,
     Submission,
     Submitter,
     Variation,
@@ -157,6 +158,66 @@ def test_read_original_clinvar_variation_2():
     assert rcv_classification.num_submissions == 2
     assert rcv_classification.clinical_impact_assertion_type is None
     assert rcv_classification.clinical_impact_clinical_significance is None
+
+
+def test_scv_9794255():
+    """
+    Test a SomaticClinicalImpact and Oncogenicity SCV
+
+    internal_id 9794255: SomaticClinicalImpact (SCV005045669)
+    internal_id 9887297: OncogenicityClassification (SCV005094141)
+    """
+    filename = "test/data/VCV000013961.xml"
+    with open(filename) as f:
+        objects = list(read_clinvar_vcv_xml(f))
+
+    scvs = [o for o in objects if isinstance(o, ClinicalAssertion)]
+    assert len(scvs) == 41
+
+    scv005045669 = [o for o in scvs if o.id == "SCV005045669"][0]
+    assert scv005045669.internal_id == "9794255"
+    assert scv005045669.title is None
+    assert scv005045669.local_key == "civic.AID:7"
+    assert scv005045669.version == "2"
+    assert scv005045669.assertion_type == "variation to disease"
+    assert scv005045669.date_created == "2024-06-02"
+    assert scv005045669.date_last_updated == "2024-06-29"
+    assert scv005045669.submitted_assembly is None
+    assert scv005045669.record_status == "current"
+    assert scv005045669.review_status == "criteria provided, single submitter"
+    assert scv005045669.interpretation_date_last_evaluated == "2018-05-15"
+    assert scv005045669.interpretation_description == "Tier I - Strong"
+    assert scv005045669.interpretation_comments == [
+        {
+            "text": "Combination treatment of BRAF inhibitor dabrafenib and MEK inhibitor trametinib is recommended for adjuvant treatment of stage III or recurrent melanoma with BRAF V600E mutation detected by the approved THxID kit, as well as first line treatment for metastatic melanoma. The treatments are FDA approved based on studies including the Phase III COMBI-V, COMBI-D and COMBI-AD Trials. Combination therapy is now recommended above BRAF inhibitor monotherapy. Cutaneous squamous-cell carcinoma and keratoacanthoma occur at lower rates with combination therapy than with BRAF inhibitor alone."
+        }
+    ]
+    assert scv005045669.submitter_id == "509553"
+    assert scv005045669.submission_id == "509553.2024-06-27"
+    assert scv005045669.submission_names == ["SUB14487648", "SUB14568896"]
+    assert scv005045669.variation_id == "13961"
+    assert scv005045669.variation_archive_id == "VCV000013961"
+    assert scv005045669.clinical_assertion_observation_ids == ["SCV005045669.0"]
+    assert scv005045669.clinical_assertion_trait_set_id == "SCV005045669"
+    assert scv005045669.statement_type == StatementType.SomaticClinicalImpact
+    assert scv005045669.clinical_impact_assertion_type == "therapeutic"
+    assert scv005045669.clinical_impact_clinical_significance == "sensitivity/response"
+    assert (
+        "@DrugForTherapeuticAssertion"
+        in scv005045669.content["Classification"]["SomaticClinicalImpact"]
+    )
+    assert (
+        scv005045669.content["Classification"]["SomaticClinicalImpact"][
+            "@DrugForTherapeuticAssertion"
+        ]
+        == "Dabrafenib;Trametinib"
+    )
+
+    # SCV005094141
+    scv005094141 = [o for o in scvs if o.id == "SCV005094141"][0]
+    assert scv005094141.internal_id == "9887297"
+    assert scv005094141.statement_type == StatementType.OncogenicityClassification
+    assert scv005094141.interpretation_description == "Oncogenic"
 
 
 def test_read_original_clinvar_variation_634266(log_conf):
@@ -311,7 +372,26 @@ def test_read_original_clinvar_variation_634266(log_conf):
     scv0: ClinicalAssertion = list(
         filter(lambda o: isinstance(o, ClinicalAssertion), objects)
     )[0]
+    assert scv0.assertion_type == "variation to disease"
+    assert scv0.clinical_assertion_observation_ids == ["SCV000921753.0"]
+    assert scv0.clinical_assertion_trait_set_id == "SCV000921753"
+    assert scv0.clinical_impact_assertion_type is None
+    assert scv0.clinical_impact_clinical_significance is None
+    assert scv0.date_created == "2019-06-17"
+    assert scv0.date_last_updated == "2019-06-17"
+    assert scv0.entity_type == "clinical_assertion"
+    assert scv0.id == "SCV000921753"
     assert scv0.internal_id == "1801318"
+    assert scv0.interpretation_comments == []
+    assert scv0.interpretation_date_last_evaluated is None
+    assert scv0.interpretation_description == "drug response"
+    assert scv0.review_status == "practice guideline"
+
+    assert scv0.title is None
+    assert scv0.local_key == "696e0f83b9dc7ba71319a94ccd3b36e2|Sertraline response"
+    assert scv0.version == "1"
+
+    # submitter and submission
     submitter = list(filter(lambda o: isinstance(o, Submitter), objects))[0]
     assert submitter.id == "505961"
     assert (
