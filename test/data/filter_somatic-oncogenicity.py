@@ -52,7 +52,7 @@ def get_classifications(variation_archive_elem: ET.Element) -> list[ET.Element]:
     #     classifications = variation_archive_elem.find("IncludedRecord/Classifications")
     if classifications is None:
         return []
-    types = set(o.value for o in StatementType)
+    types = {o.value for o in StatementType}
     stmts = []
     for statement_key in types:
         statement = classifications.find(statement_key)

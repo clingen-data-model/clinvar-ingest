@@ -7,7 +7,7 @@ python test/data/clinvar-somatic/filter.py \
     -i clinvar-new/ClinVarVCVRelease_2024-08.xml.gz \
     -o clinvar-new \
     -v VCV000000002,VCV000000010,VCV000000032,VCV000000051,VCV000004897,VCV000040200,VCV000222476,VCV000406155,VCV000424711,VCV000634266,VCV001264328
-"""
+"""  # noqa: E501
 
 import argparse
 import gzip

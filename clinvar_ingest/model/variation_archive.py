@@ -1118,7 +1118,7 @@ class VariationArchive(Model):
             raw_classifications = extract(interp_record, "Classifications")
         else:
             raw_classifications = {}
-        raw_classification_types = set([r.value for r in StatementType]).intersection(
+        raw_classification_types = {r.value for r in StatementType}.intersection(
             set(raw_classifications.keys())
         )
         raw_trait_sets = flatten1(

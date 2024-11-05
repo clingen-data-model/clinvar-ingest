@@ -71,7 +71,8 @@ def get_status_file(
     blob: Blob = bucket.get_blob(f"{file_prefix}/{step}-{status}.json")
     if blob is None:
         raise ValueError(
-            f"Could not find status file for step {step} with status {status} in bucket {bucket} and file prefix {file_prefix}"
+            f"Could not find status file for step {step} with status {status} "
+            f"in bucket {bucket} and file prefix {file_prefix}"
         )
     content = blob.download_as_string()
     return StatusValue(**json.loads(content))

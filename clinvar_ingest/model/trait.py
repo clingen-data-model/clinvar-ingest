@@ -497,10 +497,8 @@ class ClinicalAssertionTrait(Model):
 
                 # "XRef"
                 is_xref_match = mapping.mapping_type == "XRef" and any(
-                    [
-                        x.db == mapping.mapping_ref and x.id == mapping.mapping_value
-                        for x in me.xrefs
-                    ]
+                    x.db == mapping.mapping_ref and x.id == mapping.mapping_value
+                    for x in me.xrefs
                 )
                 if is_xref_match:
                     _logger.debug("is_xref_match: %s", is_xref_match)

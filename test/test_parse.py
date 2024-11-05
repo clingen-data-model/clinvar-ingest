@@ -140,7 +140,7 @@ def test_read_original_clinvar_variation_2():
     assert rcv.version == 5
     assert (
         rcv.title
-        == "NM_014855.3(AP5Z1):c.80_83delinsTGCTGTAAACTGTAACTGTAAA (p.Arg27_Ile28delinsLeuLeuTer) AND Hereditary spastic paraplegia 48"
+        == "NM_014855.3(AP5Z1):c.80_83delinsTGCTGTAAACTGTAACTGTAAA (p.Arg27_Ile28delinsLeuLeuTer) AND Hereditary spastic paraplegia 48"  # noqa: E501
     )
     assert rcv.trait_set_id == "2"
 
@@ -189,7 +189,7 @@ def test_scv_9794255():
     assert scv005045669.interpretation_description == "Tier I - Strong"
     assert scv005045669.interpretation_comments == [
         {
-            "text": "Combination treatment of BRAF inhibitor dabrafenib and MEK inhibitor trametinib is recommended for adjuvant treatment of stage III or recurrent melanoma with BRAF V600E mutation detected by the approved THxID kit, as well as first line treatment for metastatic melanoma. The treatments are FDA approved based on studies including the Phase III COMBI-V, COMBI-D and COMBI-AD Trials. Combination therapy is now recommended above BRAF inhibitor monotherapy. Cutaneous squamous-cell carcinoma and keratoacanthoma occur at lower rates with combination therapy than with BRAF inhibitor alone."
+            "text": "Combination treatment of BRAF inhibitor dabrafenib and MEK inhibitor trametinib is recommended for adjuvant treatment of stage III or recurrent melanoma with BRAF V600E mutation detected by the approved THxID kit, as well as first line treatment for metastatic melanoma. The treatments are FDA approved based on studies including the Phase III COMBI-V, COMBI-D and COMBI-AD Trials. Combination therapy is now recommended above BRAF inhibitor monotherapy. Cutaneous squamous-cell carcinoma and keratoacanthoma occur at lower rates with combination therapy than with BRAF inhibitor alone."  # noqa: E501
         }
     ]
     assert scv005045669.submitter_id == "509553"
@@ -754,7 +754,7 @@ def test_read_original_clinvar_variation_10():
     """
     Get trait set ids from the vcv
     xq -x '//ClinVarVariationRelease/VariationArchive/InterpretedRecord/Interpretations/Interpretation/ConditionList/TraitSet/@ID' VCV000000010.xml
-    """
+    """  # noqa: E501
 
     clinical_assertion_traits = [
         o for o in objects if isinstance(o, ClinicalAssertionTrait)
@@ -786,7 +786,7 @@ def test_read_original_clinvar_variation_10():
     scv001251532 = scv[0]
     assert len(scv001251532.interpretation_comments) == 1
     assert scv001251532.interpretation_comments[0]["text"] == html.unescape(
-        "The HFE c.187C&gt;G (p.H63D) variant is a pathogenic variant seen in 10.8% of the human population in gnomAD. Indviduals with the p.H63D variant are considered carriers of hemochromatosis, although this variant is associated with less severe iron overload and reduced penetrance compared to another pathogenic HFE variant, c.845G&gt;A, p.C282Y (PMID: 19159930; 20301613)."
+        "The HFE c.187C&gt;G (p.H63D) variant is a pathogenic variant seen in 10.8% of the human population in gnomAD. Indviduals with the p.H63D variant are considered carriers of hemochromatosis, although this variant is associated with less severe iron overload and reduced penetrance compared to another pathogenic HFE variant, c.845G&gt;A, p.C282Y (PMID: 19159930; 20301613)."  # noqa: E501
     )
     assert "type" not in scv001251532.interpretation_comments[0]
 
