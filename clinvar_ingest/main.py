@@ -51,14 +51,13 @@ def run_cli(argv: list[str]):
     args = parse_args(argv)
     if args.subcommand == "parse":
         return run_parse(args)
-    elif args.subcommand == "upload":
+    if args.subcommand == "upload":
         return run_upload(args)
-    elif args.subcommand == "create-tables":
+    if args.subcommand == "create-tables":
         req = CreateExternalTablesRequest(**vars(args))
         resp = run_create_external_tables(req)
         return {entity_type: table.full_table_id for entity_type, table in resp.items()}
-    else:
-        raise ValueError(f"Unknown subcommand: {args.subcommand}")
+    raise ValueError(f"Unknown subcommand: {args.subcommand}")
 
 
 def main(argv=sys.argv[1:]):

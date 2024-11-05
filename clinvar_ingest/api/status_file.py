@@ -3,9 +3,9 @@ This module is for creating and writing messages to status files for workflow jo
 services can monitor the status of the workflow jobs. The status files are written to a GCS bucket.
 """
 
+import datetime
 import json
 import logging
-from datetime import datetime
 
 from google.cloud.storage import Blob
 from google.cloud.storage import Client as GCSClient
@@ -21,8 +21,8 @@ def write_status_file(
     file_prefix: str,
     step: StepName,
     status: StepStatus,
-    message: str = None,
-    timestamp: str = datetime.utcnow().isoformat(),
+    message: str | None = None,
+    timestamp: str = datetime.datetime.now(datetime.UTC).isoformat(),
 ) -> StatusValue:
     """
     This function writes a status file to a GCS bucket. The status file is a JSON file with the following format:

@@ -166,7 +166,6 @@ def test_clinical_assertion_variation_descendants():
     assert v0.clinical_assertion_id == "SCV000020155"
     assert v0.child_ids == []
     assert v0.descendant_ids == []
-    # print(scv0_variations[0])
 
 
 def test_clinical_assertion_variation_descendants_genotype():

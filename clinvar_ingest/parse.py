@@ -3,7 +3,8 @@ import json
 import logging
 import os
 import pathlib
-from typing import IO, Any, Callable, Iterator, TextIO
+from collections.abc import Callable, Iterator
+from typing import IO, Any, TextIO
 
 from clinvar_ingest.cloud.gcs import blob_reader, blob_size, blob_writer
 from clinvar_ingest.fs import BinaryOpenMode, ReadCounter, fs_open
@@ -24,8 +25,7 @@ GZIP_COMPRESSLEVEL = int(os.environ.get("GZIP_COMPRESSLEVEL", 9))
 def _st_size(filepath: str):
     if filepath.startswith("gs://"):
         return blob_size(filepath)
-    else:
-        return pathlib.Path(filepath).stat().st_size
+    return pathlib.Path(filepath).stat().st_size
 
 
 def _open(
@@ -42,12 +42,10 @@ def _open(
 
         if filepath.endswith(".gz"):
             # wraps BlobReader in gzip.GzipFile, which implements .tell()
-            return gzip.open(f, mode=str(mode), compresslevel=GZIP_COMPRESSLEVEL)  # type: ignore
-        else:
-            # Need to wrap in a counter so we can track bytes read
-            return ReadCounter(f)
-    else:
-        return fs_open(filepath, mode=mode, make_parents=True)
+            return gzip.open(f, mode=str(mode), compresslevel=GZIP_COMPRESSLEVEL)
+        # Need to wrap in a counter so we can track bytes read
+        return ReadCounter(f)
+    return fs_open(filepath, mode=mode, make_parents=True)
 
 
 def get_open_file_for_writing(
@@ -67,7 +65,7 @@ def get_open_file_for_writing(
         filepath = f"{label_dir}/{label}{suffix}"
         _logger.info("Opening file for writing: %s", filepath)
         d[label] = _open(filepath, mode=BinaryOpenMode.WRITE)
-        setattr(d[label], "_name", filepath)
+        d[label]._name = filepath
     return d[label]
 
 
@@ -82,9 +80,8 @@ def clean_list(input_list: list) -> list | None:
             val = clean_list(item)
             if val is not None:
                 output.append(val)
-        else:
-            if item not in [None, ""]:
-                output.append(item)
+        elif item not in [None, ""]:
+            output.append(item)
     return output if output != [] else None
 
 
@@ -99,9 +96,8 @@ def clean_dict(input_dict: dict) -> dict | None:
             val = clean_list(v)
             if val is not None:
                 output[k] = val
-        else:
-            if v is not None and len(v) > 0:
-                output[k] = v
+        elif v is not None and len(v) > 0:
+            output[k] = v
     return output if output != {} else None
 
 
@@ -109,11 +105,10 @@ def clean_object(obj: list | dict | str | None) -> dict | list | str | None:
     if isinstance(obj, dict):
         cleaned = clean_dict(obj)
         return cleaned if cleaned is not None else None
-    elif isinstance(obj, list):
+    if isinstance(obj, list):
         cleaned = clean_list(obj)
         return cleaned if cleaned is not None else None
-    else:
-        return obj if obj not in [None, ""] else None
+    return obj if obj not in [None, ""] else None
 
 
 def _jsonify_non_empties(obj: list | dict | str) -> dict | list | str | None:
@@ -123,15 +118,14 @@ def _jsonify_non_empties(obj: list | dict | str) -> dict | list | str | None:
     if isinstance(obj, dict):
         cleaned = clean_object(obj)
         return json.dumps(cleaned) if cleaned is not None else None
-    elif isinstance(obj, list):
+    if isinstance(obj, list):
         output = []
         for o in obj:
             cleaned = clean_object(o)
             if cleaned is not None:
                 output.append(json.dumps(cleaned))
         return output
-    else:
-        return json.dumps(obj) if obj not in [None, ""] else None
+    return json.dumps(obj) if obj not in [None, ""] else None
 
 
 def reader_fn_for_format(
@@ -147,7 +141,7 @@ def reader_fn_for_format(
     return reader_fn
 
 
-def parse_and_write_files(
+def parse_and_write_files(  # noqa: PLR0912
     input_filename: str,
     output_directory: str,
     gzip_output=True,
@@ -162,7 +156,7 @@ def parse_and_write_files(
     Returns the dict of types to their output files.
     """
     open_output_files = {}
-    with _open(input_filename) as f_in:  # type: ignore
+    with _open(input_filename) as f_in:
         match file_format:
             case ClinVarIngestFileFormat.VCV:
                 releaseinfo = get_clinvar_vcv_xml_releaseinfo(f_in)
@@ -199,7 +193,7 @@ def parse_and_write_files(
     _logger.info(f"Reading file format: {file_format} with reader: {reader_fn}")
 
     try:
-        with _open(input_filename) as f_in:  # type: ignore
+        with _open(input_filename) as f_in:
             byte_log_progress(0)  # initialize
             object_log_progress(0)  # initialize
 
@@ -212,18 +206,18 @@ def parse_and_write_files(
                     suffix=".ndjson" if not gzip_output else ".ndjson.gz",
                 )
                 obj_dict = dictify(obj)
-                assert isinstance(obj_dict, dict), obj_dict
+                if not isinstance(obj_dict, dict):
+                    raise ValueError(f"Object not dictified: {obj}")
 
                 # jsonify content type fields if requested
-                if jsonify_content:
-                    if hasattr(type(obj), "jsonifiable_fields"):
-                        for field in getattr(type(obj), "jsonifiable_fields")():
-                            if field in obj_dict:
-                                obj_dict[field] = _jsonify_non_empties(obj_dict[field])
+                if jsonify_content and hasattr(type(obj), "jsonifiable_fields"):
+                    for field in type(obj).jsonifiable_fields():
+                        if field in obj_dict:
+                            obj_dict[field] = _jsonify_non_empties(obj_dict[field])
 
                 obj_dict["release_date"] = release_date
                 f_out.write(json.dumps(obj_dict).encode("utf-8"))
-                f_out.write("\n".encode("utf-8"))
+                f_out.write(b"\n")
 
                 # Log offset and count for monitoring
                 byte_log_progress(f_in.tell())

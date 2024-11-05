@@ -63,4 +63,4 @@ with open("combined.xml", "wb") as f_out:
     if wrote_opener:
         # Write the closing tag
         f_out.write(b"\n")
-        f_out.write(f"</{root_tag}>".encode("utf-8"))
+        f_out.write(f"</{root_tag}>".encode())

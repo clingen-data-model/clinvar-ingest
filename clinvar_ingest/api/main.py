@@ -1,10 +1,9 @@
+import datetime
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime
 from pathlib import PurePosixPath
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, status
-from google.cloud import bigquery
 
 import clinvar_ingest.config
 from clinvar_ingest.api.middleware import LogRequests
@@ -62,12 +61,13 @@ async def health():
     response_model=InitializeWorkflowResponse,
 )
 async def create_workflow_execution_id(initial_id: BigqueryDatasetId):
-    assert initial_id is not None and len(initial_id) > 0
+    if initial_id is None or len(initial_id) == 0:
+        raise ValueError("initial_id must be nonempty")
     # default isoformat has colons, dashes, and periods
     # e.g. 2024-01-31T19:13:03.185320
     # we want to remove these to make a valid BigQuery table name
     timestamp = (
-        datetime.utcnow()
+        datetime.datetime.now(tz=datetime.UTC)
         .isoformat()
         .replace(":", "")
         .replace(".", "")
@@ -250,12 +250,6 @@ async def copy(
 
     def task():
         try:
-            # http_upload(
-            #     http_uri=ftp_path,
-            #     blob_uri=gcs_path,
-            #     file_size=ftp_file_size,
-            #     client=_get_gcs_client(),
-            # )
 
             # Download to local file
             http_download_curl(
@@ -398,7 +392,6 @@ async def create_external_tables(
             tables_created = run_create_external_tables(payload)
 
             for table_name, table in tables_created.items():
-                table: bigquery.Table = table
                 logger.info(
                     "Created table %s as %s:%s.%s",
                     table_name,
@@ -446,9 +439,9 @@ async def create_external_tables(
 
 @app.post("/create_internal_tables", status_code=status.HTTP_201_CREATED)
 async def create_internal_tables(payload: TodoRequest):
-    return {"todo": "implement me"}
+    return {"todo": "implement me", "payload": payload}
 
 
 @app.post("/create_cleaned_tables", status_code=status.HTTP_201_CREATED)
 async def create_cleaned_tables(payload: TodoRequest):
-    return {"todo": "implement me"}
+    return {"todo": "implement me", "payload": payload}

@@ -38,7 +38,7 @@ class Env(BaseModel):
 
     @field_validator("bucket_name")
     @classmethod
-    def _validate_bucket_name(cls, v, info):
+    def _validate_bucket_name(cls, v, _info):
         if not v:
             raise ValueError("CLINVAR_INGEST_BUCKET must be set")
         return v
@@ -50,18 +50,18 @@ def get_env() -> Env:
     variables and any default values.
     """
     return Env(
-        bq_dest_project=_dotenv_values["BQ_DEST_PROJECT"],  # type: ignore
+        bq_dest_project=_dotenv_values["BQ_DEST_PROJECT"],
         bq_meta_dataset=_bq_meta_dataset
-        or _dotenv_values["CLINVAR_INGEST_BQ_META_DATASET"],  # type: ignore
-        bucket_name=_bucket_name or _dotenv_values["CLINVAR_INGEST_BUCKET"],  # type: ignore
+        or _dotenv_values["CLINVAR_INGEST_BQ_META_DATASET"],
+        bucket_name=_bucket_name or _dotenv_values["CLINVAR_INGEST_BUCKET"],
         bucket_staging_prefix=_bucket_staging_prefix,
         bucket_parsed_prefix=_bucket_parsed_prefix,
         parse_output_prefix=_bucket_parsed_prefix,
         executions_output_prefix=_bucket_executions_prefix,
         slack_token=_slack_token
-        or _dotenv_values.get("CLINVAR_INGEST_SLACK_TOKEN", ""),  # type: ignore
+        or _dotenv_values.get("CLINVAR_INGEST_SLACK_TOKEN", ""),
         slack_channel=_slack_channel
-        or _dotenv_values.get("CLINVAR_INGEST_SLACK_CHANNEL", ""),  # type: ignore
+        or _dotenv_values.get("CLINVAR_INGEST_SLACK_CHANNEL", ""),
         release_tag=_release_tag
-        or _dotenv_values.get("CLINVAR_INGEST_RELEASE_TAG", ""),  # type: ignore
+        or _dotenv_values.get("CLINVAR_INGEST_RELEASE_TAG", ""),
     )

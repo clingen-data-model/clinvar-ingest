@@ -80,7 +80,7 @@ def main(opts):
                 # Get the Classifications
                 try:
                     classifications = get_classifications(elem)
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001
                     print(f"Error getting classifications: {e}")
                     continue
 

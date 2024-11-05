@@ -3,7 +3,6 @@ from __future__ import annotations
 import dataclasses
 import json
 import logging
-from typing import List
 
 from clinvar_ingest.model.common import Model, dictify, model_copy
 from clinvar_ingest.utils import ensure_list, extract, flatten1, get
@@ -12,24 +11,22 @@ _logger = logging.getLogger("clinvar_ingest")
 
 
 def extract_element_xrefs(
-    attr: dict, ref_field: str, ref_field_element: str = None
-) -> List[Trait.XRef]:
+    attr: dict, ref_field: str, ref_field_element: str | None = None
+) -> list[Trait.XRef]:
     """
     Extract XRefs from an element, with the option to specify a ref_field and ref_field_element
     where it came from (used to differentiate xrefs within different parent elements).
     """
-    outputs = []
-    for x in ensure_list(attr.get("XRef", [])):
-        outputs.append(
-            Trait.XRef(
-                db=x["@DB"],
-                id=x["@ID"],
-                type=get(x, "@Type"),
-                ref_field=ref_field,
-                ref_field_element=ref_field_element,
-            )
+    return [
+        Trait.XRef(
+            db=x["@DB"],
+            id=x["@ID"],
+            type=get(x, "@Type"),
+            ref_field=ref_field,
+            ref_field_element=ref_field_element,
         )
-    return outputs
+        for x in ensure_list(attr.get("XRef", []))
+    ]
 
 
 @dataclasses.dataclass
@@ -44,18 +41,18 @@ class TraitMetadata(Model):
     type: str
     name: str
     medgen_id: str
-    alternate_names: List[str]
-    xrefs: List[Trait.XRef]
+    alternate_names: list[str]
+    xrefs: list[Trait.XRef]
 
     @staticmethod
-    def jsonifiable_fields() -> List[str]:
+    def jsonifiable_fields() -> list[str]:
         return ["xrefs"]
 
     @staticmethod
     def from_xml(inp: dict):
         # _logger.info(f"TraitMetadata.from_xml(inp={json.dumps(inp)})")
 
-        id = extract(inp, "@ID")
+        trait_id = extract(inp, "@ID")
         trait_type = extract(inp, "@Type")
         # Preferred Name (Name type=Preferred)
         names = ensure_list(extract(inp, "Name") or [])
@@ -63,7 +60,7 @@ class TraitMetadata(Model):
             n for n in names if get(n, "ElementValue", "@Type") == "Preferred"
         ]
         if len(preferred_names) > 1:
-            raise RuntimeError(f"Trait {id} has multiple preferred names")
+            raise RuntimeError(f"Trait {trait_id} has multiple preferred names")
         preferred_name = None
         if len(preferred_names) == 1:
             preferred_name = preferred_names[0]["ElementValue"]["$"]
@@ -99,23 +96,22 @@ class TraitMetadata(Model):
         _medgen_xrefs = [x for x in top_xrefs if x.db == "MedGen"]
         if len(_medgen_xrefs) > 1:
             raise RuntimeError(
-                f"Trait {id} has multiple MedGen XRefs: {[m.id for m in _medgen_xrefs]}"
+                f"Trait {trait_id} has multiple MedGen XRefs: {[m.id for m in _medgen_xrefs]}"
             )
         if len(_medgen_xrefs) == 1:
             medgen_id = _medgen_xrefs[0].id
 
-        obj = TraitMetadata(
-            id=id,
+        return TraitMetadata(
+            id=trait_id,
             type=trait_type,
             name=preferred_name,
             medgen_id=medgen_id,
             alternate_names=alternate_name_strs,
             xrefs=top_xrefs + preferred_name_xrefs + alternate_name_xrefs,
         )
-        return obj
 
     def disassemble(self):
-        raise NotImplementedError()
+        raise NotImplementedError
 
 
 @dataclasses.dataclass
@@ -123,36 +119,36 @@ class Trait(Model):
     id: str
     disease_mechanism_id: int | None
     name: str
-    attribute_content: List[str]
+    attribute_content: list[str]
     mode_of_inheritance: str | None
     ghr_links: str | None
-    keywords: List[str] | None
+    keywords: list[str] | None
     gard_id: int | None
     medgen_id: str
     public_definition: str | None
     type: str
     symbol: str | None
     disease_mechanism: str | None
-    alternate_symbols: List[str]
+    alternate_symbols: list[str]
     gene_reviews_short: str | None
-    alternate_names: List[str]
-    xrefs: List[str]
+    alternate_names: list[str]
+    xrefs: list[str]
     rcv_id: str
 
     content: dict
 
     @staticmethod
-    def jsonifiable_fields() -> List[str]:
+    def jsonifiable_fields() -> list[str]:
         return ["content", "attribute_content", "xrefs"]
 
     class XRef:
         def __init__(
             self,
             db: str,
-            id: str,
-            type: str,
-            ref_field: str = None,
-            ref_field_element: str = None,
+            id: str,  # noqa: A002
+            type: str,  # noqa: A002
+            ref_field: str | None = None,
+            ref_field_element: str | None = None,
         ):
             """
             ref_field and ref_field_element are used to differentiate between XRefs which may
@@ -173,7 +169,7 @@ class Trait(Model):
         self.entity_type = "trait"
 
     @staticmethod
-    def from_xml(inp: dict, rcv_id: str) -> Trait:
+    def from_xml(inp: dict, rcv_id: str) -> Trait:  # noqa: PLR0912
         _logger.debug(f"Trait.from_xml(inp={json.dumps(inp)})")
 
         trait_metadata = TraitMetadata.from_xml(inp)
@@ -234,6 +230,7 @@ class Trait(Model):
             if len(matching_attributes) > 0:
                 attribute_set.remove(matching_attributes[0])
                 return matching_attributes[0]
+            return None
 
         def pop_attribute_list(inp_key):
             """
@@ -326,7 +323,8 @@ class Trait(Model):
             ghr_links = None
             ghr_links_xref = None
 
-        attribute_set_xrefs = keyword_xrefs + [
+        attribute_set_xrefs = [
+            *keyword_xrefs,
             public_definition_xref,
             gard_id_xref,
             disease_mechanism_xref,
@@ -353,7 +351,7 @@ class Trait(Model):
         # Filter out None XRefs
         all_xrefs = [x for x in all_xrefs if x is not None]
 
-        obj = Trait(
+        return Trait(
             id=trait_metadata.id,
             type=trait_metadata.type,
             name=trait_metadata.name,
@@ -374,7 +372,6 @@ class Trait(Model):
             rcv_id=rcv_id,
             content=inp,
         )
-        return obj
 
     def disassemble(self):
         yield self
@@ -384,13 +381,13 @@ class Trait(Model):
 class TraitSet(Model):
     id: str
     type: str
-    traits: List[Trait]
+    traits: list[Trait]
     rcv_id: str
 
     content: dict
 
     @staticmethod
-    def jsonifiable_fields() -> List[str]:
+    def jsonifiable_fields() -> list[str]:
         return ["content"]
 
     def __post_init__(self):
@@ -398,9 +395,9 @@ class TraitSet(Model):
         self.entity_type = "trait_set"
 
     @staticmethod
-    def from_xml(inp: dict, rcv_id: str = None):
+    def from_xml(inp: dict, rcv_id: str):
         _logger.debug(f"TraitSet.from_xml(inp={json.dumps(dictify(inp))})")
-        obj = TraitSet(
+        return TraitSet(
             id=extract(inp, "@ID"),
             type=extract(inp, "@Type"),
             traits=[
@@ -410,12 +407,9 @@ class TraitSet(Model):
             content=inp,
         )
 
-        return obj
-
     def disassemble(self):
         for t in self.traits:
-            for val in t.disassemble():
-                yield val
+            yield from t.disassemble()
         del self.traits
         yield self
 
@@ -427,21 +421,23 @@ class ClinicalAssertionTrait(Model):
     name: str
     medgen_id: str
     trait_id: str
-    alternate_names: List[str]
-    xrefs: List[Trait.XRef]
+    alternate_names: list[str]
+    xrefs: list[Trait.XRef]
 
     content: dict
 
     @staticmethod
-    def jsonifiable_fields() -> List[str]:
+    def jsonifiable_fields() -> list[str]:
         return ["content", "xrefs"]
 
     def __post_init__(self):
         self.entity_type = "clinical_assertion_trait"
 
     @staticmethod
-    def find_matching_trait(
-        me: TraitMetadata, reference_traits: List[Trait], mappings: List[TraitMapping]
+    def find_matching_trait(  # noqa: PLR0912
+        me: TraitMetadata,
+        reference_traits: list[Trait],
+        mappings: list[TraitMapping],
     ) -> Trait | None:
         """
         Given a list of normalized traits, find the one that matches the clinical assertion trait
@@ -529,8 +525,8 @@ class ClinicalAssertionTrait(Model):
     @staticmethod
     def from_xml(
         inp: dict,
-        normalized_traits: List[Trait] = [],
-        trait_mappings: List[TraitMapping] = [],
+        normalized_traits: list[Trait],
+        trait_mappings: list[TraitMapping],
     ):
         _logger.debug(
             f"ClinicalAssertionTrait.from_xml(inp={json.dumps(dictify(inp))})"
@@ -545,7 +541,7 @@ class ClinicalAssertionTrait(Model):
             mappings=trait_mappings,
         )
 
-        obj = ClinicalAssertionTrait(
+        return ClinicalAssertionTrait(
             id=trait_metadata.id,
             type=trait_metadata.type,
             name=trait_metadata.name,
@@ -558,7 +554,6 @@ class ClinicalAssertionTrait(Model):
             xrefs=trait_metadata.xrefs,
             content=inp,
         )
-        return obj
 
     def disassemble(self):
         yield self
@@ -575,11 +570,11 @@ class ClinicalAssertionTraitSet(Model):
 
     id: str
     type: str
-    traits: List[ClinicalAssertionTrait]
+    traits: list[ClinicalAssertionTrait]
     content: dict
 
     @staticmethod
-    def jsonifiable_fields() -> List[str]:
+    def jsonifiable_fields() -> list[str]:
         return ["content"]
 
     def __post_init__(self):
@@ -588,13 +583,13 @@ class ClinicalAssertionTraitSet(Model):
     @staticmethod
     def from_xml(
         inp: dict,
-        normalized_traits: List[Trait] = [],
-        trait_mappings: List[TraitMapping] = [],
+        normalized_traits: list[Trait],
+        trait_mappings: list[TraitMapping],
     ):
         _logger.debug(
             f"ClinicalAssertionTraitSet.from_xml(inp={json.dumps(dictify(inp))})"
         )
-        obj = ClinicalAssertionTraitSet(
+        return ClinicalAssertionTraitSet(
             id=extract(inp, "@ID"),
             type=extract(inp, "@Type"),
             traits=[
@@ -607,16 +602,14 @@ class ClinicalAssertionTraitSet(Model):
             ],
             content=inp,
         )
-        return obj
 
     def disassemble(self):
         self_copy = model_copy(self)
         for t in self_copy.traits:
-            for val in t.disassemble():
-                yield val
+            yield from t.disassemble()
         trait_ids = [t.id for t in self_copy.traits]
         del self_copy.traits
-        setattr(self_copy, "clinical_assertion_trait_ids", trait_ids)
+        self_copy.clinical_assertion_trait_ids = trait_ids
         yield self_copy
 
 
@@ -631,14 +624,14 @@ class TraitMapping(Model):
     medgen_id: str
 
     @staticmethod
-    def jsonifiable_fields() -> List[str]:
+    def jsonifiable_fields() -> list[str]:
         return []
 
     def __post_init__(self):
         self.entity_type = "trait_mapping"
 
     @staticmethod
-    def from_xml(inp: dict, clinical_assertion_id_to_accession: dict = None):
+    def from_xml(inp: dict, clinical_assertion_id_to_accession: dict):
         return TraitMapping(
             clinical_assertion_id=clinical_assertion_id_to_accession[
                 extract(inp, "@ClinicalAssertionID")

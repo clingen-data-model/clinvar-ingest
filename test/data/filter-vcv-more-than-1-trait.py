@@ -80,7 +80,7 @@ def main(opts):
                 # Clear completed VariationArchive element
                 elem.clear()
 
-            elif event == "start" and elem.tag == "ClinVarVariationRelease":
+            if event == "start" and elem.tag == "ClinVarVariationRelease":
                 # opening_attributes = " ".join(
                 #     f'{key}="{value}"' for key, value in elem.attrib.items()
                 # )

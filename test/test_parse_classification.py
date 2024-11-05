@@ -125,7 +125,7 @@ def test_vcv_VCV000000002():
     assert rcv.independent_observations is None
     assert (
         rcv.title
-        == "NM_014855.3(AP5Z1):c.80_83delinsTGCTGTAAACTGTAACTGTAAA (p.Arg27_Ile28delinsLeuLeuTer) AND Hereditary spastic paraplegia 48"  # noqa: E501
+        == "NM_014855.3(AP5Z1):c.80_83delinsTGCTGTAAACTGTAACTGTAAA (p.Arg27_Ile28delinsLeuLeuTer) AND Hereditary spastic paraplegia 48"
     )
     assert rcv.trait_set_id == "2"
     assert rcv.variation_archive_id == "VCV000000002"

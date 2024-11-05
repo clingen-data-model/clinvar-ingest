@@ -5,8 +5,9 @@ on appropriate elements.
 
 import logging
 import xml.etree.ElementTree as ET
+from collections.abc import Iterator
 from enum import StrEnum
-from typing import Any, Iterator, TextIO, Tuple
+from typing import Any, TextIO
 
 import xmltodict
 
@@ -24,11 +25,10 @@ def construct_model(tag, item):
     if tag == "VariationArchive":
         _logger.debug("Returning new VariationArchive")
         return VariationArchive.from_xml(item)
-    elif tag == "ClinVarSet":
+    if tag == "ClinVarSet":
         _logger.debug("Returning new ClinVarSet")
         return RcvMapping.from_xml(item)
-    else:
-        raise ValueError(f"Unexpected tag: {tag} {item=}")
+    raise ValueError(f"Unexpected tag: {tag} {item=}")
 
 
 def make_item_cb(output_queue, keep_going):
@@ -109,7 +109,7 @@ def get_clinvar_vcv_xml_releaseinfo(file) -> dict:
     return {"release_date": release_date}
 
 
-def _handle_text_nodes(path, key, value) -> Tuple[Any, Any]:
+def _handle_text_nodes(path, key, value) -> tuple[Any, Any]:  # noqa: ARG001
     """
     Takes a path, key, value, returns a tuple of new (key, value)
 
@@ -120,8 +120,7 @@ def _handle_text_nodes(path, key, value) -> Tuple[Any, Any]:
     if isinstance(value, str) and not key.startswith("@"):
         if key == "#text":
             return ("$", value)
-        else:
-            return (key, {"$": value})
+        return (key, {"$": value})
     return (key, value)
 
 
@@ -180,11 +179,10 @@ def _read_clinvar_xml(
                     raise RuntimeError(
                         f"parsed dict had more than 1 key: ({elem_d.keys()}) {elem_d}"
                     )
-                tag, contents = list(elem_d.items())[0]
+                tag, contents = next(iter(elem_d.items()))
                 model_obj = construct_model(tag, contents)
                 if disassemble:
-                    for subobj in model_obj.disassemble():
-                        yield subobj
+                    yield from model_obj.disassemble()
                 else:
                     yield model_obj
             elem.clear()

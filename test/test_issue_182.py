@@ -8,13 +8,13 @@ def test_parse(log_conf):
     Haplotype (which contains SimpleAlleles)
     """
     filename = "test/data/VCV000424711.xml"
-    with open(filename, "r", encoding="utf-8") as f:
+    with open(filename, encoding="utf-8") as f:
         objects = list(read_clinvar_vcv_xml(f))
 
     assert len(objects) == 19
 
     clinical_assertion_variations: list[ClinicalAssertionVariation] = [
-        o for o in objects if o.entity_type == "clinical_assertion_variation"  # type: ignore
+        o for o in objects if o.entity_type == "clinical_assertion_variation"
     ]
     assert len(clinical_assertion_variations) == 5
 
@@ -40,28 +40,28 @@ def test_parse(log_conf):
     assert genotype.clinical_assertion_id == scv_id
     assert genotype.child_ids == [f"{scv_id}.1", f"{scv_id}.2"]
 
-    genotype_child1 = [
+    genotype_child1 = next(
         o for o in clinical_assertion_variations if o.id == genotype.child_ids[0]
-    ][0]
+    )
     assert genotype_child1.subclass_type == "SimpleAllele"
 
-    genotype_child2 = [
+    genotype_child2 = next(
         o for o in clinical_assertion_variations if o.id == genotype.child_ids[1]
-    ][0]
+    )
 
     assert genotype_child2.subclass_type == "Haplotype"
 
     # Check child objects of the haplotype
     haplotype = genotype_child2
     assert haplotype.child_ids == [f"{scv_id}.3", f"{scv_id}.4"]
-    haplotype_child1 = [
+    haplotype_child1 = next(
         o for o in clinical_assertion_variations if o.id == haplotype.child_ids[0]
-    ][0]
+    )
     assert haplotype_child1.subclass_type == "SimpleAllele"
 
-    haplotype_child2 = [
+    haplotype_child2 = next(
         o for o in clinical_assertion_variations if o.id == haplotype.child_ids[1]
-    ][0]
+    )
     assert haplotype_child2.subclass_type == "SimpleAllele"
 
     # Check descendant_ids
@@ -75,7 +75,7 @@ def test_parse(log_conf):
     assert haplotype.descendant_ids == [haplotype_child1.id, haplotype_child2.id]
 
     # Check the Variation objects have correct descendants and children too
-    variation: Variation = [o for o in objects if isinstance(o, Variation)][0]
+    variation: Variation = next(o for o in objects if isinstance(o, Variation))
     assert variation.id == "424711"
     assert variation.child_ids == ["192373", "189364"]
     assert variation.descendant_ids == [

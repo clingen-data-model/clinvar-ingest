@@ -8,7 +8,7 @@ from clinvar_ingest import config
 
 @pytest.fixture
 def log_conf():
-    with open("log_conf.json", "r") as f:
+    with open("log_conf.json") as f:
         conf = json.load(f)
         logging.config.dictConfig(conf)
 
