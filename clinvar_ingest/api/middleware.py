@@ -1,7 +1,7 @@
 import logging
 import time
 import uuid
-from typing import Callable
+from collections.abc import Callable
 
 from starlette.middleware.base import BaseHTTPMiddleware, Request, Response
 
@@ -20,6 +20,7 @@ class LogRequests(BaseHTTPMiddleware):
         response = await call_next(request)
         elapsed_ms = int((time.time() - start_ms) * MS_PER_S)
         logger.info(
-            f"{request.method} {request.url.path} id={request_id} elapsed_ms={elapsed_ms} status_code={response.status_code}"
+            f"{request.method} {request.url.path} id={request_id} "
+            f"elapsed_ms={elapsed_ms} status_code={response.status_code}"
         )
         return response

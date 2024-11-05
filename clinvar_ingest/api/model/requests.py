@@ -1,7 +1,8 @@
 import re
+from collections.abc import Callable
 from datetime import date, datetime
 from pathlib import PurePath
-from typing import Annotated, Any, Callable, Literal, Optional, Union
+from typing import Annotated, Any, Literal
 
 from pydantic import (
     AnyUrl,
@@ -59,7 +60,7 @@ BigqueryFullTableId = Annotated[
 # Request and response models
 
 
-def strict_datetime_field_validator(cls, v, info: ValidationInfo) -> datetime:
+def strict_datetime_field_validator(_cls, v, info: ValidationInfo) -> datetime:
     # print(f"Validating {info.field_name} with value {v}")
     if not v:
         raise ValueError(f"{info.field_name} was empty")
@@ -105,7 +106,7 @@ class ClinvarFTPWatcherRequest(BaseModel):
     release_date: date
 
     file_format: Annotated[
-        Optional[Literal["vcv", "rcv"]],
+        Literal["vcv", "rcv"] | None,
         Field(
             description=(
                 "Type of file this request refers to. "
@@ -167,7 +168,7 @@ class ParseResponse(BaseModel):
     Map of entity type to either GCS path (gs:// URLs) or path to local file
     """
 
-    parsed_files: dict[str, Union[GcsBlobPath, PurePathStr]]
+    parsed_files: dict[str, GcsBlobPath | PurePathStr]
 
     @field_serializer("parsed_files", when_used="always")
     def _serialize(self, v):
@@ -222,8 +223,6 @@ class DropExternalTablesRequest(CreateExternalTablesResponse):
     Defines the arguments to the drop_external_tables endpoint
     """
 
-    pass
-
 
 class InitializeWorkflowResponse(BaseModel):
     """
@@ -250,7 +249,7 @@ class InitializeStepRequest(BaseModel):
 
     workflow_execution_id: str
     step_name: StepName
-    message: Optional[str] = None
+    message: str | None = None
 
 
 class InitializeStepResponse(BaseModel):
@@ -286,7 +285,7 @@ class GetStepStatusResponse(BaseModel):
     step_name: StepName
     step_status: StepStatus
     timestamp: datetime
-    message: Optional[str] = None
+    message: str | None = None
 
     @field_serializer("timestamp", when_used="always")
     def _timestamp_serializer(self, v: datetime):
@@ -303,7 +302,7 @@ class StepStartedResponse(BaseModel):
 
     timestamp: datetime
     step_status: Literal[StepStatus.STARTED] = StepStatus.STARTED
-    message: Optional[str] = None
+    message: str | None = None
 
     @field_serializer("timestamp", when_used="always")
     def _timestamp_serializer(self, v: datetime):

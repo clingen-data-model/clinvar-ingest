@@ -166,7 +166,6 @@ def test_clinical_assertion_variation_descendants():
     assert v0.clinical_assertion_id == "SCV000020155"
     assert v0.child_ids == []
     assert v0.descendant_ids == []
-    # print(scv0_variations[0])
 
 
 def test_clinical_assertion_variation_descendants_genotype():
@@ -233,17 +232,15 @@ def test_clinical_assertion_variation_descendants_genotype():
     assert simplealleleBC.child_ids == []
 
     # Check descendants
-    assert list(sorted(genotype.descendant_ids)) == list(
-        sorted(
-            [
-                haplotypeA.id,
-                simplealleleAA.id,
-                haplotypeB.id,
-                simplealleleBA.id,
-                simplealleleBB.id,
-                simplealleleBC.id,
-            ]
-        )
+    assert sorted(genotype.descendant_ids) == sorted(
+        [
+            haplotypeA.id,
+            simplealleleAA.id,
+            haplotypeB.id,
+            simplealleleBA.id,
+            simplealleleBB.id,
+            simplealleleBC.id,
+        ]
     )
     assert haplotypeA.descendant_ids == [simplealleleAA.id]
     assert simplealleleAA.descendant_ids == []

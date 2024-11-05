@@ -6,8 +6,8 @@ from clinvar_ingest.utils import ensure_list
 
 
 def unordered_dict_list_equal(list1: list[dict], list2: list[dict]) -> bool:
-    set1 = set([tuple(elem.items()) for elem in list1])
-    set2 = set([tuple(elem.items()) for elem in list2])
+    set1 = {tuple(elem.items()) for elem in list1}
+    set2 = {tuple(elem.items()) for elem in list2}
     return len(list1) == len(list2) and set1 == set2
 
 

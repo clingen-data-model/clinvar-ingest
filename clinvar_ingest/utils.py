@@ -1,6 +1,6 @@
 import time
 from enum import StrEnum
-from typing import Any, List
+from typing import Any
 
 
 def extract_oneof(d: dict, *keys: Any) -> Any:
@@ -26,10 +26,10 @@ def extract(d: dict, *keys: Any) -> Any:
         if d and k in d:
             if i == len(keys) - 1:
                 return d.pop(k)
-            else:
-                d = d[k]
+            d = d[k]
         else:
             return None
+    return None
 
 
 def get(d: dict, *keys: Any) -> Any:
@@ -41,13 +41,13 @@ def get(d: dict, *keys: Any) -> Any:
         if d and k in d:
             if i == len(keys) - 1:
                 return d[k]
-            else:
-                d = d[k]
+            d = d[k]
         else:
             return None
+    return None
 
 
-def ensure_list(obj: Any) -> List:
+def ensure_list(obj: Any) -> list:
     """
     Ensure that the given object is a list. If it is not a list, it will be
     wrapped in a list and returned. If it is already a list, it will be returned
@@ -74,7 +74,7 @@ def ensure_list(obj: Any) -> List:
     return obj
 
 
-def flatten1(things: List[List[Any]]) -> List[Any]:
+def flatten1(things: list[list[Any]]) -> list[Any]:
     """
     Takes a list of things. If any of the things are lists, they are flattened
     to the top level. The result is a list of things that is nested one fewer levels.
@@ -89,14 +89,11 @@ def flatten1(things: List[List[Any]]) -> List[Any]:
         >>> flatten1([['foo'], 'bar'])
         ['foo', 'bar']
     """
-    outputs = []
-    for thing in things:
-        if isinstance(thing, list):
-            for item in thing:
-                outputs.append(item)
-        else:
-            outputs.append(thing)
-    return outputs
+    return [
+        item
+        for thing in things
+        for item in (thing if isinstance(thing, list) else [thing])
+    ]
 
 
 def make_progress_logger(logger, fmt: str, max_value: int = 0, interval: int = 10):

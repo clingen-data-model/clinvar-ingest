@@ -52,8 +52,7 @@ def schema_file_path_for_table(table_name: str) -> Path:
     Returns the path to the BigQuery schema file for the given table name.
     """
     raw_table_name = table_name.replace("_external", "")
-    schema_path = bq_schemas_dir / f"{raw_table_name}.bq.json"
-    return schema_path
+    return bq_schemas_dir / f"{raw_table_name}.bq.json"
 
 
 def create_table(
@@ -77,8 +76,7 @@ def create_table(
 
     table = bigquery.Table(table_ref, schema=None)
     table.external_data_configuration = external_config
-    table = client.create_table(table, exists_ok=True)
-    return table
+    return client.create_table(table, exists_ok=True)
 
 
 def run_create_external_tables(
@@ -107,7 +105,10 @@ def run_create_external_tables(
     for table_name, gcs_blob_path in args.source_table_paths.items():
         parsed_blob = parse_blob_uri(gcs_blob_path.root, gcs_client)
         _logger.info(
-            "Parsed blob bucket: %s, path: %s", parsed_blob.bucket, parsed_blob.name
+            "Parsed blob bucket: %s, path: %s for table %s",
+            parsed_blob.bucket,
+            parsed_blob.name,
+            table_name,
         )
         bucket_obj = gcs_client.get_bucket(parsed_blob.bucket.name)
         bucket_location = bucket_obj.location
@@ -125,7 +126,7 @@ def run_create_external_tables(
         bq_client,
         project=destination_project,
         dataset_id=args.destination_dataset,
-        location=bucket_location,  # type: ignore
+        location=bucket_location,
     )
     if not dataset_obj:
         raise RuntimeError(f"Didn't get a dataset object back. run_create args: {args}")
@@ -160,14 +161,14 @@ def create_internal_tables(
         dest_table_ref: bigquery.TableReference,
     ) -> tuple[str, bool]:
         dedupe_queries = {
-            "gene": f"CREATE OR REPLACE TABLE `{dest_table_ref}` AS "
+            "gene": f"CREATE OR REPLACE TABLE `{dest_table_ref}` AS "  # noqa: S608
             f"SELECT * EXCEPT (vcv_id, row_num) from "
             f"(SELECT ge.*, ROW_NUMBER() OVER (PARTITION BY ge.id "
             f"ORDER BY vcv.date_last_updated DESC, vcv.id DESC) row_num "
             f"FROM `{source_table_ref}` AS ge "
             f"JOIN `{dest_table_ref.project}.{dest_table_ref.dataset_id}.variation_archive` AS vcv "
             f"ON ge.vcv_id = vcv.id) where row_num = 1",
-            "submission": f"CREATE OR REPLACE TABLE `{dest_table_ref}` AS "
+            "submission": f"CREATE OR REPLACE TABLE `{dest_table_ref}` AS "  # noqa: S608
             f"SELECT * EXCEPT (scv_id, row_num) from "
             f"(SELECT se.*, ROW_NUMBER() OVER (PARTITION BY se.id "
             f"ORDER BY vcv.date_last_updated DESC, vcv.id DESC) row_num "
@@ -177,7 +178,7 @@ def create_internal_tables(
             f"JOIN `{dest_table_ref.project}.{dest_table_ref.dataset_id}.variation_archive` AS vcv "
             f"ON scv.variation_archive_id = vcv.id) "
             f"where row_num = 1",
-            "submitter": f"CREATE OR REPLACE TABLE `{dest_table_ref}` AS "
+            "submitter": f"CREATE OR REPLACE TABLE `{dest_table_ref}` AS "  # noqa: S608
             f"SELECT * EXCEPT (scv_id, row_num) from "
             f"(SELECT se.*, ROW_NUMBER() OVER (PARTITION BY se.id "
             f"ORDER BY vcv.date_last_updated DESC, vcv.id DESC) row_num "
@@ -187,7 +188,7 @@ def create_internal_tables(
             f"JOIN `{dest_table_ref.project}.{dest_table_ref.dataset_id}.variation_archive` AS vcv "
             f"ON scv.variation_archive_id = vcv.id) "
             f"where row_num = 1",
-            "trait": f"CREATE OR REPLACE TABLE `{dest_table_ref}` AS "
+            "trait": f"CREATE OR REPLACE TABLE `{dest_table_ref}` AS "  # noqa: S608
             f"SELECT * EXCEPT (rcv_id, row_num) from "
             f"(SELECT te.*, ROW_NUMBER() OVER (PARTITION BY te.id "
             f"ORDER BY vcv.date_last_updated DESC, vcv.id DESC) row_num "
@@ -197,7 +198,7 @@ def create_internal_tables(
             f"JOIN `{dest_table_ref.project}.{dest_table_ref.dataset_id}.variation_archive` AS vcv "
             f"ON rcv.variation_archive_id = vcv.id) "
             f"where row_num = 1",
-            "trait_set": f"CREATE OR REPLACE TABLE `{dest_table_ref}` AS "
+            "trait_set": f"CREATE OR REPLACE TABLE `{dest_table_ref}` AS "  # noqa: S608
             f"SELECT * EXCEPT (rcv_id, row_num) from "
             f"(SELECT tse.*, ROW_NUMBER() OVER (PARTITION BY tse.id "
             f"ORDER BY vcv.date_last_updated DESC, vcv.id DESC) row_num "
@@ -208,7 +209,7 @@ def create_internal_tables(
             f"ON rcv.variation_archive_id = vcv.id) "
             f"where row_num = 1",
         }
-        default_query = f"CREATE OR REPLACE TABLE `{dest_table_ref}` AS SELECT * from `{source_table_ref}`"
+        default_query = f"CREATE OR REPLACE TABLE `{dest_table_ref}` AS SELECT * from `{source_table_ref}`"  # noqa: S608
         query = dedupe_queries.get(dest_table_ref.table_id, default_query)
         return query, query == default_query
 
@@ -244,8 +245,7 @@ def create_internal_tables(
         query, _ = get_query_for_copy(source_table_ref, dest_table_ref)
         _logger.info(f"Creating table {dest_table_ref} from {source_table_ref}")
         _logger.info(f"Query:\n{query}")
-        query_job = bq_client.query(query)
-        return query_job
+        return bq_client.query(query)
 
     bq_client = bigquery.Client()
     # Copy each

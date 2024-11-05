@@ -17,8 +17,8 @@ _logger = logging.getLogger("clinvar_ingest")
 
 def _get_gcs_client() -> storage.Client:
     if getattr(_get_gcs_client, "client", None) is None:
-        setattr(_get_gcs_client, "client", storage.Client())
-    return getattr(_get_gcs_client, "client")
+        _get_gcs_client.client = storage.Client()
+    return _get_gcs_client.client
 
 
 def parse_blob_uri(uri: str, client: storage.Client = None) -> storage.Blob:
@@ -56,7 +56,7 @@ def blob_writer(
     if client is None:
         client = _get_gcs_client()
     blob = parse_blob_uri(blob_uri, client=client)
-    return blob.open("wb" if binary else "w")  # type: ignore
+    return blob.open("wb" if binary else "w")
 
 
 def blob_reader(
@@ -68,7 +68,7 @@ def blob_reader(
     if client is None:
         client = _get_gcs_client()
     blob = parse_blob_uri(blob_uri, client=client)
-    return blob.open("rb" if binary else "r")  # type: ignore
+    return blob.open("rb" if binary else "r")
 
 
 def blob_size(blob_uri: str, client: storage.Client = None) -> int:
@@ -138,8 +138,8 @@ def http_download_curl(
 
     NOTE: an executable named `curl` must be available in the system PATH.
     """
-    p = subprocess.Popen(
-        ["curl", "-o", local_path, http_uri],
+    p = subprocess.Popen(  # noqa: S603
+        ["curl", "-o", local_path, http_uri],  # noqa: S607
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )

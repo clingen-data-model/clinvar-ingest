@@ -8,7 +8,7 @@ from typing import Any
 _logger = logging.getLogger("clinvar_ingest")
 
 
-class Model(object, metaclass=ABCMeta):
+class Model(metaclass=ABCMeta):
     @staticmethod
     def from_xml(inp: dict):
         """
@@ -19,7 +19,7 @@ class Model(object, metaclass=ABCMeta):
         above the value passed as {type: value}. For others, the tag may be unnecessary and
         only the content+attributes are based.
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @abstractmethod
     def disassemble(self):
@@ -27,7 +27,7 @@ class Model(object, metaclass=ABCMeta):
         Decomposes this instance into instances of contained Model classes, and itself.
         An object referred to by another will be returned before the other.
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @staticmethod
     @abstractmethod
@@ -58,7 +58,7 @@ class Model(object, metaclass=ABCMeta):
             >>> foo_dict["c"]
             ['{"z1": 3}', '{"z2": 4}']
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.__dict__.__repr__()})"
@@ -124,8 +124,7 @@ def sanitize_date(s: str) -> str:
                 f" Date {match.group(1)} was followed by {s[match.span()[1]:]}"
             )
         return match.group(1)
-    else:
-        raise ValueError(f"Invalid date: {s}, must match {pattern_str}")
+    raise ValueError(f"Invalid date: {s}, must match {pattern_str}")
 
 
 def dictify(

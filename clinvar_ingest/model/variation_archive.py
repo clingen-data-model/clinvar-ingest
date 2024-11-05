@@ -9,7 +9,6 @@ import json
 import logging
 import re
 from enum import StrEnum
-from typing import List
 
 from clinvar_ingest.model.common import (
     Model,
@@ -47,14 +46,14 @@ class Submitter(Model):
     id: str
     current_name: str
     current_abbrev: str
-    all_names: List[str]
-    all_abbrevs: List[str]
+    all_names: list[str]
+    all_abbrevs: list[str]
     org_category: str
     scv_id: str
     content: dict
 
     @staticmethod
-    def jsonifiable_fields() -> List[str]:
+    def jsonifiable_fields() -> list[str]:
         return ["content"]
 
     def __post_init__(self):
@@ -63,12 +62,12 @@ class Submitter(Model):
     @staticmethod
     def from_xml(
         inp: dict,
-        scv_id: str = None,
+        scv_id: str,
     ):
         _logger.debug(f"Submitter.from_xml(inp={json.dumps(inp)})")
         current_name = extract(inp, "@SubmitterName")
         current_abbrev = extract(inp, "@OrgAbbreviation")
-        obj = Submitter(
+        return Submitter(
             id=extract(inp, "@OrgID"),
             current_name=current_name,
             current_abbrev=current_abbrev,
@@ -78,7 +77,6 @@ class Submitter(Model):
             scv_id=scv_id,
             content=inp,
         )
-        return obj
 
     def disassemble(self):
         yield self
@@ -88,13 +86,13 @@ class Submitter(Model):
 class Submission(Model):
     id: str
     submitter_id: str
-    additional_submitter_ids: List[str]
+    additional_submitter_ids: list[str]
     submission_date: str
     scv_id: str
     content: dict
 
     @staticmethod
-    def jsonifiable_fields() -> List[str]:
+    def jsonifiable_fields() -> list[str]:
         return ["content"]
 
     def __post_init__(self):
@@ -103,16 +101,16 @@ class Submission(Model):
     @staticmethod
     def from_xml(
         inp: dict,
-        submitter: Submitter = {},
-        additional_submitters: list = [Submitter],
-        scv_id: str = None,
+        submitter: Submitter,
+        additional_submitters: list[Submitter],
+        scv_id: str,
     ):
         _logger.debug(
             f"Submission.from_xml(inp={json.dumps(inp)}, {submitter=}, "
             f"{additional_submitters=})"
         )
         submission_date = sanitize_date(extract(inp, "@SubmissionDate"))
-        obj = Submission(
+        return Submission(
             id=f"{submitter.id}.{submission_date}",
             submitter_id=submitter.id,
             additional_submitter_ids=[s.id for s in additional_submitters],
@@ -121,7 +119,6 @@ class Submission(Model):
             # TODO is this overly broad? The `inp` here is the ClinicalAssertion node
             content=inp,
         )
-        return obj
 
     def disassemble(self):
         yield self
@@ -139,7 +136,7 @@ class ClinicalAssertionObservation(Model):
     content: dict
 
     @staticmethod
-    def jsonifiable_fields() -> List[str]:
+    def jsonifiable_fields() -> list[str]:
         return ["content"]
 
     def __post_init__(self):
@@ -147,18 +144,17 @@ class ClinicalAssertionObservation(Model):
 
     @staticmethod
     def from_xml(inp: dict):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def disassemble(self):
         self_copy = model_copy(self)
         trait_set = self_copy.clinical_assertion_trait_set
         del self_copy.clinical_assertion_trait_set
         if trait_set is not None:
-            setattr(self_copy, "clinical_assertion_trait_set_id", trait_set.id)
-            for subobj in trait_set.disassemble():
-                yield subobj
+            self_copy.clinical_assertion_trait_set_id = trait_set.id
+            yield from trait_set.disassemble()
         else:
-            setattr(self_copy, "clinical_assertion_trait_set_id", None)
+            self_copy.clinical_assertion_trait_set_id = None
         yield self_copy
 
 
@@ -210,10 +206,10 @@ class ClinicalAssertion(Model):
     @staticmethod
     def from_xml(
         inp: dict,
-        normalized_traits: list[Trait] = [],
-        trait_mappings: list[TraitMapping] = [],
-        variation_id: str = None,
-        variation_archive_id: str = None,
+        normalized_traits: list[Trait],
+        trait_mappings: list[TraitMapping],
+        variation_id: str,
+        variation_archive_id: str,
     ):
         # TODO
         # if _logger.isEnabledFor(logging.DEBUG):
@@ -232,7 +228,7 @@ class ClinicalAssertion(Model):
         ]
 
         submitter = Submitter.from_xml(raw_accession, scv_accession)
-        submitters = [submitter] + additional_submitters
+        submitters = [submitter, *additional_submitters]
         submission = Submission.from_xml(
             inp, submitter, additional_submitters, scv_accession
         )
@@ -272,7 +268,7 @@ class ClinicalAssertion(Model):
         # e.g. SCV000000001 has 2 ClinicalAssertion TraitSets, each with 2 Traits:
         # TraitSets: SCV000000001.0, SCV000000001.1
         # Traits: SCV000000001.0.0, SCV000000001.0.1, SCV000000001.1.0, SCV000000001.1.1
-        for i, observation in enumerate(observations):
+        for _, observation in enumerate(observations):
             obs_trait_set = observation.clinical_assertion_trait_set
             if obs_trait_set is not None:
                 obs_trait_set.id = f"{scv_accession}.{next(trait_set_counter)}"
@@ -326,7 +322,7 @@ class ClinicalAssertion(Model):
                     cls, "@ClinicalImpactClinicalSignificance"
                 )
 
-        obj = ClinicalAssertion(
+        return ClinicalAssertion(
             internal_id=obj_id,
             id=scv_accession,
             title=extract(clinvar_submission, "@title"),
@@ -356,7 +352,6 @@ class ClinicalAssertion(Model):
             clinical_impact_clinical_significance=clinical_impact_clinical_significance,
             content=inp,
         )
-        return obj
 
     def disassemble(self):
         self_copy: ClinicalAssertion = model_copy(self)
@@ -373,21 +368,17 @@ class ClinicalAssertion(Model):
         for obs in self_copy.clinical_assertion_observations:
             for subobj in obs.disassemble():
                 yield subobj
-        setattr(
-            self_copy,
-            "clinical_assertion_observation_ids",
-            [obs.id for obs in self_copy.clinical_assertion_observations],
-        )
+        self_copy.clinical_assertion_observation_ids = [
+            obs.id for obs in self_copy.clinical_assertion_observations
+        ]
         del self_copy.clinical_assertion_observations
 
         if self_copy.clinical_assertion_trait_set is not None:
             for subobj in self_copy.clinical_assertion_trait_set.disassemble():
                 yield subobj
-            setattr(
-                self_copy,
-                "clinical_assertion_trait_set_id",
-                re.split(r"\.", self_copy.clinical_assertion_trait_set.id)[0],
-            )
+            self_copy.clinical_assertion_trait_set_id = re.split(
+                "\\.", self_copy.clinical_assertion_trait_set.id
+            )[0]
         del self_copy.clinical_assertion_trait_set
 
         # Make a local reference to the variations and delete the field from the
@@ -412,7 +403,7 @@ class Gene(Model):
     vcv_id: str
 
     @staticmethod
-    def jsonifiable_fields() -> List[str]:
+    def jsonifiable_fields() -> list[str]:
         return []
 
     def __post_init__(self):
@@ -420,7 +411,7 @@ class Gene(Model):
 
     @staticmethod
     def from_xml(inp: dict, jsonify_content=True):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def disassemble(self):
         yield self
@@ -435,7 +426,7 @@ class GeneAssociation(Model):
     content: dict
 
     @staticmethod
-    def jsonifiable_fields() -> List[str]:
+    def jsonifiable_fields() -> list[str]:
         return ["content"]
 
     def __post_init__(self):
@@ -444,7 +435,7 @@ class GeneAssociation(Model):
 
     @staticmethod
     def from_xml(inp: dict):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def disassemble(self):
         self_copy = model_copy(self)
@@ -459,13 +450,13 @@ class ClinicalAssertionVariation(Model):
     clinical_assertion_id: str
     variation_type: str
     subclass_type: str
-    descendant_ids: List[str]
-    child_ids: List[str]
+    descendant_ids: list[str]
+    child_ids: list[str]
 
     content: dict
 
     @staticmethod
-    def jsonifiable_fields() -> List[str]:
+    def jsonifiable_fields() -> list[str]:
         return ["content"]
 
     def __post_init__(self):
@@ -528,32 +519,32 @@ class ClinicalAssertionVariation(Model):
 
         counter = Counter()
 
-        def extract_and_accumulate_descendants(inp: dict) -> List[Variation]:
+        def extract_and_accumulate_descendants(inp: dict) -> list[Variation]:
             _logger.debug(
                 f"extract_and_accumulate_descendants(inp={json.dumps(dictify(inp))})"
             )
-            inputs = []
+            variants = []
             if "SimpleAllele" in inp:
-                inputs += [
+                variants += [
                     ("SimpleAllele", o)
                     for o in ensure_list(extract(inp, "SimpleAllele"))
                 ]
             if "Haplotype" in inp:
-                inputs += [
+                variants += [
                     ("Haplotype", o) for o in ensure_list(extract(inp, "Haplotype"))
                 ]
             if "Genotype" in inp:
-                inputs += [("Genotype", o) for o in [extract(inp, "Genotype")]]
-            if len(inputs) == 0:
+                variants += [("Genotype", o) for o in [extract(inp, "Genotype")]]
+            if len(variants) == 0:
                 return []
 
             outputs = []
-            for subclass_type, inp in inputs:
+            for subclass_type, variant_input in variants:
                 variation = ClinicalAssertionVariation(
                     id=f"{assertion_accession}.{counter.get_and_increment()}",
                     clinical_assertion_id=assertion_accession,
-                    variation_type=extract(extract(inp, "VariantType"), "$")
-                    or extract(extract(inp, "VariationType"), "$"),
+                    variation_type=extract(extract(variant_input, "VariantType"), "$")
+                    or extract(extract(variant_input, "VariationType"), "$"),
                     subclass_type=subclass_type,
                     descendant_ids=[],  # Fill in later
                     child_ids=[],  # Fill in later
@@ -567,7 +558,7 @@ class ClinicalAssertionVariation(Model):
                 outputs.append(variation)
 
                 # Recursion
-                children = extract_and_accumulate_descendants(inp)
+                children = extract_and_accumulate_descendants(variant_input)
                 # Update fields based on accumulated descendants
                 variation.child_ids = [c.id for c in children]
                 direct_children = variation.child_ids
@@ -575,7 +566,7 @@ class ClinicalAssertionVariation(Model):
                 non_child_descendants = flatten1([c.child_ids or [] for c in children])
                 _logger.debug(f"{non_child_descendants=}")
                 variation.descendant_ids = direct_children + non_child_descendants
-                variation.content = inp
+                variation.content = variant_input
 
             return outputs
 
@@ -596,24 +587,24 @@ class Variation(Model):
     variation_type: str
     subclass_type: str
     allele_id: str
-    protein_change: List[str]
+    protein_change: list[str]
     num_chromosomes: int
-    gene_associations: List[GeneAssociation]
+    gene_associations: list[GeneAssociation]
 
     content: dict
 
-    child_ids: List[str]
-    descendant_ids: List[str]
+    child_ids: list[str]
+    descendant_ids: list[str]
 
     @staticmethod
-    def jsonifiable_fields() -> List[str]:
+    def jsonifiable_fields() -> list[str]:
         return ["content"]
 
     def __post_init__(self):
         self.entity_type = "variation"
 
     @staticmethod
-    def from_xml(inp: dict, variation_archive_id: str = None):
+    def from_xml(inp: dict, variation_archive_id: str):
         _logger.debug(f"Variation.from_xml(inp={json.dumps(inp)})")
         descendant_tree = Variation.descendant_tree(inp)
         # _logger.info(f"descendant_tree: {descendant_tree}")
@@ -670,7 +661,7 @@ class Variation(Model):
         return obj
 
     @staticmethod
-    def descendant_tree(inp: dict, caller: bool = False):
+    def descendant_tree(inp: dict, caller: bool = False):  # noqa: PLR0912
         """
         Accepts xmltodict parsed XML for a SimpleAllele, Haplotype, or Genotype.
         Returns a tree of child ids. Each level is a list, where the first element
@@ -776,8 +767,7 @@ class Variation(Model):
         yield self_copy
 
         for ga in gene_associations:
-            for gaobj in ga.disassemble():
-                yield gaobj
+            yield from ga.disassemble()
 
 
 @dataclasses.dataclass
@@ -871,14 +861,11 @@ class RcvAccession(Model):
     def __post_init__(self):
         self.entity_type = "rcv_accession"
 
-    # @staticmethod
-    # def classifications_from_xml(rcv_classifications_raw: list[dict]) -> list[dict]:
-
     @staticmethod
     def from_xml(
         inp: dict,
-        variation_id: int = None,
-        variation_archive_id: str = None,
+        variation_id: int,
+        variation_archive_id: str,
     ):
         """
         OLD:
@@ -937,7 +924,7 @@ class RcvAccession(Model):
         rcv_classifications_raw = extract(inp, "RCVClassifications") or {}
 
         # TODO independentObservations always null?
-        obj = RcvAccession(
+        return RcvAccession(
             independent_observations=extract(inp, "@independentObservations"),
             variation_id=variation_id,
             id=rcv_id,
@@ -950,14 +937,12 @@ class RcvAccession(Model):
             ),
             content=inp,
         )
-        return obj
 
     def disassemble(self):
         self_copy = model_copy(self)
 
         for c in self_copy.classifications:
-            for subobj in c.disassemble():
-                yield subobj
+            yield from c.disassemble()
         del self_copy.classifications
 
         yield self
@@ -1118,7 +1103,7 @@ class VariationArchive(Model):
             raw_classifications = extract(interp_record, "Classifications")
         else:
             raw_classifications = {}
-        raw_classification_types = set([r.value for r in StatementType]).intersection(
+        raw_classification_types = {r.value for r in StatementType}.intersection(
             set(raw_classifications.keys())
         )
         raw_trait_sets = flatten1(
@@ -1149,7 +1134,7 @@ class VariationArchive(Model):
             raw_classifications, vcv_accession
         )
 
-        obj = VariationArchive(
+        return VariationArchive(
             id=vcv_accession,
             name=extract(inp, "@VariationName"),
             version=extract(inp, "@Version"),
@@ -1177,7 +1162,6 @@ class VariationArchive(Model):
             classifications=classifications,
             content=inp,
         )
-        return obj
 
     def disassemble(self):
         self_copy = model_copy(self)

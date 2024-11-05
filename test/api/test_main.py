@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from unittest.mock import patch
 
 import pytest
@@ -25,10 +25,10 @@ def test_status_check(log_conf, caplog) -> None:
 @pytest.mark.integration
 def test_copy_endpoint_success(log_conf, env_config, caplog) -> None:
     started_status_value = StatusValue(
-        StepStatus.STARTED, StepName.COPY, datetime.utcnow().isoformat()
+        StepStatus.STARTED, StepName.COPY, datetime.now(tz=UTC).isoformat()
     )
     succeeded_status_value = StatusValue(
-        StepStatus.SUCCEEDED, StepName.COPY, datetime.utcnow().isoformat()
+        StepStatus.SUCCEEDED, StepName.COPY, datetime.now(tz=UTC).isoformat()
     )
     with (
         patch("clinvar_ingest.api.main.http_download_curl", return_value=None),
@@ -63,7 +63,7 @@ def test_copy_endpoint_success(log_conf, env_config, caplog) -> None:
         expected_started_response = StepStartedResponse(
             workflow_execution_id=wf_execution_id,
             step_name=StepName.COPY,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(tz=UTC),
             step_status=StepStatus.STARTED,
         )
         actual_started_response = StepStartedResponse(**response.json())

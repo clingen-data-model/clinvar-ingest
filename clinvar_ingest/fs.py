@@ -3,13 +3,12 @@ import os
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import PurePath
-from typing import List
 
 
 @dataclass
 class FileListing:
     proto = "file://"
-    files = []
+    files: list[str]
 
 
 class BinaryOpenMode(StrEnum):
@@ -24,7 +23,7 @@ def assert_mkdir(db_directory: str):
         raise OSError(f"Path exists but is not a directory!: {db_directory}")
 
 
-def find_files(root_directory: str) -> List[str]:
+def find_files(root_directory: str) -> list[str]:
     """
     Find all files (not directories) in `root_directory` and return their paths.
 
@@ -37,7 +36,7 @@ def find_files(root_directory: str) -> List[str]:
     find_files("A") -> ["B/C/D"]
     """
     outputs = []
-    for dirpath, dirnames, filenames in os.walk(root_directory):
+    for dirpath, _dirnames, filenames in os.walk(root_directory):
         # Directory prefix relative to root_directory (not including it)
         relativized_dir_path = dirpath[len(root_directory) :]
         if relativized_dir_path.startswith("/"):
@@ -59,7 +58,8 @@ class ReadCounter:
 
     def read(self, size=-1):
         result = self.f.read(size)
-        assert isinstance(result, bytes), "ReadCounter only works with binary files."
+        if not isinstance(result, bytes):
+            raise ValueError("ReadCounter only works with binary files.")
         self.bytes_read += len(result)
         return result
 
@@ -80,4 +80,4 @@ def fs_open(
             assert_mkdir(parent)
     if filename.endswith(".gz"):
         return gzip.open(filename, mode)
-    return open(filename, mode=mode)  # pylint: disable=W1514
+    return open(filename, mode=mode)  # noqa: SIM115

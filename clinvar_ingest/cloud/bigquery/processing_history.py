@@ -104,7 +104,7 @@ def ensure_pairs_view_exists(
         AND
         vcv.xml_release_date <= DATE_ADD(rcv.xml_release_date, INTERVAL 1 DAY)
     )
-    """
+    """  # noqa: S608
     query_job = client.query(query)
     _ = query_job.result()
     return client.get_table(f"{project}.{dataset_name}.{table_name}")
@@ -174,7 +174,7 @@ def check_started_exists(
     AND pipeline_version = @pipeline_version
     AND xml_release_date = @xml_release_date
     AND bucket_dir = @bucket_dir;
-    """
+    """  # noqa: S608
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
             bigquery.ScalarQueryParameter("file_type", "STRING", file_type),
@@ -188,8 +188,10 @@ def check_started_exists(
 
     query_job = client.query(sql, job_config=job_config)
     results = query_job.result()
-    for row in results:
-        return row.c > 0
+    row = next(results)
+    return row.c > 0
+    # for row in results:
+    #     return row.c > 0
 
 
 def write_started(
@@ -228,7 +230,7 @@ def write_started(
     AND pipeline_version = '{release_tag}'
     AND xml_release_date = '{release_date}'
     AND bucket_dir = '{bucket_dir}'
-    """  # TODO prepared statement
+    """  # TODO prepared statement  # noqa: S608
     _logger.info(
         f"Checking if matching row exists for job started event. "
         f"file_type={file_type}, release_date={release_date}, "
@@ -244,23 +246,22 @@ def write_started(
                     f"file_type={file_type}, release_date={release_date}, "
                     f"release_tag={release_tag}, bucket_dir={bucket_dir}"
                 )
-            else:
-                _logger.warning(
-                    f"Expected 0 rows to exist for the started event, but found {row.c}."
-                    f"file_type={file_type}, release_date={release_date}, "
-                    f"release_tag={release_tag}, bucket_dir={bucket_dir}"
-                )
-                _logger.warning("Deleting existing row.")
-                delete_query = f"""
+            _logger.warning(
+                f"Expected 0 rows to exist for the started event, but found {row.c}."
+                f"file_type={file_type}, release_date={release_date}, "
+                f"release_tag={release_tag}, bucket_dir={bucket_dir}"
+            )
+            _logger.warning("Deleting existing row.")
+            delete_query = f"""
                 DELETE FROM {fully_qualified_table_id}
                 WHERE file_type = '{file_type}'
                 AND pipeline_version = '{release_tag}'
                 AND xml_release_date = '{release_date}'
                 AND bucket_dir = '{bucket_dir}'
-                """
-                query_job = client.query(delete_query)
-                _ = query_job.result()
-                _logger.info(f"Deleted {query_job.dml_stats.deleted_row_count} rows.")  # type: ignore
+                """  # noqa: S608
+            query_job = client.query(delete_query)
+            _ = query_job.result()
+            _logger.info(f"Deleted {query_job.dml_stats.deleted_row_count} rows.")
 
     sql = f"""
     INSERT INTO {fully_qualified_table_id}
@@ -329,7 +330,7 @@ def write_finished(
     AND pipeline_version = '{release_tag}'
     AND xml_release_date = '{release_date}'
     AND bucket_dir = '{bucket_dir}'
-    """
+    """  # noqa: S608
     _logger.info(
         f"Ensuring 1 started row exists before writing finished event. "
         f"file_type={file_type}, release_date={release_date}, "
@@ -355,7 +356,7 @@ def write_finished(
     AND pipeline_version = '{release_tag}'
     AND xml_release_date = '{release_date}'
     AND bucket_dir = '{bucket_dir}'
-    """
+    """  # noqa: S608
     # print(f"Query: {query}")
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
@@ -377,9 +378,9 @@ def write_finished(
             raise RuntimeError(
                 f"Error occurred during update operation: {query_job.errors}"
             )
-        elif (
-            query_job.dml_stats.updated_row_count > 1  # type: ignore
-            or query_job.dml_stats.inserted_row_count > 1  # type: ignore
+        if (
+            query_job.dml_stats.updated_row_count > 1
+            or query_job.dml_stats.inserted_row_count > 1
         ):
             msg = (
                 "More than one row was updated while updating processing_history "
@@ -389,9 +390,9 @@ def write_finished(
             )
             _logger.error(msg)
             raise RuntimeError(msg)
-        elif (
-            query_job.dml_stats.updated_row_count == 0  # type: ignore
-            and query_job.dml_stats.inserted_row_count == 0  # type: ignore
+        if (
+            query_job.dml_stats.updated_row_count == 0
+            and query_job.dml_stats.inserted_row_count == 0
         ):
             msg = (
                 "No rows were updated during the write_finished. "
@@ -400,16 +401,15 @@ def write_finished(
             )
             _logger.error(msg)
             raise RuntimeError(msg)
-        else:
-            _logger.info(
-                (
-                    "processing_history record written for job finished event."
-                    "release_date=%s, file_type=%s"
-                ),
-                release_date,
-                file_type,
-            )
-            return result, query_job
+        _logger.info(
+            (
+                "processing_history record written for job finished event."
+                "release_date=%s, file_type=%s"
+            ),
+            release_date,
+            file_type,
+        )
+        return result, query_job
 
     except RuntimeError as e:
         _logger.error(f"Error occurred during update query:{query}\n{e}")
@@ -439,7 +439,7 @@ def update_final_release_date(
     AND pipeline_version = '{release_tag}'
     AND xml_release_date = '{xml_release_date}'
     AND bucket_dir = '{bucket_dir}'
-    """  # TODO prepared statement
+    """  # TODO prepared statement  # noqa: S608
     # job_config = bigquery.QueryJobConfig(
     #     query_parameters=[
     #         bigquery.ScalarQueryParameter("release_date", "STRING", final_release_date)
@@ -460,9 +460,9 @@ def update_final_release_date(
         raise RuntimeError(
             f"Error occurred during update operation: {query_job.errors}"
         )
-    elif (
-        query_job.dml_stats.updated_row_count > 1  # type: ignore
-        or query_job.dml_stats.inserted_row_count > 1  # type: ignore
+    if (
+        query_job.dml_stats.updated_row_count > 1
+        or query_job.dml_stats.inserted_row_count > 1
     ):
         msg = (
             "More than one row was updated while updating processing_history "
@@ -472,9 +472,9 @@ def update_final_release_date(
         )
         _logger.error(msg)
         raise RuntimeError(msg)
-    elif (
-        query_job.dml_stats.updated_row_count == 0  # type: ignore
-        and query_job.dml_stats.inserted_row_count == 0  # type: ignore
+    if (
+        query_job.dml_stats.updated_row_count == 0
+        and query_job.dml_stats.inserted_row_count == 0
     ):
         msg = (
             "No rows were updated during the update_final_release_date. "
@@ -483,16 +483,15 @@ def update_final_release_date(
         )
         _logger.error(msg)
         raise RuntimeError(msg)
-    else:
-        _logger.info(
-            (
-                "processing_history record updated for final release date."
-                "xml_release_date=%s, file_type=%s"
-            ),
-            xml_release_date,
-            file_type,
-        )
-        return result, query_job
+    _logger.info(
+        (
+            "processing_history record updated for final release date."
+            "xml_release_date=%s, file_type=%s"
+        ),
+        xml_release_date,
+        file_type,
+    )
+    return result, query_job
 
 
 def read_processing_history_pairs(
@@ -587,7 +586,7 @@ def update_bq_ingest_processing_flag(
     WHERE file_type = '{ClinVarIngestFileFormat.VCV}'
     AND pipeline_version = '{pipeline_version}'
     AND xml_release_date = '{xml_release_date}'
-    """  # TODO prepared statement
+    """  # TODO prepared statement  # noqa: S608
     query_job = client.query(query)
     return query_job.result()
 

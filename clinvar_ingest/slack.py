@@ -20,6 +20,7 @@ def send_slack_message(message: str) -> None:
             slack_url,
             json=data,
             headers={"Authorization": f"Bearer {app_env.slack_token}"},
+            timeout=60,
         )
         if not resp.json()["ok"]:
             _logger.error("Unable to send text to slack channel.")

@@ -1,5 +1,4 @@
 import dataclasses
-from typing import List
 
 from clinvar_ingest.model.common import Model
 from clinvar_ingest.utils import ensure_list
@@ -13,12 +12,12 @@ class RcvMapping(Model):
     """
 
     rcv_accession: str
-    scv_accessions: List[str]
+    scv_accessions: list[str]
     trait_set_id: str
     trait_set_content: dict
 
     @staticmethod
-    def jsonifiable_fields() -> List[str]:
+    def jsonifiable_fields() -> list[str]:
         return ["trait_set_content"]
 
     def __post_init__(self):
