@@ -27,11 +27,11 @@ dynamic = ["version"]
 [project.optional-dependencies]
 dev = [
     "ipykernel",
-    "black~=23.9.1",
-    "isort~=5.13.2",
+    # "black~=23.9.1",
+    # "isort~=5.13.2",
     "ruff~=0.6.3",
     "pytest~=7.4.3",
-    "pylint~=3.2.6",
+    # "pylint~=3.2.6",
     "httpx~=0.25.2",
 ]
 
@@ -45,5 +45,21 @@ include = ["clinvar_ingest*"]
 "clinvar_ingest" = ["*.json", ".*.env"]
 "clinvar_ingest.cloud.bigquery.bq_json_schemas" = ["*.json"]
 
-[tool.isort]
-profile = "black"
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "C",
+    "F",
+    "I",
+    "E",
+    "W"
+]
+fixable = ["ALL"]
+ignore = ["C901"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
