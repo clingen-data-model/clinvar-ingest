@@ -55,10 +55,13 @@ jobs:
       - name: set env vars
         run: |
           export CLINVAR_INGEST_RELEASE_TAG=${{ github.ref_name }}
+          export CLINVAR_INGEST_BQ_META_DATASET=clinvar_ingest_gh_action
           export instance_name=clinvar-vcv-ingest-new
           export file_format=vcv
-          echo "instance_name=$instance_name" >> $GITHUB_ENV
+          # Persist in github environment
           echo "CLINVAR_INGEST_RELEASE_TAG=$CLINVAR_INGEST_RELEASE_TAG" >> $GITHUB_ENV
+          echo "CLINVAR_INGEST_BQ_META_DATASET=$CLINVAR_INGEST_BQ_META_DATASET" >> $GITHUB_ENV
+          echo "instance_name=$instance_name" >> $GITHUB_ENV
           echo "file_format=$file_format" >> $GITHUB_ENV
 
       - name: build and deploy
@@ -77,10 +80,13 @@ jobs:
       - name: set env vars
         run: |
           export CLINVAR_INGEST_RELEASE_TAG=${{ github.ref_name }}
+          export CLINVAR_INGEST_BQ_META_DATASET=clinvar_ingest_gh_action
           export instance_name=clinvar-rcv-ingest
           export file_format=rcv
-          echo "instance_name=$instance_name" >> $GITHUB_ENV
+          # Persist in github environment
           echo "CLINVAR_INGEST_RELEASE_TAG=$CLINVAR_INGEST_RELEASE_TAG" >> $GITHUB_ENV
+          echo "CLINVAR_INGEST_BQ_META_DATASET=$CLINVAR_INGEST_BQ_META_DATASET" >> $GITHUB_ENV
+          echo "instance_name=$instance_name" >> $GITHUB_ENV
           echo "file_format=$file_format" >> $GITHUB_ENV
 
       - name: build and deploy
