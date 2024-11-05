@@ -48,25 +48,13 @@ include = ["clinvar_ingest*"]
 [tool.ruff]
 line-length = 120
 target-version = "py311"
-# lint.pylint.max-args = 5
 
 [tool.ruff.lint]
 pylint.max-args = 7
-# select = [
-#     "F",
-#     "E",
-#     "W",
-#     "I",
-
-#     "UP",
-
-
-#     "C",
-# ]
 select = ["ALL"]
 fixable = ["ALL"]
 ignore = [
-    ## SEQR ignores
+    ## ignores copied from seqr
     # Individual Rules
     "E501",  # Black is less aggressive here when touching comments and strings, we're going to let those through.
     "G004",  # logging-f-string, these are fine for now
@@ -84,7 +72,7 @@ ignore = [
     "TD",    # todos
     "FIX",   # fixmes
 
-    # Added to clinvar-ingest
+    ## Added to clinvar-ingest
     "C901",
     "TRY",
     "COM812", # trailing comma missing
