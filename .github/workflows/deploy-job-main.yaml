@@ -27,106 +27,67 @@ jobs:
       - name: setup gcloud sdk
         uses: google-github-actions/setup-gcloud@v2
 
-
-      # ## Deploy + test VCV pipeline
-      # - name: set env vars
-      #   run: |
-      #     export CLINVAR_INGEST_RELEASE_TAG=${{ github.ref_name }}
-      #     export instance_name=clinvar-vcv-ingest
-      #     export file_format=vcv
-      #     echo "instance_name=$instance_name" >> $GITHUB_ENV
-      #     echo "CLINVAR_INGEST_RELEASE_TAG=$CLINVAR_INGEST_RELEASE_TAG" >> $GITHUB_ENV
-      #     echo "file_format=$file_format" >> $GITHUB_ENV
-
-      # - name: build and deploy
-      #   run: |
-      #     bash misc/bin/deploy-job.sh
-
-      # - name: run test vcv pipeline (without issuing slack messages)
-      #   run: |
-      #     export JOB_WAIT=1
-      #     echo "JOB_WAIT=$JOB_WAIT" >> $GITHUB_ENV
-      #     # Override variables for testing.
-      #     # Send no slack message and write outputs to a directory including the github run number to avoid collisions.
-      #     CLINVAR_INGEST_SLACK_CHANNEL='' CLINVAR_INGEST_RELEASE_TAG="${CLINVAR_INGEST_RELEASE_TAG}_gh_${{ github.run_number }}" bash misc/bin/execute-job.sh vcv-small
-
-
-      ## Deploy clinvar-new pipeline (clinvar-vcv-ingest left alone for now, running v1_1_0)
-      - name: set env vars
+      ## Deploy v2 pipeline (job clinvar-vcv-ingest, dataset clinvar_ingest)
+      - name: set env vars for vcv v2 pipeline
         run: |
           export CLINVAR_INGEST_RELEASE_TAG=${{ github.ref_name }}
-          export CLINVAR_INGEST_BQ_META_DATASET=clinvar_ingest_gh_action
-          export instance_name=clinvar-vcv-ingest-new
+          export CLINVAR_INGEST_BQ_META_DATASET=clinvar_ingest
+          export instance_name=clinvar-vcv-ingest
           export file_format=vcv
-          # Persist in github environment
+          # Persist in github environment so that deploy-job and execute-job see them
           echo "CLINVAR_INGEST_RELEASE_TAG=$CLINVAR_INGEST_RELEASE_TAG" >> $GITHUB_ENV
           echo "CLINVAR_INGEST_BQ_META_DATASET=$CLINVAR_INGEST_BQ_META_DATASET" >> $GITHUB_ENV
           echo "instance_name=$instance_name" >> $GITHUB_ENV
           echo "file_format=$file_format" >> $GITHUB_ENV
 
-      - name: build and deploy
+      - name: build and deploy vcv v2 pipeline
         run: |
           bash misc/bin/deploy-job.sh
 
-      - name: run test vcv new pipeline (without issuing slack messages)
+      - name: run test vcv v2 pipeline (without issuing slack messages)
         run: |
-          export JOB_WAIT=1
-          echo "JOB_WAIT=$JOB_WAIT" >> $GITHUB_ENV
           # Override variables for testing.
           # Send no slack message and write outputs to a directory including the github run number to avoid collisions.
-          CLINVAR_INGEST_SLACK_CHANNEL='' CLINVAR_INGEST_RELEASE_TAG="${CLINVAR_INGEST_RELEASE_TAG}_gh_${{ github.run_number }}" bash misc/bin/execute-job.sh vcv-small
+          CLINVAR_INGEST_BQ_META_DATASET=clinvar_ingest_gh_action CLINVAR_INGEST_SLACK_CHANNEL='' CLINVAR_INGEST_RELEASE_TAG="${CLINVAR_INGEST_RELEASE_TAG}_gh_${{ github.run_number }}" JOB_WAIT=1 bash misc/bin/execute-job.sh vcv-small
 
-      ## Deploy + test RCV pipeline
-      - name: set env vars
+      ## Deploy + test RCV pipeline (job clinvar-rcv-ingest, dataset clinvar_ingest)
+      - name: set env vars for rcv pipeline
         run: |
           export CLINVAR_INGEST_RELEASE_TAG=${{ github.ref_name }}
-          export CLINVAR_INGEST_BQ_META_DATASET=clinvar_ingest_gh_action
+          export CLINVAR_INGEST_BQ_META_DATASET=clinvar_ingest
           export instance_name=clinvar-rcv-ingest
           export file_format=rcv
-          # Persist in github environment
+          # Persist in github environment so that deploy-job and execute-job see them
           echo "CLINVAR_INGEST_RELEASE_TAG=$CLINVAR_INGEST_RELEASE_TAG" >> $GITHUB_ENV
           echo "CLINVAR_INGEST_BQ_META_DATASET=$CLINVAR_INGEST_BQ_META_DATASET" >> $GITHUB_ENV
           echo "instance_name=$instance_name" >> $GITHUB_ENV
           echo "file_format=$file_format" >> $GITHUB_ENV
 
-      - name: build and deploy
+      - name: build and deploy rcv pipeline
         run: |
           bash misc/bin/deploy-job.sh
 
       - name: run test rcv pipeline (without issuing slack messages)
         run: |
-          export JOB_WAIT=1
-          echo "JOB_WAIT=$JOB_WAIT" >> $GITHUB_ENV
           # Override variables for testing.
           # Send no slack message and write outputs to a directory including the github run number to avoid collisions.
-          CLINVAR_INGEST_SLACK_CHANNEL='' CLINVAR_INGEST_RELEASE_TAG="${CLINVAR_INGEST_RELEASE_TAG}_gh_${{ github.run_number }}" bash misc/bin/execute-job.sh rcv-small
+          CLINVAR_INGEST_BQ_META_DATASET=clinvar_ingest_gh_action CLINVAR_INGEST_SLACK_CHANNEL='' CLINVAR_INGEST_RELEASE_TAG="${CLINVAR_INGEST_RELEASE_TAG}_gh_${{ github.run_number }}" JOB_WAIT=1 bash misc/bin/execute-job.sh rcv-small
 
-      ## Deploy copy-only pipeline
-      - name: set env vars
+      # ## Deploy copy-only pipeline (dataset clinvar_ingest_v1)
+      # copy-only pipeline is deployed manually by deploy-pipeline-v1.sh
+
+      ## Deploy BQ Ingest pipeline (job clinvar-bq-ingest, dataset clinvar_ingest)
+      - name: set env vars for bq-ingest pipeline (vcv v2 + rcv v2)
         run: |
           export CLINVAR_INGEST_RELEASE_TAG=${{ github.ref_name }}
-          export instance_name=clinvar-ingest-copy-only
-          export file_format=vcv
-          export clinvar_ingest_cmd=python,/app/workflow-copy-only.py
-          echo "instance_name=$instance_name" >> $GITHUB_ENV
-          echo "CLINVAR_INGEST_RELEASE_TAG=$CLINVAR_INGEST_RELEASE_TAG" >> $GITHUB_ENV
-          echo "clinvar_ingest_cmd=$clinvar_ingest_cmd" >> $GITHUB_ENV
-          echo "file_format=$file_format" >> $GITHUB_ENV
-
-      - name: build and deploy
-        run: |
-          bash misc/bin/deploy-job.sh
-
-      ## Deploy BQ Ingest pipeline
-      - name: set env vars
-        run: |
-          export CLINVAR_INGEST_RELEASE_TAG=${{ github.ref_name }}
+          export CLINVAR_INGEST_BQ_META_DATASET=clinvar_ingest
           export instance_name=clinvar-bq-ingest
           export clinvar_ingest_cmd=python,/app/bq_ingester.py
           echo "instance_name=$instance_name" >> $GITHUB_ENV
           echo "CLINVAR_INGEST_RELEASE_TAG=$CLINVAR_INGEST_RELEASE_TAG" >> $GITHUB_ENV
+          echo "CLINVAR_INGEST_BQ_META_DATASET=$CLINVAR_INGEST_BQ_META_DATASET" >> $GITHUB_ENV
           echo "clinvar_ingest_cmd=$clinvar_ingest_cmd" >> $GITHUB_ENV
 
-      - name: build and deploy
+      - name: build and deploy bq-ingest pipeline (vcv v2 + rcv v2)
         run: |
           bash misc/bin/deploy-job.sh
