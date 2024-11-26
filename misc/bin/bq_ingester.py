@@ -263,6 +263,8 @@ if processing_history_pairs.total_rows:
                 file_type=vcv_file_type,
                 bucket_dir=vcv_bucket_dir,
                 final_release_date=final_release_date,
+                final_dataset_id=dataset.dataset_id,
+                client=bq_client,
             )
             # Update RCV final release_date
             _logger.info("Updating RCV final release date.")
@@ -281,6 +283,8 @@ if processing_history_pairs.total_rows:
                 file_type=rcv_file_type,
                 bucket_dir=rcv_bucket_dir,
                 final_release_date=final_release_date,
+                final_dataset_id=dataset.dataset_id,
+                client=bq_client,
             )
 
             msg = f"""
@@ -305,7 +309,7 @@ if processing_history_pairs.total_rows:
                 processing_history_table=processing_history_table,
                 pipeline_version=vcv_pipeline_version,
                 xml_release_date=vcv_xml_release_date,
-                client=_get_bq_client(),
+                client=bq_client,
                 bq_ingest_processing=False,
             )
             msg = f"""

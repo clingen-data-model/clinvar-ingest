@@ -416,17 +416,19 @@ def write_finished(
         raise e
 
 
-def update_final_release_date(
+def update_final_release_date(  # noqa: PLR0913
     processing_history_table: bigquery.Table,
     xml_release_date: str,
     release_tag: str,
     file_type: ClinVarIngestFileFormat,
     bucket_dir: str,
     final_release_date: str,
+    final_dataset_id: str,
     client: bigquery.Client | None = None,
 ):
     """
-    Updates the final release date of the VCV processing to the processing_history table.
+    Updates the final release date and final dataset id field
+    of a run in the processing_history table.
     """
     if client is None:
         client = bigquery.Client()
@@ -434,7 +436,8 @@ def update_final_release_date(
     fully_qualified_table_id = str(processing_history_table)
     query = f"""
     UPDATE {fully_qualified_table_id}
-    SET release_date = '{final_release_date}'
+    SET release_date = '{final_release_date}',
+        final_dataset_id = '{final_dataset_id}'
     WHERE file_type = '{file_type}'
     AND pipeline_version = '{release_tag}'
     AND xml_release_date = '{xml_release_date}'
