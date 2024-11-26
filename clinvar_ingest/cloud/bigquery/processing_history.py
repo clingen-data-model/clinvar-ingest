@@ -76,6 +76,8 @@ def ensure_pairs_view_exists(
     SELECT
         -- Use the release date from the VCV file as the final release date
         vcv.release_date as release_date,
+        -- Use the final dataset id from the VCV file as the final dataset id
+        vcv.final_dataset_id as final_dataset_id,
         -- VCV fields
         vcv.file_type as vcv_file_type,
         vcv.pipeline_version as vcv_pipeline_version,
