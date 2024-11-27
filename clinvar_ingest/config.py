@@ -5,22 +5,24 @@ from typing import Literal
 from dotenv import dotenv_values
 from pydantic import BaseModel, field_validator
 
-_bucket_name = os.environ.get("CLINVAR_INGEST_BUCKET", "")
-_bucket_staging_prefix = os.environ.get("CLINVAR_INGEST_STAGING_PREFIX", "clinvar_xml")
-_bucket_parsed_prefix = os.environ.get("CLINVAR_INGEST_PARSED_PREFIX", "clinvar_parsed")
-_bucket_executions_prefix = os.environ.get(
-    "CLINVAR_INGEST_EXECUTIONS_PREFIX", "executions"
-)
-_slack_token = os.environ.get("CLINVAR_INGEST_SLACK_TOKEN", "")
-# defaults to test "clinvar-message-test"
-_slack_channel = os.environ.get("CLINVAR_INGEST_SLACK_CHANNEL", "C06QFR0278D")
-
-_release_tag = os.environ.get("CLINVAR_INGEST_RELEASE_TAG", "")
-
-_bq_meta_dataset = os.environ.get("CLINVAR_INGEST_BQ_META_DATASET", None)
-
 _dotenv_env = os.environ.get("DOTENV_ENV", "dev")
 _dotenv_values = dotenv_values(pathlib.Path(__file__).parent / f".{_dotenv_env}.env")
+
+
+def env_or_dotenv_or(
+    key_name: str, default: str | None = None, throw: bool = False
+) -> str:
+    """
+    Retrieves a value from the environment.
+    If not set, retrieve it from the dotenv file.
+    If not set in the dotenv file, return the default value.
+
+    If throw is True, and the value and default is falsy, raise a ValueError.
+    """
+    val = os.environ.get(key_name, _dotenv_values.get(key_name, default))
+    if throw and not val:
+        raise ValueError(f"{key_name} must be set")
+    return val
 
 
 class Env(BaseModel):
@@ -28,12 +30,13 @@ class Env(BaseModel):
     bq_meta_dataset: str
     bucket_name: str
     bucket_staging_prefix: str
-    bucket_parsed_prefix: str
     parse_output_prefix: str
     executions_output_prefix: str
     slack_token: str
     slack_channel: str
     release_tag: str
+    schema_version: str
+    # TODO unused aside from the default value. Never set from the environment or dotenv. Remove?
     file_format_mode: Literal["vcv", "rcv"] = "vcv"
 
     @field_validator("bucket_name")
@@ -50,18 +53,25 @@ def get_env() -> Env:
     variables and any default values.
     """
     return Env(
-        bq_dest_project=_dotenv_values["BQ_DEST_PROJECT"],
-        bq_meta_dataset=_bq_meta_dataset
-        or _dotenv_values["CLINVAR_INGEST_BQ_META_DATASET"],
-        bucket_name=_bucket_name or _dotenv_values["CLINVAR_INGEST_BUCKET"],
-        bucket_staging_prefix=_bucket_staging_prefix,
-        bucket_parsed_prefix=_bucket_parsed_prefix,
-        parse_output_prefix=_bucket_parsed_prefix,
-        executions_output_prefix=_bucket_executions_prefix,
-        slack_token=_slack_token
-        or _dotenv_values.get("CLINVAR_INGEST_SLACK_TOKEN", ""),
-        slack_channel=_slack_channel
-        or _dotenv_values.get("CLINVAR_INGEST_SLACK_CHANNEL", ""),
-        release_tag=_release_tag
-        or _dotenv_values.get("CLINVAR_INGEST_RELEASE_TAG", ""),
+        bq_dest_project=env_or_dotenv_or("BQ_DEST_PROJECT", throw=True),
+        bq_meta_dataset=env_or_dotenv_or(
+            "CLINVAR_INGEST_BQ_META_DATASET", default="clinvar_ingest"
+        ),
+        bucket_name=env_or_dotenv_or("CLINVAR_INGEST_BUCKET", throw=True),
+        bucket_staging_prefix=env_or_dotenv_or(
+            "CLINVAR_INGEST_STAGING_PREFIX", default="clinvar_xml"
+        ),
+        parse_output_prefix=env_or_dotenv_or(
+            "CLINVAR_INGEST_PARSED_PREFIX", default="clinvar_parsed"
+        ),
+        executions_output_prefix=env_or_dotenv_or(
+            "CLINVAR_INGEST_EXECUTIONS_PREFIX", default="executions"
+        ),
+        slack_token=env_or_dotenv_or("CLINVAR_INGEST_SLACK_TOKEN"),
+        # defaults to test "clinvar-message-test"
+        slack_channel=env_or_dotenv_or(
+            "CLINVAR_INGEST_SLACK_CHANNEL", default="C06QFR0278D"
+        ),
+        release_tag=env_or_dotenv_or("CLINVAR_INGEST_RELEASE_TAG", throw=True),
+        schema_version=env_or_dotenv_or("CLINVAR_INGEST_SCHEMA_VERSION", default="v2"),
     )
