@@ -12,6 +12,10 @@
     "type": "STRING"
   },
   {
+    "name": "schema_version",
+    "type": "STRING"
+  },
+  {
     "name": "processing_started",
     "type": "TIMESTAMP"
   },

@@ -196,10 +196,11 @@ def check_started_exists(
     #     return row.c > 0
 
 
-def write_started(
+def write_started(  # noqa: PLR0913
     processing_history_table: bigquery.Table,
     release_date: str,
     release_tag: str,
+    schema_version: str,
     file_type: ClinVarIngestFileFormat,
     bucket_dir: str,
     client: bigquery.Client | None = None,
@@ -267,9 +268,9 @@ def write_started(
 
     sql = f"""
     INSERT INTO {fully_qualified_table_id}
-    (release_date, file_type, pipeline_version, processing_started, xml_release_date, bucket_dir)
+    (release_date, file_type, pipeline_version, schema_version, processing_started, xml_release_date, bucket_dir)
     VALUES
-    (NULL, @file_type, @pipeline_version, CURRENT_TIMESTAMP(), @xml_release_date, @bucket_dir);
+    (NULL, @file_type, @pipeline_version, schema_version, CURRENT_TIMESTAMP(), @xml_release_date, @bucket_dir);
     """
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
@@ -277,6 +278,7 @@ def write_started(
             # bigquery.ScalarQueryParameter("release_date", "STRING", None),
             bigquery.ScalarQueryParameter("file_type", "STRING", file_type),
             bigquery.ScalarQueryParameter("pipeline_version", "STRING", release_tag),
+            bigquery.ScalarQueryParameter("schema_version", "STRING", schema_version),
             bigquery.ScalarQueryParameter("xml_release_date", "STRING", release_date),
             bigquery.ScalarQueryParameter("bucket_dir", "STRING", bucket_dir),
         ]
