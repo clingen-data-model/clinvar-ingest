@@ -10,7 +10,7 @@ _dotenv_values = dotenv_values(pathlib.Path(__file__).parent / f".{_dotenv_env}.
 
 
 def env_or_dotenv_or(
-    key_name: str, default: str | None = None, throw: bool = False
+        key_name: str, default: str | None = None, throw: bool = False
 ) -> str:
     """
     Retrieves a value from the environment.
@@ -41,7 +41,6 @@ class Env(BaseModel):
     bq_ingest_stored_proc_job_name: str
     bq_ingest_stored_proc_job_location: str
     release_date: str
-
 
     @field_validator("bucket_name")
     @classmethod
@@ -79,8 +78,9 @@ def get_env() -> Env:
         release_tag=env_or_dotenv_or("CLINVAR_INGEST_RELEASE_TAG", throw=True),
         schema_version=env_or_dotenv_or("CLINVAR_INGEST_SCHEMA_VERSION", default="v2"),
         bq_ingest_stored_proc_job_name=env_or_dotenv_or("BQ_INGEST_STORED_PROC_JOB_NAME",
-                                                          "stored-procedures-workflow"),
-        bq_ingest_stored_proc_job_location=env_or_dotenv_or("BQ_INGEST_STORED_PROC_JOB_LOCATION", "us-east1"),
+                                                        "stored-procedures-workflow"),
+        bq_ingest_stored_proc_job_location=env_or_dotenv_or("BQ_INGEST_STORED_PROC_JOB_LOCATION",
+                                                            "us-east1"),
         release_date=env_or_dotenv_or("CLINVAR_INGEST_RELEASE_DATE"),
     )
 
@@ -114,4 +114,3 @@ def get_env() -> Env:
 #       bq_dest_project
 #       release_date (for on_or_after logic)
 #
-

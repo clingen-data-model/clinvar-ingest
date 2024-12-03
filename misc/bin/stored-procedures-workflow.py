@@ -5,18 +5,12 @@
 
 import logging
 import os
-from pathlib import Path, PurePosixPath
 
 from google.cloud import bigquery
 
 from clinvar_ingest.config import get_env
-from clinvar_ingest.parse import ClinVarIngestFileFormat, parse_and_write_files
 from clinvar_ingest.slack import send_slack_message
 
-from clinvar_ingest.api.model.requests import (
-    ExecuteStoredProcedureRequest,
-    ExecuteStoredProcedureResponse,
-)
 from clinvar_ingest.cloud.bigquery.stored_procedures import execute_all
 
 logging.basicConfig(
@@ -44,7 +38,7 @@ try:
     msg = f""
     _logger.info(msg)
     # send_slack_message(msg)
-    result = execute_all(client=client, project_id=env.bq_dest_project, yyyy_mm_dd=os.environ.get("RELEASE_DATE"))
+    result = execute_all(client=client, project_id=env.bq_dest_project, release_date=env.release_date)
     msg = f""
     _logger.info(msg)
     # send_slack_message(msg)

@@ -67,31 +67,39 @@ stored_procedures = [
 ]
 
 
-def execute_each(client: bigquery.Client, project_id: str, yyyy_mm_dd: str|None) -> RowIterator:
-    """Execute the list of stored procedures, substituting the yyyy_mm_dd date if provided.
+def execute_each(client: bigquery.Client, project_id: str, release_date: str|None) -> RowIterator:
+    """Execute each procedure in the list of stored procedures individualy,
+       substituting the release_date date if provided.
 
     :param client: bigquery client
     :param project_id: project id
-    :param yyyy_mm_dd: yyyy_mm_dd, the yyyy_mm_dd formatted date or None to use the BQ `CURRENT_DATE()`
+    :param release_date: yyyy_mm_dd, the yyyy_mm_dd formatted date or None to use the BQ `CURRENT_DATE()`
     """
-    as_of_date = 'CURRENT_DATE()' if yyyy_mm_dd is None else f"'{yyyy_mm_dd}'"
-    for lb_query in stored_procedures:
-        lb_query_with_args = lb_query.format(as_of_date)
+    as_of_date = 'CURRENT_DATE()' if release_date is None else f"'{release_date}'"
+    for query in stored_procedures:
+        query_with_args = query.format(as_of_date)
         try:
-            logging.info(f"Executing stored procedure: {lb_query_with_args}")
-            job = client.query(lb_query_with_args, project=project_id)
+            logging.info(f"Executing stored procedure: {query_with_args}")
+            job = client.query(query_with_args, project=project_id)
             result = job.result()
-            logging.info(f"Successfully ran stored procedure: {lb_query_with_args}\nresult={result}")
+            logging.info(f"Successfully ran stored procedure: {query_with_args}\nresult={result}")
             return result
         except Exception as e:
-            msg = f"Failed to execute stored procedure: {lb_query_with_args} {e}"
+            msg = f"Failed to execute stored procedure: {query_with_args} {e}"
             logging.error(msg)
             raise e
 
-def execute_all(client: bigquery.Client, project_id: str, yyyy_mm_dd: str|None) -> RowIterator:
-    as_of_date = 'CURRENT_DATE()' if yyyy_mm_dd is None else f"'{yyyy_mm_dd}'"
-    lb_query_with_args = [lb_query.format(as_of_date) for lb_query in stored_procedures]
-    query = " ".join(lb_query_with_args)
+def execute_all(client: bigquery.Client, project_id: str, release_date: str|None) -> RowIterator:
+    """Execute the list of stored procedures as one single script,
+       substituting the release_date date if provided.
+
+    :param client: bigquery client
+    :param project_id: project id
+    :param release_date: yyyy_mm_dd, the yyyy_mm_dd formatted date or None to use the BQ `CURRENT_DATE()`
+    """
+    as_of_date = 'CURRENT_DATE()' if release_date is None else f"'{release_date}'"
+    query_with_args = [query.format(as_of_date) for query in stored_procedures]
+    query = " ".join(query_with_args)
     try:
         job = client.query(query, project=project_id)
         result = job.result()
@@ -108,4 +116,4 @@ def execute_all(client: bigquery.Client, project_id: str, yyyy_mm_dd: str|None) 
 if __name__ == "__main__":
     bq_client = bigquery.Client()
     # execute_stored_procedures(client=bq_client, project_id="clingen-dev", yyyy_mm_dd="2024-10-20")
-    execute_all(client=bq_client, project_id="clingen-dev", yyyy_mm_dd="2024-10-20")
+    execute_all(client=bq_client, project_id="clingen-dev", release_date="2024-10-20")
