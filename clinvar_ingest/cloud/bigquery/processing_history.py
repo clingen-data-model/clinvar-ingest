@@ -76,9 +76,12 @@ def ensure_pairs_view_exists(
     SELECT
         -- Use the release date from the VCV file as the final release date
         vcv.release_date as release_date,
+        -- Use the final dataset id from the VCV file as the final dataset id
+        vcv.final_dataset_id as final_dataset_id,
         -- VCV fields
         vcv.file_type as vcv_file_type,
         vcv.pipeline_version as vcv_pipeline_version,
+        vcv.schema_version as vcv_schema_version,
         vcv.processing_started as vcv_processing_started,
         vcv.processing_finished as vcv_processing_finished,
         vcv.release_date as vcv_release_date,
@@ -89,6 +92,7 @@ def ensure_pairs_view_exists(
         -- RCV fields
         rcv.file_type as rcv_file_type,
         rcv.pipeline_version as rcv_pipeline_version,
+        rcv.schema_version as rcv_schema_version,
         rcv.processing_started as rcv_processing_started,
         rcv.processing_finished as rcv_processing_finished,
         rcv.release_date as rcv_release_date,
@@ -194,10 +198,11 @@ def check_started_exists(
     #     return row.c > 0
 
 
-def write_started(
+def write_started(  # noqa: PLR0913
     processing_history_table: bigquery.Table,
     release_date: str,
     release_tag: str,
+    schema_version: str,
     file_type: ClinVarIngestFileFormat,
     bucket_dir: str,
     client: bigquery.Client | None = None,
@@ -265,9 +270,9 @@ def write_started(
 
     sql = f"""
     INSERT INTO {fully_qualified_table_id}
-    (release_date, file_type, pipeline_version, processing_started, xml_release_date, bucket_dir)
+    (release_date, file_type, pipeline_version, schema_version, processing_started, xml_release_date, bucket_dir)
     VALUES
-    (NULL, @file_type, @pipeline_version, CURRENT_TIMESTAMP(), @xml_release_date, @bucket_dir);
+    (NULL, @file_type, @pipeline_version, schema_version, CURRENT_TIMESTAMP(), @xml_release_date, @bucket_dir);
     """
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
@@ -275,6 +280,7 @@ def write_started(
             # bigquery.ScalarQueryParameter("release_date", "STRING", None),
             bigquery.ScalarQueryParameter("file_type", "STRING", file_type),
             bigquery.ScalarQueryParameter("pipeline_version", "STRING", release_tag),
+            bigquery.ScalarQueryParameter("schema_version", "STRING", schema_version),
             bigquery.ScalarQueryParameter("xml_release_date", "STRING", release_date),
             bigquery.ScalarQueryParameter("bucket_dir", "STRING", bucket_dir),
         ]
@@ -416,17 +422,19 @@ def write_finished(
         raise e
 
 
-def update_final_release_date(
+def update_final_release_date(  # noqa: PLR0913
     processing_history_table: bigquery.Table,
     xml_release_date: str,
     release_tag: str,
     file_type: ClinVarIngestFileFormat,
     bucket_dir: str,
     final_release_date: str,
+    final_dataset_id: str,
     client: bigquery.Client | None = None,
 ):
     """
-    Updates the final release date of the VCV processing to the processing_history table.
+    Updates the final release date and final dataset id field
+    of a run in the processing_history table.
     """
     if client is None:
         client = bigquery.Client()
@@ -434,7 +442,8 @@ def update_final_release_date(
     fully_qualified_table_id = str(processing_history_table)
     query = f"""
     UPDATE {fully_qualified_table_id}
-    SET release_date = '{final_release_date}'
+    SET release_date = '{final_release_date}',
+        final_dataset_id = '{final_dataset_id}'
     WHERE file_type = '{file_type}'
     AND pipeline_version = '{release_tag}'
     AND xml_release_date = '{xml_release_date}'
