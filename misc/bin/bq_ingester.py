@@ -94,9 +94,12 @@ if processing_history_pairs.total_rows:
             pipeline_version=vcv_pipeline_version,
             xml_release_date=vcv_xml_release_date,
             client=_get_bq_client(),
-            bq_ingest_processing=True)
-        _logger.info(f"Updated bq_ingest_processing flag to True for VCV {vcv_pipeline_version} and "
-                     f"{vcv_xml_release_date}.")
+            bq_ingest_processing=True,
+        )
+        _logger.info(
+            f"Updated bq_ingest_processing flag to True for VCV {vcv_pipeline_version} and "
+            f"{vcv_xml_release_date}."
+        )
 
     # Now process individual rows
     bq_client = _get_bq_client()
@@ -154,30 +157,39 @@ if processing_history_pairs.total_rows:
             _logger.info(msg)
             send_slack_message(msg)
 
-
             # Create VCV external tables
             vcv_create_tables_request = CreateExternalTablesRequest(
-                destination_dataset=target_dataset_name, source_table_paths=vcv_parsed_files
+                destination_dataset=target_dataset_name,
+                source_table_paths=vcv_parsed_files,
             )
             _logger.info(
                 f"VCV Create External Tables request: {vcv_create_tables_request.model_dump_json()}"
             )
-            vcv_create_tables_response = run_create_external_tables(vcv_create_tables_request)
+            vcv_create_tables_response = run_create_external_tables(
+                vcv_create_tables_request
+            )
             vcv_ext_resp_json = json.dumps(
-                walk_and_replace(vcv_create_tables_response, processing_history._dump_fn)
+                walk_and_replace(
+                    vcv_create_tables_response, processing_history._dump_fn
+                )
             )
             _logger.info(f"VCV Create External Tables response: {vcv_ext_resp_json}")
 
             # Create RCV external tables
             rcv_create_tables_request = CreateExternalTablesRequest(
-                destination_dataset=target_dataset_name, source_table_paths=rcv_parsed_files
+                destination_dataset=target_dataset_name,
+                source_table_paths=rcv_parsed_files,
             )
             _logger.info(
                 f"RCV Create External Tables request: {rcv_create_tables_request.model_dump_json()}"
             )
-            rcv_create_tables_response = run_create_external_tables(rcv_create_tables_request)
+            rcv_create_tables_response = run_create_external_tables(
+                rcv_create_tables_request
+            )
             rcv_ext_resp_json = json.dumps(
-                walk_and_replace(rcv_create_tables_response, processing_history._dump_fn)
+                walk_and_replace(
+                    rcv_create_tables_response, processing_history._dump_fn
+                )
             )
             _logger.info(f"RCV Create External Tables response: {rcv_ext_resp_json}")
 
@@ -224,7 +236,9 @@ if processing_history_pairs.total_rows:
             _logger.info(
                 f"VCV Drop External Tables request: {vcv_drop_external_tables_request.model_dump_json()}"
             )
-            vcv_drop_external_tables_response = drop_external_tables(vcv_drop_external_tables_request)
+            vcv_drop_external_tables_response = drop_external_tables(
+                vcv_drop_external_tables_request
+            )
 
             # Drop RCV external tables
             rcv_drop_external_tables_request = DropExternalTablesRequest(
@@ -233,7 +247,9 @@ if processing_history_pairs.total_rows:
             _logger.info(
                 f"RCV Drop External Tables request: {rcv_drop_external_tables_request.model_dump_json()}"
             )
-            rcv_drop_external_tables_response = drop_external_tables(rcv_drop_external_tables_request)
+            rcv_drop_external_tables_response = drop_external_tables(
+                rcv_drop_external_tables_request
+            )
 
             # Update the processing history table to insert the final release date into the VCV
             # and RCV rows to indicate that they have been ingested
@@ -254,6 +270,8 @@ if processing_history_pairs.total_rows:
                 file_type=vcv_file_type,
                 bucket_dir=vcv_bucket_dir,
                 final_release_date=final_release_date,
+                final_dataset_id=dataset.dataset_id,
+                client=bq_client,
             )
             # Update RCV final release_date
             _logger.info("Updating RCV final release date.")
@@ -272,10 +290,12 @@ if processing_history_pairs.total_rows:
                 file_type=rcv_file_type,
                 bucket_dir=rcv_bucket_dir,
                 final_release_date=final_release_date,
+                final_dataset_id=dataset.dataset_id,
+                client=bq_client,
             )
 
             msg = f"""
-                BQ Ingest workflow succeeded. 
+                BQ Ingest workflow succeeded.
                 Processed VCV release dated {vcv_xml_release_date} from {vcv_bucket_dir} and
                 RCV release dated {rcv_xml_release_date} from {rcv_bucket_dir} into dataset {dataset.dataset_id}.
                 """
@@ -296,11 +316,11 @@ if processing_history_pairs.total_rows:
                 processing_history_table=processing_history_table,
                 pipeline_version=vcv_pipeline_version,
                 xml_release_date=vcv_xml_release_date,
-                client=_get_bq_client(),
+                client=bq_client,
                 bq_ingest_processing=False,
             )
             msg = f"""
-                  Reset processing_history_table VCV bq_ingest_processing dated {vcv_xml_release_date} version 
+                  Reset processing_history_table VCV bq_ingest_processing dated {vcv_xml_release_date} version
                   {vcv_pipeline_version}.
                   """
             _logger.exception(msg)

@@ -97,6 +97,7 @@ processing_history.write_started(
     processing_history_table=processing_history_table,
     release_date=release_date,
     release_tag=env.release_tag,
+    schema_version=env.schema_version,
     file_type=file_mode,
     # The directory within the executions_output_prefix. See gcs_base in copy()
     bucket_dir=workflow_execution_id,
