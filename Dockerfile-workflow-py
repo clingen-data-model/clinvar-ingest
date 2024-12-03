@@ -22,6 +22,7 @@ COPY log_conf.json /app/log_conf.json
 COPY misc/bin/workflow.py /app/workflow.py
 COPY misc/bin/workflow-copy-only.py /app/workflow-copy-only.py
 COPY misc/bin/bq_ingester.py /app/bq_ingester.py
+COPY misc/bin/stored_procedures-workflow.py /app/stored-procedures-workflow.py
 ENV VIRTUAL_ENV=/opt/venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 ENV GCLOUD_PROJECT="clingen-dev"
