@@ -40,7 +40,6 @@ class Env(BaseModel):
     file_format_mode: Literal["vcv", "rcv"] = "vcv"
     bq_ingest_stored_proc_job_name: str
     bq_ingest_stored_proc_job_location: str
-    release_date: str
 
     @field_validator("bucket_name")
     @classmethod
@@ -81,7 +80,6 @@ def get_env() -> Env:
                                                         "stored-procedures-workflow"),
         bq_ingest_stored_proc_job_location=env_or_dotenv_or("BQ_INGEST_STORED_PROC_JOB_LOCATION",
                                                             "us-east1"),
-        release_date=env_or_dotenv_or("CLINVAR_INGEST_RELEASE_DATE"),
     )
 
 # TODO Refactor into different envs for each workflow
