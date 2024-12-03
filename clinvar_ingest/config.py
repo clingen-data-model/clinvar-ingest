@@ -32,7 +32,7 @@ class Env(BaseModel):
     bucket_staging_prefix: str
     parse_output_prefix: str
     executions_output_prefix: str
-    slack_token: str
+    slack_token: str | None
     slack_channel: str
     release_tag: str
     schema_version: str
