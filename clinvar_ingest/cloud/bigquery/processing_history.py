@@ -81,6 +81,7 @@ def ensure_pairs_view_exists(
         -- VCV fields
         vcv.file_type as vcv_file_type,
         vcv.pipeline_version as vcv_pipeline_version,
+        vcv.schema_version as vcv_schema_version,
         vcv.processing_started as vcv_processing_started,
         vcv.processing_finished as vcv_processing_finished,
         vcv.release_date as vcv_release_date,
@@ -91,6 +92,7 @@ def ensure_pairs_view_exists(
         -- RCV fields
         rcv.file_type as rcv_file_type,
         rcv.pipeline_version as rcv_pipeline_version,
+        rcv.schema_version as rcv_schema_version,
         rcv.processing_started as rcv_processing_started,
         rcv.processing_finished as rcv_processing_finished,
         rcv.release_date as rcv_release_date,
