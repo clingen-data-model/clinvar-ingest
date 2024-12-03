@@ -1,5 +1,9 @@
 [
   {
+    "name": "vcv_id",
+    "type": "STRING"
+  },
+  {
     "name": "statement_type",
     "type": "STRING"
   },
@@ -20,15 +24,15 @@
     "type": "DATE"
   },
   {
+    "name": "date_last_evaluated",
+    "type": "DATE"
+  },
+  {
     "name": "interp_description",
     "type": "STRING"
   },
   {
     "name": "most_recent_submission",
-    "type": "DATE"
-  },
-  {
-    "name": "date_last_evaluated",
     "type": "DATE"
   },
   {
