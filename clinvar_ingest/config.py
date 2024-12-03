@@ -35,6 +35,9 @@ class Env(BaseModel):
     slack_channel: str
     release_tag: str
     file_format_mode: Literal["vcv", "rcv"] = "vcv"
+    bq_ingest_stored_proc_job_name: str
+    bq_ingest_stored_proc_job_location: str
+
 
     @field_validator("bucket_name")
     @classmethod
@@ -64,4 +67,38 @@ def get_env() -> Env:
         or _dotenv_values.get("CLINVAR_INGEST_SLACK_CHANNEL", ""),
         release_tag=_release_tag
         or _dotenv_values.get("CLINVAR_INGEST_RELEASE_TAG", ""),
+        bq_ingest_stored_proc_job_name = _dotenv_values.get("BQ_INGEST_STORED_PROC_JOB_NAME", "stored-procedures-workflow"),
+        bq_ingest_stored_proc_job_location = _dotenv_values.get("BQ_INGEST_STORED_PROC_JOB_LOCATION", "us-east1"),
     )
+
+# TODO Refactor into different envs for each workflow
+#  base(BaseModel):
+#       slack_token
+#       slack_channel
+#       bq_dest_project
+#       bq_meta_dataset
+#
+#  env(base): # for vcv, rcv, copy-only
+#       bucket_name
+#       bucket_staging_prefix
+#       bucket_staging_prefix
+#       bucket_parsed_prefix
+#       parse_output_prefix
+#       executions_output_prefix
+#
+#  bq_ingest_workflow(env):
+#       slack_token
+#       slack_channel
+#       bq_dest_project
+#       bq_meta_dataset
+#       bucket_name
+#       bq_ingest_stored_proc_job_name
+#       bq_ingest_stored_proc_job_location
+#
+#  stored_procedure_workflow(base):
+#       slack_token
+#       slack_channel
+#       bq_dest_project
+#       release_date (for on_or_after logic)
+#
+

@@ -128,7 +128,7 @@ if [[ $instance_name =~ ^.*bq-ingest.*$ ]]; then
     env_vars="$env_vars,BQ_DEST_PROJECT=${BQ_DEST_PROJECT}"
 fi
 
-
+### TODO - stored-procedures
 gcloud run jobs $command $instance_name \
       --cpu=2 \
       --memory=8Gi \

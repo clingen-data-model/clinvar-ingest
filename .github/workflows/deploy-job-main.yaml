@@ -130,3 +130,17 @@ jobs:
       - name: build and deploy
         run: |
           bash misc/bin/deploy-job.sh
+
+      ## Deploy stored procedures execution pipeline
+      - name: set env vars
+        run: |
+          export CLINVAR_INGEST_RELEASE_TAG=${{ github.ref_name }}
+          export instance_name=stored-procedure-workflow
+          export clinvar_ingest_cmd=python,/app/stored_procedure_workflow.py
+          echo "instance_name=$instance_name" >> $GITHUB_ENV
+          echo "CLINVAR_INGEST_RELEASE_TAG=$CLINVAR_INGEST_RELEASE_TAG" >> $GITHUB_ENV
+          echo "clinvar_ingest_cmd=$clinvar_ingest_cmd" >> $GITHUB_ENV
+
+      - name: build and deploy
+        run: |
+          bash misc/bin/deploy-job.sh
