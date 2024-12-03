@@ -272,7 +272,7 @@ def write_started(  # noqa: PLR0913
     INSERT INTO {fully_qualified_table_id}
     (release_date, file_type, pipeline_version, schema_version, processing_started, xml_release_date, bucket_dir)
     VALUES
-    (NULL, @file_type, @pipeline_version, schema_version, CURRENT_TIMESTAMP(), @xml_release_date, @bucket_dir);
+    (NULL, @file_type, @pipeline_version, @schema_version, CURRENT_TIMESTAMP(), @xml_release_date, @bucket_dir);
     """
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
