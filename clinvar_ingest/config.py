@@ -78,7 +78,7 @@ def get_env() -> Env:
         release_tag=env_or_dotenv_or("CLINVAR_INGEST_RELEASE_TAG", throw=True),
         schema_version=env_or_dotenv_or("CLINVAR_INGEST_SCHEMA_VERSION", default="v2"),
         bq_ingest_stored_proc_job_name=env_or_dotenv_or("BQ_INGEST_STORED_PROC_JOB_NAME",
-                                                        "stored-procedures-workflow"),
+                                                        "stored-procedures"),
         bq_ingest_stored_proc_job_location=env_or_dotenv_or("BQ_INGEST_STORED_PROC_JOB_LOCATION",
                                                             "us-east1"),
         release_date=env_or_dotenv_or("CLINVAR_INGEST_RELEASE_DATE"),

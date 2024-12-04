@@ -76,6 +76,25 @@ jobs:
       # ## Deploy copy-only pipeline (dataset clinvar_ingest_v1)
       # copy-only pipeline is deployed manually by deploy-pipeline-v1.sh
 
+
+      ## Deploy stored procedures pipeline
+      ## gets deployed before the BQ Ingest pipeline as the latter currently
+      ## refers to the stored_procedures_workflow_instance_name used here in
+      ## determining the next pipeline to call in its env vars
+      - name: set env vars
+        run: |
+          stored_procedures_workflow_instance_name=stored-procedures
+          export CLINVAR_INGEST_RELEASE_TAG=${{ github.ref_name }}
+          export instance_name=$stored_procedures_workflow_instance_name
+          export clinvar_ingest_cmd=python,/app/stored_procedure_workflow.py
+          echo "instance_name=$instance_name" >> $GITHUB_ENV
+          echo "CLINVAR_INGEST_RELEASE_TAG=$CLINVAR_INGEST_RELEASE_TAG" >> $GITHUB_ENV
+          echo "clinvar_ingest_cmd=$clinvar_ingest_cmd" >> $GITHUB_ENV
+
+      - name: build and deploy
+        run: |
+          bash misc/bin/deploy-job.sh
+
       ## Deploy BQ Ingest pipeline (job clinvar-bq-ingest, dataset clinvar_ingest)
       - name: set env vars for bq-ingest pipeline (vcv v2 + rcv v2)
         run: |
@@ -86,22 +105,11 @@ jobs:
           echo "instance_name=$instance_name" >> $GITHUB_ENV
           echo "CLINVAR_INGEST_RELEASE_TAG=$CLINVAR_INGEST_RELEASE_TAG" >> $GITHUB_ENV
           echo "CLINVAR_INGEST_BQ_META_DATASET=$CLINVAR_INGEST_BQ_META_DATASET" >> $GITHUB_ENV
+          ## echo 
+          ## 
           echo "clinvar_ingest_cmd=$clinvar_ingest_cmd" >> $GITHUB_ENV
 
       - name: build and deploy bq-ingest pipeline (vcv v2 + rcv v2)
         run: |
           bash misc/bin/deploy-job.sh
 
-      ## Deploy stored procedures execution pipeline
-      - name: set env vars
-        run: |
-          export CLINVAR_INGEST_RELEASE_TAG=${{ github.ref_name }}
-          export instance_name=stored-procedure-workflow
-          export clinvar_ingest_cmd=python,/app/stored_procedure_workflow.py
-          echo "instance_name=$instance_name" >> $GITHUB_ENV
-          echo "CLINVAR_INGEST_RELEASE_TAG=$CLINVAR_INGEST_RELEASE_TAG" >> $GITHUB_ENV
-          echo "clinvar_ingest_cmd=$clinvar_ingest_cmd" >> $GITHUB_ENV
-
-      - name: build and deploy
-        run: |
-          bash misc/bin/deploy-job.sh

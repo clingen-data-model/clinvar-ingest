@@ -32,10 +32,10 @@ def _get_bq_client() -> bigquery.Client:
 env = get_env()
 _logger.info(f"Stored procedures execution environment: {env}")
 
-
+# TODO: consider request/response validation of request in requests.py - overkill?
 client = _get_bq_client()
 try:
-    msg = f""
+    msg = f"Executing stored procedures on dataset dated {env.release_date}"
     _logger.info(msg)
     # send_slack_message(msg)
     result = execute_all(client=client, project_id=env.bq_dest_project, release_date=env.release_date)
