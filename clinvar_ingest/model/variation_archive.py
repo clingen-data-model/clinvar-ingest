@@ -1102,6 +1102,13 @@ class VariationArchive(Model):
         if record_type == "ClassifiedRecord":
             raw_classifications = extract(interp_record, "Classifications")
         else:
+            # IncludedRecord classifications are added by ClinVar in the XML, however
+            # they are always "empty", saying the number of submissions is 0 and there
+            # is no classification for the variant. We will ignore these.
+            # e.g.:
+            # {"@VariationID": "267462", "@VariationType": "Deletion", "@RecordType": "included", "IncludedRecord": {"Classifications": {
+            # "GermlineClassification": {"@NumberOfSubmissions": "0", "@NumberOfSubmitters": "0", "ReviewStatus": {"$": "no classification for the single variant"}, "Description": {"$": "no classification for the single variant"}}, "SomaticClinicalImpact": {"@NumberOfSubmissions": "0", "@NumberOfSubmitters": "0", "ReviewStatus": {"$": "no classification for the single variant"}, "Description": {"$": "no classification for the single variant"}},
+            # "OncogenicityClassification": {"@NumberOfSubmissions": "0", "@NumberOfSubmitters": "0", "ReviewStatus": {"$": "no classification for the single variant"}, "Description": {"$": "no classification for the single variant"}}}, "SubmittedClassificationList": {"SCV": {"@Accession": "SCV000328413", "@Version": "2"}}, "ClassifiedVariationList": {"ClassifiedVariation": {"@VariationID": "267444", "@Accession": "VCV000267444", "@Version": "4"}}}}
             raw_classifications = {}
         raw_classification_types = {r.value for r in StatementType}.intersection(
             set(raw_classifications.keys())
