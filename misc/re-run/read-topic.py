@@ -5,6 +5,12 @@ python misc/re-run/read-topic.py \
     ./kafka-prod.properties \
     clinvar-somatic-ftp-watcher \
     clinvar-somatic-ftp-watcher.txt
+
+
+python misc/re-run/read-topic.py \
+    ./kafka-prod.properties \
+    clinvar-rcv-ftp-watcher \
+    confluent-prod_clinvar-rcv-ftp-watcher_20241203.txt
 """
 
 import argparse
@@ -64,6 +70,7 @@ def consume_kafka_messages(kafka_config, topic, output_file):
                     elif msg.error():
                         raise KafkaError(msg.error())
                 else:
+                    print(msg.value())
                     print(f"{len(msg.value())}")
                     # Write the message to the file
                     file.write(msg.value().decode("utf-8") + "\n")
