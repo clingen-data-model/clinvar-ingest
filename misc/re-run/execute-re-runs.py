@@ -6,7 +6,14 @@ region = "us-east1"
 # execute_job_script = "misc/bin/execute-job.sh"
 # env_file = "./local-env.sh"
 # ftp_watcher_file = "confluent-prod_clinvar-somatic-ftp-watcher_20241203.txt"
-ftp_watcher_file = "misc/re-run/ftp-watcher-vcv-2024-10-27.txt"
+
+# ftp_watcher_file = "misc/re-run/ftp-watcher-vcv-2024-10-27.txt"
+# instance_name = "clinvar-vcv-ingest"
+# file_format = "vcv"
+
+ftp_watcher_file = "misc/re-run/ftp-watcher-rcv-2024-10-27.txt"
+instance_name = "clinvar-rcv-ingest"
+file_format = "rcv"
 
 
 def run_command(
@@ -48,13 +55,17 @@ def run_command(
 
 
 global_env = {
-    "instance_name": "clinvar-vcv-ingest",
-    "CLINVAR_INGEST_SLACK_TOKEN": "",
-    "CLINVAR_INGEST_SLACK_CHANNEL": "",
-    "CLINVAR_INGEST_BUCKET": "clinvar-ingest-dev",
-    "CLINVAR_INGEST_RELEASE_TAG": "v2_0_4_alpha",
-    "CLINVAR_INGEST_BQ_META_DATASET": "clinvar_ingest",
+    "instance_name": instance_name,  # Cloud run job name
+    # TODO can't override this because the one in the job isn't a string it's a secret manager ref
+    # this is okay because the channel also needs to be set in the job to send messages and we
+    # set that to empty string here
+    # "CLINVAR_INGEST_SLACK_TOKEN": "",  # Override job variable to disable messaging
+    "CLINVAR_INGEST_SLACK_CHANNEL": "",  # Override job variable to disable messaging
+    "CLINVAR_INGEST_BUCKET": "clinvar-ingest-dev",  # Set already on job
+    # "CLINVAR_INGEST_RELEASE_TAG": "v2_0_4_alpha",  # Optional? Set already in job
+    "CLINVAR_INGEST_BQ_META_DATASET": "clinvar_ingest",  # Set already on job
     "BQ_DEST_PROJECT": "clingen-dev",
+    "file_format": file_format,  # Set already on job but provide again for explicitness
 }
 
 with open(ftp_watcher_file) as f:
@@ -65,12 +76,12 @@ with open(ftp_watcher_file) as f:
             raise ValueError("Expected a list of records: " + line)
         for record in watcher_records:
             print(f"Executing job for {record}")
-            # cmd_args = ["bash", execute_job_script]
             env = {}
             env.update(global_env)
             env.update(record)
 
-            env_str = ",".join([f"{k}='{v}'" for k, v in env.items()])
+            env_str = ",".join([f"{k}={v}" for k, v in env.items()])
+            print(f"Environment variable update string: {env_str}")
 
             # Same command as in execute-job.sh
             cmd_args = [
@@ -90,7 +101,7 @@ with open(ftp_watcher_file) as f:
             try:
                 run_command(cmd_args)
             except subprocess.CalledProcessError as e:
-                print(f"Job failed for {record['file_name']}")
+                print(f"Job failed for {record}")
                 print(e)
                 break
 
