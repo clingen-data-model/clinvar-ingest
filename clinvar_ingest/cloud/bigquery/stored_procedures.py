@@ -22,6 +22,9 @@ from google.cloud.bigquery.table import RowIterator
 # procedures directly.
 #
 #
+
+_logger = logging.getLogger("clinvar_ingest")
+
 stored_procedures = [
     # post-ingest-step-1
     # -- 01 scv_summary
@@ -99,17 +102,19 @@ def execute_all(client: bigquery.Client, project_id: str, release_date: str|None
     """
     as_of_date = 'CURRENT_DATE()' if release_date is None else f"'{release_date}'"
     query_with_args = [query.format(as_of_date) for query in stored_procedures]
-    query = " ".join(query_with_args)
+    query = "\n".join(query_with_args)
+    _logger.info(f"Executing stored procedures via query: {query}")
     try:
         job = client.query(query, project=project_id)
         result = job.result()
+        _logger.info(f"Successfully ran stored procedures, result: {result}")
         return result
     except Exception as e:
-        msg = f"Failed to execute stored procedure: {query} {e}"
+        msg = f"Failed to execute stored procedure: {e}"
         logging.error(msg)
         raise e
 
-# TODO Consider external file vs inline as above - might make maintenace easier?
+# TODO Consider external file vs inline as above - might make maintenance easier?
 # TODO def execute_all_from_file(file=...,):
 
 

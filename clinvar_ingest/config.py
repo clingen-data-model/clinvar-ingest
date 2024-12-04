@@ -114,3 +114,36 @@ def get_env() -> Env:
 #       bq_dest_project
 #       release_date (for on_or_after logic)
 #
+#
+# pydantic classes
+#
+# class BaseEnv(BaseModel):
+#     bq_dest_project: str
+#     bq_meta_dataset: str
+#     slack_token: str
+#     slack_channel: str
+#
+# class Env(BaseEnv):
+#     bucket_name: str
+#     bucket_staging_prefix: str
+#     bucket_parsed_prefix: str
+#     parse_output_prefix: str
+#     executions_output_prefix: str
+#     release_tag: str
+#     file_format_mode: Literal["vcv", "rcv"] = "vcv"
+#
+#     @field_validator("bucket_name")
+#     @classmethod
+#     def _validate_bucket_name(cls, v, _info):
+#         if not v:
+#             raise ValueError("CLINVAR_INGEST_BUCKET must be set")
+#         return v
+#
+# class BQIngestEnv(Env):
+#     bq_ingest_stored_proc_job_name: str
+#     bq_ingest_stored_proc_job_location: str
+#
+# class StoredProcedureEnv(BaseEnv):
+#     release_date: str
+#
+
