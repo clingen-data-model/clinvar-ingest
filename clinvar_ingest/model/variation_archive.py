@@ -804,8 +804,14 @@ class RcvAccessionClassification(Model):
         or OncogenicityClassification entry. The statement_type is the key
         from the original `Classifications` XML/dict, indicating the type.
         """
-        # TODO is there a chance they add fields to Description? Maybe don't extract.
-        # raw_description = extract(inp, "Description")
+        # Don't extract Description because there's a chance more XML attributes could be added.
+        # TODO some SomaticClinicalImpact classifications have more than 1 Description element, causing this
+        # get() call to return an array rather than a single {} dict. The `"Description": [..]` key-value is then
+        # placed in the resulting `content` field of the classification, since it is non-empty, and the date_last_evaluated,
+        # num_submissions, interp_description, clinical_impact_assertion_type, and clinical_impact_clinical_significance
+        # fields are null.
+        # This is rare, and we are deferring handling this until it can be discussed with ClinVar.  Possibly it will
+        # just have to be handled downstream. Or we can make a 'description' field that is an array of dicts/records.
         raw_description = get(inp, "Description") or {}
         return RcvAccessionClassification(
             rcv_id=rcv_id,
