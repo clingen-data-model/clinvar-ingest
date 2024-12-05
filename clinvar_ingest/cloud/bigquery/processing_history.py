@@ -132,7 +132,6 @@ def ensure_history_view_exists(
     LEFT JOIN
     (SELECT * FROM `{processing_history_table}` WHERE file_type = "sp") sp
     ON sp.release_date = bq.release_date
-
     """  # noqa: S608
     query_job = client.query(query)
     _ = query_job.result()
