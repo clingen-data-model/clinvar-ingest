@@ -34,5 +34,9 @@
   {
     "name": "clinical_impact_clinical_significance",
     "type": "STRING"
+  },
+  {
+    "name": "content",
+    "type": "STRING"
   }
 ]
