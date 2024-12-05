@@ -252,7 +252,7 @@ def write_started(  # noqa: PLR0913
                     f"release_tag={release_tag}, bucket_dir={bucket_dir}"
                 )
             _logger.warning(
-                f"Expected 0 rows to exist for the started event, but found {row.c}."
+                f"Expected 0 rows to exist for the started event, but found {row.c}. "
                 f"file_type={file_type}, release_date={release_date}, "
                 f"release_tag={release_tag}, bucket_dir={bucket_dir}"
             )
