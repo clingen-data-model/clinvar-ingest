@@ -8,7 +8,7 @@ import os
 
 from google.cloud import bigquery
 
-from clinvar_ingest.config import get_env
+from clinvar_ingest.config import get_stored_procedures_env
 from clinvar_ingest.slack import send_slack_message
 
 from clinvar_ingest.cloud.bigquery.stored_procedures import execute_all
@@ -29,7 +29,7 @@ def _get_bq_client() -> bigquery.Client:
 ### Initialization code
 
 # Main env for the codebase
-env = get_env()
+env = get_stored_procedures_env()
 _logger.info(f"Stored procedures execution environment: {env}")
 
 # TODO: consider request/response validation of request in requests.py - overkill?

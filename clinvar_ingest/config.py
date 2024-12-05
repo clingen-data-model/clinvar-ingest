@@ -1,5 +1,6 @@
 import os
 import pathlib
+from email.policy import default
 from typing import Literal
 
 from dotenv import dotenv_values
@@ -24,23 +25,34 @@ def env_or_dotenv_or(
         raise ValueError(f"{key_name} must be set")
     return val
 
-
-class Env(BaseModel):
+class _BaseEnv(BaseModel):
     bq_dest_project: str
     bq_meta_dataset: str
+    slack_token: str | None
+    slack_channel: str
+
+
+def _get_base_env() -> _BaseEnv:
+    return _BaseEnv(
+        bq_dest_project=env_or_dotenv_or("BQ_DEST_PROJECT", throw=True),
+        bq_meta_dataset=env_or_dotenv_or(
+            "CLINVAR_INGEST_BQ_META_DATASET", default="clinvar_ingest"
+        ),
+        slack_token=env_or_dotenv_or("CLINVAR_INGEST_SLACK_TOKEN"),
+        # defaults to test "clinvar-message-test"
+        slack_channel=env_or_dotenv_or(
+            "CLINVAR_INGEST_SLACK_CHANNEL", default="C06QFR0278D"
+        ))
+
+
+class Env(_BaseEnv):
     bucket_name: str
     bucket_staging_prefix: str
     parse_output_prefix: str
     executions_output_prefix: str
-    slack_token: str | None
-    slack_channel: str
     release_tag: str
     schema_version: str
-    # TODO unused aside from the default value. Never set from the environment or dotenv. Remove?
     file_format_mode: Literal["vcv", "rcv"] = "vcv"
-    bq_ingest_stored_proc_job_name: str
-    bq_ingest_stored_proc_job_location: str
-    release_date: str
 
     @field_validator("bucket_name")
     @classmethod
@@ -51,15 +63,9 @@ class Env(BaseModel):
 
 
 def get_env() -> Env:
-    """
-    Returns an Env object using the default environment
-    variables and any default values.
-    """
+    _base_env = _get_base_env()
     return Env(
-        bq_dest_project=env_or_dotenv_or("BQ_DEST_PROJECT", throw=True),
-        bq_meta_dataset=env_or_dotenv_or(
-            "CLINVAR_INGEST_BQ_META_DATASET", default="clinvar_ingest"
-        ),
+        **_base_env.model_dump(),
         bucket_name=env_or_dotenv_or("CLINVAR_INGEST_BUCKET", throw=True),
         bucket_staging_prefix=env_or_dotenv_or(
             "CLINVAR_INGEST_STAGING_PREFIX", default="clinvar_xml"
@@ -70,80 +76,18 @@ def get_env() -> Env:
         executions_output_prefix=env_or_dotenv_or(
             "CLINVAR_INGEST_EXECUTIONS_PREFIX", default="executions"
         ),
-        slack_token=env_or_dotenv_or("CLINVAR_INGEST_SLACK_TOKEN"),
-        # defaults to test "clinvar-message-test"
-        slack_channel=env_or_dotenv_or(
-            "CLINVAR_INGEST_SLACK_CHANNEL", default="C06QFR0278D"
-        ),
         release_tag=env_or_dotenv_or("CLINVAR_INGEST_RELEASE_TAG", throw=True),
         schema_version=env_or_dotenv_or("CLINVAR_INGEST_SCHEMA_VERSION", default="v2"),
-        bq_ingest_stored_proc_job_name=env_or_dotenv_or("BQ_INGEST_STORED_PROC_JOB_NAME",
-                                                        "stored-procedures"),
-        bq_ingest_stored_proc_job_location=env_or_dotenv_or("BQ_INGEST_STORED_PROC_JOB_LOCATION",
-                                                            "us-east1"),
-        release_date=env_or_dotenv_or("CLINVAR_INGEST_RELEASE_DATE"),
     )
 
-# TODO Refactor into different envs for each workflow
-#  base(BaseModel):
-#       slack_token
-#       slack_channel
-#       bq_dest_project
-#       bq_meta_dataset
-#
-#  env(base): # for vcv, rcv, copy-only
-#       bucket_name
-#       bucket_staging_prefix
-#       bucket_staging_prefix
-#       bucket_parsed_prefix
-#       parse_output_prefix
-#       executions_output_prefix
-#
-#  bq_ingest_workflow(env):
-#       slack_token
-#       slack_channel
-#       bq_dest_project
-#       bq_meta_dataset
-#       bucket_name
-#       bq_ingest_stored_proc_job_name
-#       bq_ingest_stored_proc_job_location
-#
-#  stored_procedure_workflow(base):
-#       slack_token
-#       slack_channel
-#       bq_dest_project
-#       release_date (for on_or_after logic)
-#
-#
-# pydantic classes
-#
-# class BaseEnv(BaseModel):
-#     bq_dest_project: str
-#     bq_meta_dataset: str
-#     slack_token: str
-#     slack_channel: str
-#
-# class Env(BaseEnv):
-#     bucket_name: str
-#     bucket_staging_prefix: str
-#     bucket_parsed_prefix: str
-#     parse_output_prefix: str
-#     executions_output_prefix: str
-#     release_tag: str
-#     file_format_mode: Literal["vcv", "rcv"] = "vcv"
-#
-#     @field_validator("bucket_name")
-#     @classmethod
-#     def _validate_bucket_name(cls, v, _info):
-#         if not v:
-#             raise ValueError("CLINVAR_INGEST_BUCKET must be set")
-#         return v
-#
-# class BQIngestEnv(Env):
-#     bq_ingest_stored_proc_job_name: str
-#     bq_ingest_stored_proc_job_location: str
-#
-# class StoredProcedureEnv(BaseEnv):
-#     release_date: str
-#
 
+class StoredProceduresEnv(_BaseEnv):
+    release_date: str
+
+
+def get_stored_procedures_env() -> StoredProceduresEnv:
+    _base_env = _get_base_env()
+    return StoredProceduresEnv(
+        **_base_env.model_dump(),
+        release_date=env_or_dotenv_or("CLINVAR_INGEST_RELEASE_DATE"),
+    )
