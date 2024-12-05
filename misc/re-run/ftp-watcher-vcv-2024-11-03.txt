@@ -1,0 +1,1 @@
+[{"Name":"ClinVarVCVRelease_2024-1103.xml.gz","Size":4124180047,"Released":"2024-11-04 13:04:31","Last Modified":"2024-11-04 13:04:31","Directory":"/xml_archives/vcv","Host":"gs://clinvar-ingest-dev","Release Date":"2024-11-03"}]
