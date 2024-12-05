@@ -1,17 +1,28 @@
+"""
+Execute a cloud run job across a series of ClinVar FTP Watcher messages.
+(messages can also point to GCS files)
+
+NOTE: Must update global variables at the top of the script to match the job, file, and file format.
+
+Usage:
+    python execute-re-runs.py
+"""
+
 import json
 import os
 import subprocess
 
 region = "us-east1"
-# execute_job_script = "misc/bin/execute-job.sh"
-# env_file = "./local-env.sh"
 # ftp_watcher_file = "confluent-prod_clinvar-somatic-ftp-watcher_20241203.txt"
 
+
 # ftp_watcher_file = "misc/re-run/ftp-watcher-vcv-2024-10-27.txt"
+# ftp_watcher_file = "misc/re-run/ftp-watcher-vcv-2024-11-03.txt"
 # instance_name = "clinvar-vcv-ingest"
 # file_format = "vcv"
 
-ftp_watcher_file = "misc/re-run/ftp-watcher-rcv-2024-10-27.txt"
+# ftp_watcher_file = "misc/re-run/ftp-watcher-rcv-2024-10-27.txt"
+ftp_watcher_file = "misc/re-run/ftp-watcher-rcv-2024-11-03.txt"
 instance_name = "clinvar-rcv-ingest"
 file_format = "rcv"
 
@@ -61,9 +72,9 @@ global_env = {
     # set that to empty string here
     # "CLINVAR_INGEST_SLACK_TOKEN": "",  # Override job variable to disable messaging
     "CLINVAR_INGEST_SLACK_CHANNEL": "",  # Override job variable to disable messaging
-    "CLINVAR_INGEST_BUCKET": "clinvar-ingest-dev",  # Set already on job
-    # "CLINVAR_INGEST_RELEASE_TAG": "v2_0_4_alpha",  # Optional? Set already in job
-    "CLINVAR_INGEST_BQ_META_DATASET": "clinvar_ingest",  # Set already on job
+    "CLINVAR_INGEST_BUCKET": "clinvar-ingest-dev",  # Already set on job, no need to override
+    # "CLINVAR_INGEST_RELEASE_TAG": "v2_0_4_alpha",  # Already set on job, no need to override
+    "CLINVAR_INGEST_BQ_META_DATASET": "clinvar_ingest",  # Already set on job, no need to override
     "BQ_DEST_PROJECT": "clingen-dev",
     "file_format": file_format,  # Set already on job but provide again for explicitness
 }
