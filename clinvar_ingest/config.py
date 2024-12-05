@@ -1,6 +1,5 @@
 import os
 import pathlib
-from email.policy import default
 from typing import Literal
 
 from dotenv import dotenv_values
@@ -30,6 +29,8 @@ class _BaseEnv(BaseModel):
     bq_meta_dataset: str
     slack_token: str | None
     slack_channel: str
+    release_tag: str
+    schema_version: str
 
 
 def _get_base_env() -> _BaseEnv:
@@ -41,8 +42,10 @@ def _get_base_env() -> _BaseEnv:
         slack_token=env_or_dotenv_or("CLINVAR_INGEST_SLACK_TOKEN"),
         # defaults to test "clinvar-message-test"
         slack_channel=env_or_dotenv_or(
-            "CLINVAR_INGEST_SLACK_CHANNEL", default="C06QFR0278D"
-        ))
+            "CLINVAR_INGEST_SLACK_CHANNEL", default="C06QFR0278D"),
+        release_tag=env_or_dotenv_or("CLINVAR_INGEST_RELEASE_TAG", throw=True),
+        schema_version=env_or_dotenv_or("CLINVAR_INGEST_SCHEMA_VERSION", default="v2"),
+        )
 
 
 class Env(_BaseEnv):
@@ -50,8 +53,6 @@ class Env(_BaseEnv):
     bucket_staging_prefix: str
     parse_output_prefix: str
     executions_output_prefix: str
-    release_tag: str
-    schema_version: str
     file_format_mode: Literal["vcv", "rcv"] = "vcv"
 
     @field_validator("bucket_name")
@@ -76,18 +77,15 @@ def get_env() -> Env:
         executions_output_prefix=env_or_dotenv_or(
             "CLINVAR_INGEST_EXECUTIONS_PREFIX", default="executions"
         ),
-        release_tag=env_or_dotenv_or("CLINVAR_INGEST_RELEASE_TAG", throw=True),
-        schema_version=env_or_dotenv_or("CLINVAR_INGEST_SCHEMA_VERSION", default="v2"),
     )
 
 
 class StoredProceduresEnv(_BaseEnv):
-    release_date: str
+    pass
 
 
 def get_stored_procedures_env() -> StoredProceduresEnv:
     _base_env = _get_base_env()
     return StoredProceduresEnv(
         **_base_env.model_dump(),
-        release_date=env_or_dotenv_or("CLINVAR_INGEST_RELEASE_DATE"),
     )
