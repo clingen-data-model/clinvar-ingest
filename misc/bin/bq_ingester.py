@@ -27,15 +27,12 @@ from clinvar_ingest.cloud.bigquery.create_tables import (
 from clinvar_ingest.config import get_env
 from clinvar_ingest.slack import send_slack_message
 
-from clinvar_ingest.cloud.cloudrun_job_execution import invoke_job
-
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s.%(msecs)03d - %(levelname)s - %(name)s - %(funcName)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 _logger = logging.getLogger("clinvar-ingest-workflow")
-
 
 # Environment needs to contain
 # CLINVAR_INGEST_SLACK_TOKEN
@@ -102,13 +99,9 @@ if processing_history_pairs.total_rows:
         )
 
     # Now process individual rows
-    bq_client = _get_bq_client()
-    first_release_date = None
     for row in rows_to_ingest:
         _logger.info(row)
         release_date = row.get("release_date", None)
-        if not first_release_date:
-            first_release_date = release_date
         vcv_file_type = row.get("vcv_file_type", None)
         vcv_pipeline_version = row.get("vcv_pipeline_version", None)
         vcv_processing_started = row.get("vcv_processing_started", None)
@@ -137,9 +130,11 @@ if processing_history_pairs.total_rows:
         )
 
         # Infer the dataset location from the configured storage bucket
+        bq_client = _get_bq_client()
         bucket = _get_gcs_client().get_bucket(env.bucket_name)
         bucket_location = bucket.location
 
+        dataset = None
         try:
             dataset = ensure_dataset_exists(
                 project=bq_client.project,
@@ -324,21 +319,3 @@ if processing_history_pairs.total_rows:
             _logger.exception(msg)
             send_slack_message(msg)
 
-    # invoke next job if one is configured
-    # TODO: consider use of requests/responses per requests.py?
-    if env.bq_ingest_stored_proc_job_name and env.bq_ingest_stored_proc_job_location:
-        try:
-            msg = f"Invoking job {env.bq_ingest_stored_proc_job_name} with on or after release date {first_release_date}."
-            _logger.info(msg)
-            # send_slack_message(msg)
-            result = invoke_job(project_id=env.bq_dest_project,
-                                location=env.bq_ingest_stored_proc_job_location,
-                                job_name=env.bq_ingest_stored_proc_job_name,
-                                env_vars={"CLINVAR_INGEST_RELEASE_DATE": first_release_date})
-            msg = f"BQ Ingest invoked job {env.bq_ingest_stored_proc_job_name} success! Returned result: {result}."
-            _logger.info(msg)
-            # send_slack_message(msg)
-        except Exception as e:
-            msg = f"BQ Ingest invoked job {env.bq_ingest_stored_proc_job_name} failed: {e}."
-            _logger.exception(msg)
-            # send_slack_message(msg)
