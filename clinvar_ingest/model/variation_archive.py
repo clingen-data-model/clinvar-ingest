@@ -787,9 +787,11 @@ class RcvAccessionClassification(Model):
     clinical_impact_assertion_type: str
     clinical_impact_clinical_significance: str
 
+    content: dict
+
     @staticmethod
     def jsonifiable_fields() -> list[str]:
-        return []
+        return ["content"]
 
     def __post_init__(self):
         self.entity_type = "rcv_accession_classification"
@@ -802,7 +804,9 @@ class RcvAccessionClassification(Model):
         or OncogenicityClassification entry. The statement_type is the key
         from the original `Classifications` XML/dict, indicating the type.
         """
-        raw_description = extract(inp, "Description")
+        # TODO is there a chance they add fields to Description? Maybe don't extract.
+        # raw_description = extract(inp, "Description")
+        raw_description = get(inp, "Description") or {}
         return RcvAccessionClassification(
             rcv_id=rcv_id,
             statement_type=statement_type,
@@ -819,6 +823,7 @@ class RcvAccessionClassification(Model):
                 raw_description,
                 "@ClinicalImpactClinicalSignificance",
             ),
+            content=inp,
         )
 
     @staticmethod
@@ -945,7 +950,7 @@ class RcvAccession(Model):
             yield from c.disassemble()
         del self_copy.classifications
 
-        yield self
+        yield self_copy
 
 
 @dataclasses.dataclass
@@ -965,9 +970,11 @@ class VariationArchiveClassification(Model):
     clinical_impact_assertion_type: str
     clinical_impact_clinical_significance: str
 
+    content: dict
+
     @staticmethod
     def jsonifiable_fields() -> list[str]:
-        return []
+        return ["content"]
 
     def __post_init__(self):
         self.entity_type = "variation_archive_classification"
@@ -998,6 +1005,7 @@ class VariationArchiveClassification(Model):
                 interp_description,
                 "@ClinicalImpactClinicalSignificance",
             ),
+            content=inp,
         )
 
     @staticmethod
