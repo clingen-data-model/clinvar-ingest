@@ -108,6 +108,7 @@ def ensure_pairs_view_exists(
         AND
         vcv.xml_release_date <= DATE_ADD(rcv.xml_release_date, INTERVAL 1 DAY)
     )
+    AND vcv.pipeline_version = rcv.pipeline_version
     """  # noqa: S608
     query_job = client.query(query)
     _ = query_job.result()
