@@ -89,7 +89,7 @@ _logger.info(workflow_id_message)
 processing_history_table = processing_history.ensure_initialized(
     client=_get_bq_client()
 )
-processing_history_pairs_view = processing_history.ensure_pairs_view_exists(
+processing_history_view = processing_history.ensure_history_view_exists(
     processing_history_table=processing_history_table,
     client=_get_bq_client(),
 )

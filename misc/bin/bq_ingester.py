@@ -67,22 +67,22 @@ _logger.info(f"BQ Ingest environment: {env}")
 processing_history_table = processing_history.ensure_initialized(
     client=_get_bq_client()
 )
-processing_history_pairs_view = processing_history.ensure_pairs_view_exists(
+processing_history_view = processing_history.ensure_history_view_exists(
     processing_history_table=processing_history_table,
     client=_get_bq_client(),
 )
-processing_history_pairs = processing_history.processed_pairs_ready_to_be_ingested(
-    processing_history_pairs_view, client=_get_bq_client()
+processing_history_entries = processing_history.processed_entries_ready_to_be_ingested(
+    processing_history_view, client=_get_bq_client()
 )
-msg = f"Found {processing_history_pairs.total_rows} VCV/RCV datasets to ingest."
+msg = f"Found {processing_history_entries.total_rows} VCV/RCV datasets to ingest."
 _logger.info(msg)
 
 rows_to_ingest = []
-if processing_history_pairs.total_rows:
+if processing_history_entries.total_rows:
     send_slack_message(msg)
 
-    # update processing_history.bq_ingest_started for ALL processing_history_pairs
-    for row in processing_history_pairs:
+    # update processing_history.bq_ingest_started for ALL processing_history_v
+    for row in processing_history_entries:
         rows_to_ingest.append(row)
         vcv_pipeline_version = row.get("vcv_pipeline_version", None)
         vcv_xml_release_date = row.get("vcv_xml_release_date", None)

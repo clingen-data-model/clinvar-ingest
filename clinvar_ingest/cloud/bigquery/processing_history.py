@@ -52,14 +52,19 @@ def create_processing_history_table(
     return client.create_table(table)  # error if exists
 
 
-def ensure_pairs_view_exists(
+def ensure_history_view_exists(
     processing_history_table: bigquery.Table,
     client: bigquery.Client | None = None,
 ):
     """
-    Creates the pairwise view of the processing history table linking
-    VCV and RCV processing events within a day of each other.
-    Used downstream during the ingest to bigquery step.
+    Creates the view of the processing history table linking
+    VCV, RCV processing events within a day of each other,
+    along with subsequent BQ Ingest and Stored procedures
+    processing steps (the latter two may not have run yet).
+
+    Used downstream by the BQ Ingest and Stored procedures
+    cloud scheduler invoked processing steps, to determine
+    when to run and track start and end times of each step.
     """
     if client is None:
         client = bigquery.Client()
@@ -67,10 +72,10 @@ def ensure_pairs_view_exists(
     project = client.project
     env: Env = get_env()
     dataset_name = env.bq_meta_dataset  # The last part of <project>.<dataset_name>
-    table_name = "processing_history_pairs"
+    table_name = "processing_history_view"
 
-    # saved in bigquery as a saved query in clingen-dev called "processing_history_pairs"
-    # creates a view called clingen-dev.clinvar_ingest.processing_history_pairs
+    # saved in bigquery as a saved query in clingen-dev called "processing_history_view"
+    # creates a view called clingen-dev.clinvar_ingest.processing_history_view
     query = f"""
     CREATE OR REPLACE VIEW `{project}.{dataset_name}.{table_name}` AS
     SELECT
@@ -88,7 +93,6 @@ def ensure_pairs_view_exists(
         vcv.xml_release_date as vcv_xml_release_date,
         vcv.bucket_dir as vcv_bucket_dir,
         vcv.parsed_files as vcv_parsed_files,
-        vcv.bq_ingest_processing as vcv_bq_ingest_processing,
         -- RCV fields
         rcv.file_type as rcv_file_type,
         rcv.pipeline_version as rcv_pipeline_version,
@@ -98,7 +102,20 @@ def ensure_pairs_view_exists(
         rcv.release_date as rcv_release_date,
         rcv.xml_release_date as rcv_xml_release_date,
         rcv.bucket_dir as rcv_bucket_dir,
-        rcv.parsed_files as rcv_parsed_files
+        rcv.parsed_files as rcv_parsed_files,
+        -- BQ Ingest fields
+        bq.release_date as bq_release_date,
+        bq.pipeline_version as bq_pipeline_version,
+        bq.schema_version as bq_schema_version,
+        bq.processing_started as bq_processing_started,
+        bq.processing_finished as bq_processing_finished,
+        -- Stored procedure processing fields
+        sp.release_date as sp_release_date,
+        sp.pipeline_version as sp_pipeline_version,
+        sp.schema_version as sp_schema_version,
+        sp.processing_started as sp_processing_started,
+        sp.processing_finished as sp_processing_finished,
+        --
     FROM
     (SELECT * FROM `{processing_history_table}` WHERE file_type = "vcv") vcv
     INNER JOIN
@@ -108,6 +125,13 @@ def ensure_pairs_view_exists(
         AND
         vcv.xml_release_date <= DATE_ADD(rcv.xml_release_date, INTERVAL 1 DAY)
     )
+    LEFT JOIN
+    (SELECT * FROM `{processing_history_table}` WHERE file_type = "bq") bq
+    ON bq.release_date = vcv.release_date
+    LEFT JOIN
+    (SELECT * FROM `{processing_history_table}` WHERE file_type = "sp") sp
+    ON sp.release_date = bq.release_date
+    
     """  # noqa: S608
     query_job = client.query(query)
     _ = query_job.result()
@@ -503,8 +527,8 @@ def update_final_release_date(  # noqa: PLR0913
     return result, query_job
 
 
-def read_processing_history_pairs(
-    processing_history_pairs_table: bigquery.Table,
+def read_processing_history_entries(
+    processing_history_view_table: bigquery.Table,
     client: bigquery.Client | None = None,
 ) -> google.cloud.bigquery.table.RowIterator:
     """
@@ -531,14 +555,14 @@ def read_processing_history_pairs(
         rcv_xml_release_date,
         rcv_bucket_dir,
         rcv_parsed_files
-    FROM {processing_history_pairs_table}
+    FROM {processing_history_view_table}
     """
     query_job = client.query(query)
     return query_job.result()
 
 
-def processed_pairs_ready_to_be_ingested(
-    processing_history_pairs_table: bigquery.Table,
+def processed_entries_ready_to_be_ingested(
+    processing_history_view_table: bigquery.Table,
     client: bigquery.Client | None = None,
 ) -> google.cloud.bigquery.table.RowIterator:
     """
@@ -569,7 +593,7 @@ def processed_pairs_ready_to_be_ingested(
         rcv_xml_release_date,
         rcv_bucket_dir,
         rcv_parsed_files
-    FROM {processing_history_pairs_table}
+    FROM {processing_history_view_table}
     WHERE vcv_processing_finished IS NOT NULL
     AND rcv_processing_finished IS NOT NULL
     AND release_date IS NULL
