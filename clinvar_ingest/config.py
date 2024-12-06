@@ -53,7 +53,7 @@ class Env(_BaseEnv):
     bucket_staging_prefix: str
     parse_output_prefix: str
     executions_output_prefix: str
-    file_format_mode: Literal["vcv", "rcv"] = "vcv"
+    file_format_mode: Literal["vcv", "rcv", "bq", "sp"] = "vcv"
 
     @field_validator("bucket_name")
     @classmethod
