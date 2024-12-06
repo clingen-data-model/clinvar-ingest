@@ -12,7 +12,7 @@ from clinvar_ingest.cloud.bigquery.create_tables import (
     ensure_dataset_exists,
     schema_file_path_for_table,
 )
-from clinvar_ingest.config import Env, get_env
+from clinvar_ingest.config import Env, StoredProceduresEnv
 from clinvar_ingest.utils import ClinVarIngestFileFormat
 
 _logger = logging.getLogger("clinvar_ingest")
@@ -36,8 +36,8 @@ def _internal_model_dump(obj):
 
 
 def create_processing_history_table(
-    client: bigquery.Client,
-    table_reference: bigquery.TableReference,
+        client: bigquery.Client,
+        table_reference: bigquery.TableReference,
 ) -> bigquery.Table:
     """
     Similar to create_tables.create_table, but without the external file importing.
@@ -53,8 +53,9 @@ def create_processing_history_table(
 
 
 def ensure_history_view_exists(
-    processing_history_table: bigquery.Table,
-    client: bigquery.Client | None = None,
+        env: Env | StoredProceduresEnv,
+        processing_history_table: bigquery.Table,
+        client: bigquery.Client | None = None,
 ):
     """
     Creates the view of the processing history table linking
@@ -70,7 +71,6 @@ def ensure_history_view_exists(
         client = bigquery.Client()
     # Get the project from the client
     project = client.project
-    env: Env = get_env()
     dataset_name = env.bq_meta_dataset  # The last part of <project>.<dataset_name>
     table_name = "processing_history_view"
 
@@ -139,7 +139,9 @@ def ensure_history_view_exists(
 
 
 def ensure_initialized(
-    client: bigquery.Client | None = None, storage_client: storage.Client | None = None
+        env: Env | StoredProceduresEnv,
+        client: bigquery.Client | None = None,
+        storage_client: storage.Client | None = None,
 ) -> bigquery.Table:
     """
     Ensures that the bigquery clinvar-ingest metadata dataset and processing_history
@@ -156,25 +158,16 @@ def ensure_initialized(
     table = ensure_initialized(client=client, storage_client=storage_client)
     print(str(table))
     """
-    env: Env = get_env()
     dataset_name = env.bq_meta_dataset  # The last part of <project>.<dataset_name>
 
     if client is None:
         client = bigquery.Client()
 
-    if storage_client is None:
-        storage_client = storage.Client()
-
-    # Look up the bucket from the env and get its location
-    # Throws error if bucket not found
-    bucket = storage_client.get_bucket(env.bucket_name)
-    bucket_location = bucket.location
-
     dataset = ensure_dataset_exists(
         client,
         project=env.bq_dest_project,
         dataset_id=dataset_name,
-        location=bucket_location,
+        location=env.location,
     )
 
     # Check to see if a table named "processing_history" exists in that dataset
@@ -188,12 +181,12 @@ def ensure_initialized(
 
 
 def check_started_exists(
-    processing_history_table: bigquery.Table,
-    release_date: str,
-    release_tag: str,
-    file_type: ClinVarIngestFileFormat,
-    bucket_dir: str,
-    client: bigquery.Client | None = None,
+        processing_history_table: bigquery.Table,
+        release_date: str,
+        release_tag: str,
+        file_type: ClinVarIngestFileFormat,
+        bucket_dir: str,
+        client: bigquery.Client | None = None,
 ):
     sql = f"""
     SELECT COUNT(*) as c
@@ -223,14 +216,14 @@ def check_started_exists(
 
 
 def write_started(  # noqa: PLR0913
-    processing_history_table: bigquery.Table,
-    release_date: str,
-    release_tag: str,
-    schema_version: str,
-    file_type: ClinVarIngestFileFormat,
-    bucket_dir: str,
-    client: bigquery.Client | None = None,
-    error_if_exists=True,
+        processing_history_table: bigquery.Table,
+        release_date: str,
+        release_tag: str,
+        schema_version: str,
+        file_type: ClinVarIngestFileFormat,
+        bucket_dir: str,
+        client: bigquery.Client | None = None,
+        error_if_exists=True,
 ):
     """
     Writes the status of the VCV processing to the processing_history table.
@@ -324,13 +317,13 @@ def write_started(  # noqa: PLR0913
 
 
 def write_finished(
-    processing_history_table: bigquery.Table,
-    release_date: str,
-    release_tag: str,
-    file_type: ClinVarIngestFileFormat,
-    bucket_dir: str,
-    parsed_files: dict,  # ParseResponse.parsed_files
-    client: bigquery.Client | None = None,
+        processing_history_table: bigquery.Table,
+        release_date: str,
+        release_tag: str,
+        file_type: ClinVarIngestFileFormat,
+        bucket_dir: str,
+        parsed_files: dict,  # ParseResponse.parsed_files
+        client: bigquery.Client | None = None,
 ):
     """
     Writes the status of the VCV processing to the processing_history table.
@@ -409,8 +402,8 @@ def write_finished(
                 f"Error occurred during update operation: {query_job.errors}"
             )
         if (
-            query_job.dml_stats.updated_row_count > 1
-            or query_job.dml_stats.inserted_row_count > 1
+                query_job.dml_stats.updated_row_count > 1
+                or query_job.dml_stats.inserted_row_count > 1
         ):
             msg = (
                 "More than one row was updated while updating processing_history "
@@ -421,8 +414,8 @@ def write_finished(
             _logger.error(msg)
             raise RuntimeError(msg)
         if (
-            query_job.dml_stats.updated_row_count == 0
-            and query_job.dml_stats.inserted_row_count == 0
+                query_job.dml_stats.updated_row_count == 0
+                and query_job.dml_stats.inserted_row_count == 0
         ):
             msg = (
                 "No rows were updated during the write_finished. "
@@ -447,14 +440,14 @@ def write_finished(
 
 
 def update_final_release_date(  # noqa: PLR0913
-    processing_history_table: bigquery.Table,
-    xml_release_date: str,
-    release_tag: str,
-    file_type: ClinVarIngestFileFormat,
-    bucket_dir: str,
-    final_release_date: str,
-    final_dataset_id: str,
-    client: bigquery.Client | None = None,
+        processing_history_table: bigquery.Table,
+        xml_release_date: str,
+        release_tag: str,
+        file_type: ClinVarIngestFileFormat,
+        bucket_dir: str,
+        final_release_date: str,
+        final_dataset_id: str,
+        client: bigquery.Client | None = None,
 ):
     """
     Updates the final release date and final dataset id field
@@ -494,8 +487,8 @@ def update_final_release_date(  # noqa: PLR0913
             f"Error occurred during update operation: {query_job.errors}"
         )
     if (
-        query_job.dml_stats.updated_row_count > 1
-        or query_job.dml_stats.inserted_row_count > 1
+            query_job.dml_stats.updated_row_count > 1
+            or query_job.dml_stats.inserted_row_count > 1
     ):
         msg = (
             "More than one row was updated while updating processing_history "
@@ -506,8 +499,8 @@ def update_final_release_date(  # noqa: PLR0913
         _logger.error(msg)
         raise RuntimeError(msg)
     if (
-        query_job.dml_stats.updated_row_count == 0
-        and query_job.dml_stats.inserted_row_count == 0
+            query_job.dml_stats.updated_row_count == 0
+            and query_job.dml_stats.inserted_row_count == 0
     ):
         msg = (
             "No rows were updated during the update_final_release_date. "
@@ -528,8 +521,8 @@ def update_final_release_date(  # noqa: PLR0913
 
 
 def read_processing_history_entries(
-    processing_history_view_table: bigquery.Table,
-    client: bigquery.Client | None = None,
+        processing_history_view_table: bigquery.Table,
+        client: bigquery.Client | None = None,
 ) -> google.cloud.bigquery.table.RowIterator:
     """
     Reads the pairwise view of the processing history table linking
@@ -562,8 +555,8 @@ def read_processing_history_entries(
 
 
 def processed_entries_ready_to_be_ingested(
-    processing_history_view_table: bigquery.Table,
-    client: bigquery.Client | None = None,
+        processing_history_view_table: bigquery.Table,
+        client: bigquery.Client | None = None,
 ) -> google.cloud.bigquery.table.RowIterator:
     """
     Reads the pairwise view of the processing history table linking
@@ -603,12 +596,12 @@ def processed_entries_ready_to_be_ingested(
     return query_job.result()
 
 
-def update_bq_ingest_processing_flag(
-    processing_history_table: bigquery.Table,
-    pipeline_version: str,
-    xml_release_date: str,
-    bq_ingest_processing: bool | None = True,
-    client: bigquery.Client | None = None,
+def update_bq_ingest_processing(
+        processing_history_table: bigquery.Table,
+        pipeline_version: str,
+        xml_release_date: str,
+        bq_ingest_processing: bool | None = True,
+        client: bigquery.Client | None = None,
 ):
     if client is None:
         client = bigquery.Client()
@@ -623,6 +616,7 @@ def update_bq_ingest_processing_flag(
     query_job = client.query(query)
     return query_job.result()
 
+# TODO - Insert a BQ record type entry in this method above vs updating the flag
 
 # def write_vcv_started(
 #     processing_history_table: bigquery.Table,

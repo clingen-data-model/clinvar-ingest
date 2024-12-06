@@ -34,6 +34,7 @@ logging.basicConfig(
 )
 _logger = logging.getLogger("clinvar-ingest-workflow")
 
+
 # Environment needs to contain
 # CLINVAR_INGEST_SLACK_TOKEN
 # CLINVAR_INGEST_SLACK_CHANNEL
@@ -65,9 +66,11 @@ _logger.info(f"BQ Ingest environment: {env}")
 ################################################################
 # Write record to processing_history indicating this workflow has begun
 processing_history_table = processing_history.ensure_initialized(
+    env=env,
     client=_get_bq_client()
 )
 processing_history_view = processing_history.ensure_history_view_exists(
+    env=env,
     processing_history_table=processing_history_table,
     client=_get_bq_client(),
 )
@@ -86,7 +89,7 @@ if processing_history_entries.total_rows:
         rows_to_ingest.append(row)
         vcv_pipeline_version = row.get("vcv_pipeline_version", None)
         vcv_xml_release_date = row.get("vcv_xml_release_date", None)
-        bq_ingest_update_result = processing_history.update_bq_ingest_processing_flag(
+        bq_ingest_update_result = processing_history.update_bq_ingest_processing(
             processing_history_table=processing_history_table,
             pipeline_version=vcv_pipeline_version,
             xml_release_date=vcv_xml_release_date,
@@ -305,7 +308,7 @@ if processing_history_entries.total_rows:
             # TODO Does it make sense to reset bq_ingest_processing to NULL
             # when it is possible that other parts of the record may have been updated
             # such as release_date?
-            processing_history.update_bq_ingest_processing_flag(
+            processing_history.update_bq_ingest_processing(
                 processing_history_table=processing_history_table,
                 pipeline_version=vcv_pipeline_version,
                 xml_release_date=vcv_xml_release_date,
@@ -318,4 +321,3 @@ if processing_history_entries.total_rows:
                   """
             _logger.exception(msg)
             send_slack_message(msg)
-

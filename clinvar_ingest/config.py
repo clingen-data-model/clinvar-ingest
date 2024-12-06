@@ -29,6 +29,7 @@ class _BaseEnv(BaseModel):
     bq_meta_dataset: str
     slack_token: str | None
     slack_channel: str
+    location: str
     release_tag: str
     schema_version: str
 
@@ -45,6 +46,7 @@ def _get_base_env() -> _BaseEnv:
             "CLINVAR_INGEST_SLACK_CHANNEL", default="C06QFR0278D"),
         release_tag=env_or_dotenv_or("CLINVAR_INGEST_RELEASE_TAG", throw=True),
         schema_version=env_or_dotenv_or("CLINVAR_INGEST_SCHEMA_VERSION", default="v2"),
+        location = env_or_dotenv_or("CLINVAR_INGEST_LOCATION", default="us-east1"),
         )
 
 
