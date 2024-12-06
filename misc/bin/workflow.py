@@ -88,11 +88,9 @@ _logger.info(workflow_id_message)
 #     ClinVarIngestFileFormat.VCV: processing_history.write_vcv_started,
 # }[file_mode]
 processing_history_table = processing_history.ensure_initialized(
-    env=env,
     client=_get_bq_client()
 )
 processing_history_view = processing_history.ensure_history_view_exists(
-    env=env,
     processing_history_table=processing_history_table,
     client=_get_bq_client(),
 )
@@ -232,7 +230,6 @@ except Exception as e:
 #     ClinVarIngestFileFormat.VCV: processing_history.write_vcv_started,
 # }[file_mode]
 processing_history_table = processing_history.ensure_initialized(
-    env=env,
     client=_get_bq_client(),
 )
 processing_history.write_finished(

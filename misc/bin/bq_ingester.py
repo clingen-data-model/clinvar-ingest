@@ -66,11 +66,9 @@ _logger.info(f"BQ Ingest environment: {env}")
 ################################################################
 # Write record to processing_history indicating this workflow has begun
 processing_history_table = processing_history.ensure_initialized(
-    env=env,
     client=_get_bq_client()
 )
 processing_history_view = processing_history.ensure_history_view_exists(
-    env=env,
     processing_history_table=processing_history_table,
     client=_get_bq_client(),
 )

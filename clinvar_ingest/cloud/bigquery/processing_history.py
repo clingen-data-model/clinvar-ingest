@@ -12,7 +12,7 @@ from clinvar_ingest.cloud.bigquery.create_tables import (
     ensure_dataset_exists,
     schema_file_path_for_table,
 )
-from clinvar_ingest.config import Env, StoredProceduresEnv
+from clinvar_ingest.config import get_env
 from clinvar_ingest.utils import ClinVarIngestFileFormat
 
 _logger = logging.getLogger("clinvar_ingest")
@@ -53,7 +53,6 @@ def create_processing_history_table(
 
 
 def ensure_history_view_exists(
-        env: Env | StoredProceduresEnv,
         processing_history_table: bigquery.Table,
         client: bigquery.Client | None = None,
 ):
@@ -71,6 +70,7 @@ def ensure_history_view_exists(
         client = bigquery.Client()
     # Get the project from the client
     project = client.project
+    env = get_env()
     dataset_name = env.bq_meta_dataset  # The last part of <project>.<dataset_name>
     table_name = "processing_history_view"
 
@@ -139,7 +139,6 @@ def ensure_history_view_exists(
 
 
 def ensure_initialized(
-        env: Env | StoredProceduresEnv,
         client: bigquery.Client | None = None,
         storage_client: storage.Client | None = None,
 ) -> bigquery.Table:
@@ -158,6 +157,7 @@ def ensure_initialized(
     table = ensure_initialized(client=client, storage_client=storage_client)
     print(str(table))
     """
+    env = get_env()
     dataset_name = env.bq_meta_dataset  # The last part of <project>.<dataset_name>
 
     if client is None:

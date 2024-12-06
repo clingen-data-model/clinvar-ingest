@@ -8,7 +8,6 @@ from pydantic import BaseModel, field_validator
 _dotenv_env = os.environ.get("DOTENV_ENV", "dev")
 _dotenv_values = dotenv_values(pathlib.Path(__file__).parent / f".{_dotenv_env}.env")
 
-
 def env_or_dotenv_or(
         key_name: str, default: str | None = None, throw: bool = False
 ) -> str:
@@ -24,7 +23,11 @@ def env_or_dotenv_or(
         raise ValueError(f"{key_name} must be set")
     return val
 
-class _BaseEnv(BaseModel):
+class Env(BaseModel):
+    pass
+
+
+class BaseEnv(Env):
     bq_dest_project: str
     bq_meta_dataset: str
     slack_token: str | None
@@ -34,8 +37,8 @@ class _BaseEnv(BaseModel):
     schema_version: str
 
 
-def _get_base_env() -> _BaseEnv:
-    return _BaseEnv(
+def _get_base_env() -> BaseEnv:
+    return BaseEnv(
         bq_dest_project=env_or_dotenv_or("BQ_DEST_PROJECT", throw=True),
         bq_meta_dataset=env_or_dotenv_or(
             "CLINVAR_INGEST_BQ_META_DATASET", default="clinvar_ingest"
@@ -50,7 +53,7 @@ def _get_base_env() -> _BaseEnv:
         )
 
 
-class Env(_BaseEnv):
+class ClinVarEnv(BaseEnv):
     bucket_name: str
     bucket_staging_prefix: str
     parse_output_prefix: str
@@ -65,9 +68,9 @@ class Env(_BaseEnv):
         return v
 
 
-def get_env() -> Env:
+def get_file_ingest_env() -> ClinVarEnv:
     _base_env = _get_base_env()
-    return Env(
+    env = ClinVarEnv(
         **_base_env.model_dump(),
         bucket_name=env_or_dotenv_or("CLINVAR_INGEST_BUCKET", throw=True),
         bucket_staging_prefix=env_or_dotenv_or(
@@ -80,14 +83,28 @@ def get_env() -> Env:
             "CLINVAR_INGEST_EXECUTIONS_PREFIX", default="executions"
         ),
     )
+    _set_env(env)
+    return env
 
 
-class StoredProceduresEnv(_BaseEnv):
+class StoredProceduresEnv(BaseEnv):
     pass
 
 
 def get_stored_procedures_env() -> StoredProceduresEnv:
     _base_env = _get_base_env()
-    return StoredProceduresEnv(
+    env = StoredProceduresEnv(
         **_base_env.model_dump(),
     )
+    _set_env(env)
+    return env
+
+
+def _set_env(env:Env):
+    if getattr(Env, "env", None) is None:
+        setattr(Env, "env", env)
+    return getattr(Env, "env")
+
+
+def get_env() -> Env:
+    return getattr(Env, "env", get_file_ingest_env())

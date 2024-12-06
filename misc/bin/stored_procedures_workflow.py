@@ -20,6 +20,7 @@ logging.basicConfig(
 )
 _logger = logging.getLogger("stored-procedures-workflow")
 
+
 def _get_bq_client() -> bigquery.Client:
     if getattr(_get_bq_client, "client", None) is None:
         setattr(_get_bq_client, "client", bigquery.Client())
