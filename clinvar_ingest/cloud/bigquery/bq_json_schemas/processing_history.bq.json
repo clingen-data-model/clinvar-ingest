@@ -40,11 +40,11 @@
     "type": "JSON"
   },
   {
-      "name": "ftp_release_date_time",
+      "name": "ftp_released",
       "type": "TIMESTAMP"
   },
   {
-      "name": "ftp_last_modified_date_time",
+      "name": "ftp_last_modified",
       "type": "TIMESTAMP"
   }
 ]

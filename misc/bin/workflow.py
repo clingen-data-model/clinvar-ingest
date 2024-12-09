@@ -99,8 +99,8 @@ processing_history.write_started(
     # The directory within the executions_output_prefix. See gcs_base in copy()
     bucket_dir=workflow_execution_id,
     client=_get_bq_client(),
-    ftp_release_date_time=wf_input.released.isoformat(),
-    ftp_last_modified_date_time=wf_input.last_modified.isoformat(),
+    ftp_released=wf_input.released.isoformat(),
+    ftp_last_modified=wf_input.last_modified.isoformat(),
     error_if_exists=False,
 )
 

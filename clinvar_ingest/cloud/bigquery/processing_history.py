@@ -225,8 +225,8 @@ def write_started(  # noqa: PLR0913
         file_type: ClinVarIngestFileFormat,
         bucket_dir: str | None = None,  # TODO - Causes problems due to SQl Lookup?
         client: bigquery.Client | None = None,
-        ftp_release_date_time: str | None = None,
-        ftp_last_modified_date_time: str | None = None,
+        ftp_released: str | None = None,
+        ftp_last_modified: str | None = None,
         error_if_exists=True,
 ):
     """
@@ -291,9 +291,9 @@ def write_started(  # noqa: PLR0913
 
     sql = f"""
     INSERT INTO {fully_qualified_table_id}
-    (release_date, file_type, pipeline_version, schema_version, processing_started, xml_release_date, bucket_dir, ftp_release_date_time, ftp_last_modified_date_time)
+    (release_date, file_type, pipeline_version, schema_version, processing_started, xml_release_date, bucket_dir, ftp_released, ftp_last_modified)
     VALUES
-    (NULL, @file_type, @pipeline_version, @schema_version, CURRENT_TIMESTAMP(), @xml_release_date, @bucket_dir, @ftp_release_date_time, @ftp_last_modified_date_time);
+    (NULL, @file_type, @pipeline_version, @schema_version, CURRENT_TIMESTAMP(), @xml_release_date, @bucket_dir, @ftp_released, @ftp_last_modified);
     """
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
@@ -303,8 +303,8 @@ def write_started(  # noqa: PLR0913
             bigquery.ScalarQueryParameter("schema_version", "STRING", schema_version),
             bigquery.ScalarQueryParameter("xml_release_date", "STRING", release_date),
             bigquery.ScalarQueryParameter("bucket_dir", "STRING", bucket_dir),
-            bigquery.ScalarQueryParameter("ftp_release_date_time", "STRING", ftp_release_date_time),
-            bigquery.ScalarQueryParameter("ftp_last_modified_date_time", "STRING", ftp_last_modified_date_time),
+            bigquery.ScalarQueryParameter("ftp_released", "STRING", ftp_released),
+            bigquery.ScalarQueryParameter("ftp_last_modified", "STRING", ftp_last_modified),
         ]
     )
 
