@@ -104,12 +104,14 @@ def ensure_history_view_exists(
         rcv.bucket_dir as rcv_bucket_dir,
         rcv.parsed_files as rcv_parsed_files,
         -- BQ Ingest fields
+        bq.file_type as bq_file_type,
         bq.release_date as bq_release_date,
         bq.pipeline_version as bq_pipeline_version,
         bq.schema_version as bq_schema_version,
         bq.processing_started as bq_processing_started,
         bq.processing_finished as bq_processing_finished,
         -- Stored procedure processing fields
+        sp.file_type as sp_file_type,
         sp.release_date as sp_release_date,
         sp.pipeline_version as sp_pipeline_version,
         sp.schema_version as sp_schema_version,
@@ -221,12 +223,14 @@ def write_started(  # noqa: PLR0913
         release_tag: str,
         schema_version: str,
         file_type: ClinVarIngestFileFormat,
-        bucket_dir: str,
+        bucket_dir: str | None = None,  # TODO - Causes problems due to SQl Lookup?
         client: bigquery.Client | None = None,
+        ftp_release_date_time: str | None = None,
+        ftp_last_modified_date_time: str | None = None,
         error_if_exists=True,
 ):
     """
-    Writes the status of the VCV processing to the processing_history table.
+    Writes the status of processing to the processing_history table.
 
     Example:
     write_vcv_started(
@@ -287,19 +291,20 @@ def write_started(  # noqa: PLR0913
 
     sql = f"""
     INSERT INTO {fully_qualified_table_id}
-    (release_date, file_type, pipeline_version, schema_version, processing_started, xml_release_date, bucket_dir)
+    (release_date, file_type, pipeline_version, schema_version, processing_started, xml_release_date, bucket_dir, ftp_release_date_time, ftp_last_modified_date_time)
     VALUES
-    (NULL, @file_type, @pipeline_version, @schema_version, CURRENT_TIMESTAMP(), @xml_release_date, @bucket_dir);
+    (NULL, @file_type, @pipeline_version, @schema_version, CURRENT_TIMESTAMP(), @xml_release_date, @bucket_dir, @ftp_release_date_time, @ftp_last_modified_date_time);
     """
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
-            # Omitting release_date until VCV and RCV are merged
             # bigquery.ScalarQueryParameter("release_date", "STRING", None),
             bigquery.ScalarQueryParameter("file_type", "STRING", file_type),
             bigquery.ScalarQueryParameter("pipeline_version", "STRING", release_tag),
             bigquery.ScalarQueryParameter("schema_version", "STRING", schema_version),
             bigquery.ScalarQueryParameter("xml_release_date", "STRING", release_date),
             bigquery.ScalarQueryParameter("bucket_dir", "STRING", bucket_dir),
+            bigquery.ScalarQueryParameter("ftp_release_date_time", "STRING", ftp_release_date_time),
+            bigquery.ScalarQueryParameter("ftp_last_modified_date_time", "STRING", ftp_last_modified_date_time),
         ]
     )
 
@@ -554,17 +559,15 @@ def read_processing_history_entries(
     return query_job.result()
 
 
-def processed_entries_ready_to_be_ingested(
+def processed_entries_ready_for_bq_ingest(
         processing_history_view_table: bigquery.Table,
         client: bigquery.Client | None = None,
 ) -> google.cloud.bigquery.table.RowIterator:
     """
     Reads the pairwise view of the processing history table linking
-    VCV and RCV processing events within a day of each other.
-    Returns those which have finished processing but have not
-    yet been ingested and assigned a final `release_date`.
-
-    TODO maybe be more explicit about this rather than relying on NULL release_date
+    VCV and RCV processing events within a day of each other, and
+    returns those which have finished vcv/rcv ingest processing but have not
+    yet run bq ingest against them.
     """
     if client is None:
         client = bigquery.Client()
@@ -590,10 +593,59 @@ def processed_entries_ready_to_be_ingested(
     WHERE vcv_processing_finished IS NOT NULL
     AND rcv_processing_finished IS NOT NULL
     AND release_date IS NULL
-    AND vcv_bq_ingest_processing IS NOT TRUE
+    AND bq_release_date IS NULL
+    AND bq_processing_started IS NULL
     """
     query_job = client.query(query)
     return query_job.result()
+
+
+def processed_entries_ready_for_sp_processing(
+        processing_history_view_table: bigquery.Table,
+        client: bigquery.Client | None = None,
+) -> google.cloud.bigquery.table.RowIterator:
+    """
+    Reads the pairwise view of the processing history table linking
+    VCV and RCV processing events within a day of each other, and
+    returns those which have finished bq ingest processing but have not
+    yet had stored procedures (sp) executed against them.
+    """
+    if client is None:
+        client = bigquery.Client()
+    query = f"""
+    SELECT
+        release_date,
+        vcv_file_type,
+        vcv_pipeline_version,
+        vcv_processing_started,
+        vcv_processing_finished,
+        vcv_xml_release_date,
+        vcv_bucket_dir,
+        vcv_parsed_files,
+        vcv_bq_ingest_processing,
+        rcv_file_type,
+        rcv_pipeline_version,
+        rcv_processing_started,
+        rcv_processing_finished,
+        rcv_xml_release_date,
+        rcv_bucket_dir,
+        rcv_parsed_files
+    FROM {processing_history_view_table}
+    WHERE vcv_processing_finished IS NOT NULL
+    AND rcv_processing_finished IS NOT NULL
+    AND bq_processing_finished IS NULL
+    AND release_date IS NOT NULL
+    AND sp_release_date IS NULL
+    """
+    query_job = client.query(query)
+    return query_job.result()
+
+
+def ingested_entries_ready_to_be_processed(
+        processing_history_view_table: bigquery.Table,
+        client: bigquery.Client | None = None,
+) -> google.cloud.bigquery.table.RowIterator:
+    pass
 
 
 def update_bq_ingest_processing(

@@ -8,6 +8,7 @@ import os
 
 from google.cloud import bigquery
 
+from clinvar_ingest.cloud.bigquery import processing_history
 from clinvar_ingest.config import get_stored_procedures_env
 from clinvar_ingest.slack import send_slack_message
 
@@ -29,9 +30,17 @@ def _get_bq_client() -> bigquery.Client:
 ################################################################
 ### Initialization code
 
-# Main env for the codebase
+# Main env for tprocessing stored procedures - different from the rest!!!!
 env = get_stored_procedures_env()
 _logger.info(f"Stored procedures execution environment: {env}")
+
+################################################################
+# Write record to processing_history indicating this workflow has begun
+processing_history_table = processing_history.ensure_initialized(
+    client=_get_bq_client()
+)
+
+# TODO ===== which records to process
 
 # TODO: consider request/response validation of request in requests.py - overkill?
 client = _get_bq_client()

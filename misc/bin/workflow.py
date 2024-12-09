@@ -83,10 +83,6 @@ _logger.info(workflow_id_message)
 
 ################################################################
 # Write record to processing_history indicating this workflow has begun
-# write_start_processing_fn = {
-#     ClinVarIngestFileFormat.RCV: processing_history.write_rcv_started,
-#     ClinVarIngestFileFormat.VCV: processing_history.write_vcv_started,
-# }[file_mode]
 processing_history_table = processing_history.ensure_initialized(
     client=_get_bq_client()
 )
@@ -103,6 +99,8 @@ processing_history.write_started(
     # The directory within the executions_output_prefix. See gcs_base in copy()
     bucket_dir=workflow_execution_id,
     client=_get_bq_client(),
+    ftp_release_date_time=wf_input.released.isoformat(),
+    ftp_last_modified_date_time=wf_input.last_modified.isoformat(),
     error_if_exists=False,
 )
 
