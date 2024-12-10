@@ -32,6 +32,10 @@
     "type": "STRING"
   },
   {
+    "name": "interp_explanation",
+    "type": "STRING"
+  },
+  {
     "name": "most_recent_submission",
     "type": "DATE"
   },

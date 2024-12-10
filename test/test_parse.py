@@ -831,5 +831,32 @@ def test_clean_object():
     assert clean_object(obj) is None
 
 
+def test_vcv_classification_explanation():
+    filename = "test/data/VCV000177881.xml"
+    with open(filename) as f:
+        objects = list(read_clinvar_vcv_xml(f))
+
+    vcv_classification = [
+        o for o in objects if isinstance(o, VariationArchiveClassification)
+    ]
+    assert len(vcv_classification) == 3
+
+    germline_classification = [
+        o
+        for o in vcv_classification
+        if o.statement_type == StatementType.GermlineClassification
+    ]
+    assert len(germline_classification) == 1
+    germline_classification = germline_classification[0]
+
+    assert (
+        germline_classification.interp_explanation
+        == "Pathogenic(1); Uncertain significance(2)"
+    )
+
+    explanation_content = germline_classification.content["Explanation"]
+    assert explanation_content == {"@DataSource": "ClinVar", "@Type": "public"}
+
+
 if __name__ == "__main__":
     test_read_original_clinvar_variation_2()
