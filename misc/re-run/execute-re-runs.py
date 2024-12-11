@@ -22,9 +22,23 @@ region = "us-east1"
 # file_format = "vcv"
 
 # ftp_watcher_file = "misc/re-run/ftp-watcher-rcv-2024-10-27.txt"
+# ftp_watcher_file = "misc/re-run/ftp-watcher-rcv-2024-11-03.txt"
+# instance_name = "clinvar-vcv-ingest"
+# file_format = "rcv"
+
+# clinvar-vcv-ingest-kyle-dev-ncvkq
+# ftp_watcher_file = "misc/re-run/ftp-watcher-rcv-2024-10-27.txt"
+# clinvar-vcv-ingest-kyle-dev-qbh7x
 ftp_watcher_file = "misc/re-run/ftp-watcher-rcv-2024-11-03.txt"
-instance_name = "clinvar-rcv-ingest"
+instance_name = "clinvar-vcv-ingest-kyle-dev"
 file_format = "rcv"
+
+# clinvar-vcv-ingest-kyle-dev-bl8w5
+# ftp_watcher_file = "misc/re-run/ftp-watcher-vcv-2024-10-27.txt"
+# clinvar-vcv-ingest-kyle-dev-vn2md
+# ftp_watcher_file = "misc/re-run/ftp-watcher-vcv-2024-11-03.txt"
+# instance_name = "clinvar-vcv-ingest-kyle-dev"
+# file_format = "vcv"
 
 
 def run_command(
