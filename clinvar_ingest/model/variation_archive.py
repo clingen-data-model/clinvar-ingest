@@ -970,6 +970,7 @@ class VariationArchiveClassification(Model):
     date_created: str
     date_last_evaluated: str
     interp_description: str
+    interp_explanation: str
     most_recent_submission: str
 
     # Only for SomaticClinicalImpact
@@ -994,6 +995,13 @@ class VariationArchiveClassification(Model):
         from the original `Classifications` XML/dict, indicating the type.
         """
         interp_description = extract(inp, "Description")
+
+        """
+        explanation example:
+        <Explanation DataSource="ClinVar" Type="public">Pathogenic(1); Uncertain significance(2)</Explanation>
+        """
+        # Get the explanation inner text but leave the attributes behind
+        interp_explanation = extract(get(inp, "Explanation"), "$")
         return VariationArchiveClassification(
             vcv_id=vcv_id,
             statement_type=statement_type,
@@ -1002,6 +1010,7 @@ class VariationArchiveClassification(Model):
             num_submissions=int_or_none(extract(inp, "@NumberOfSubmissions")),
             date_created=sanitize_date(extract(inp, "@DateCreated")),
             interp_description=extract(interp_description, "$"),
+            interp_explanation=interp_explanation,
             most_recent_submission=sanitize_date(extract(inp, "@MostRecentSubmission")),
             date_last_evaluated=sanitize_date(extract(inp, "@DateLastEvaluated")),
             clinical_impact_assertion_type=extract(
