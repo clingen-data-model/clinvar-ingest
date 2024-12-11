@@ -355,13 +355,8 @@ def write_finished(
         query_parameters=[
             bigquery.ScalarQueryParameter("release_date", "STRING", release_date),
             bigquery.ScalarQueryParameter("release_tag", "STRING", release_tag),
-            #bigquery.ScalarQueryParameter("schema_version", "STRING", schema_version),
             bigquery.ScalarQueryParameter("file_type", "STRING", file_type),
             bigquery.ScalarQueryParameter("bucket_dir", "STRING", bucket_dir),
-            # bigquery.ScalarQueryParameter("xml_release_date", "STRING", xml_release_date),
-            #bigquery.ScalarQueryParameter("ftp_released", "STRING", ftp_released),
-            #bigquery.ScalarQueryParameter("ftp_last_modified", "STRING", ftp_last_modified),
-            #bigquery.ScalarQueryParameter("pipeline_version", "STRING", release_tag),
         ]
     )
 
@@ -654,7 +649,7 @@ def processed_entries_ready_for_sp_processing(
     FROM {processing_history_view_table}
     WHERE vcv_processing_finished IS NOT NULL
     AND rcv_processing_finished IS NOT NULL
-    AND bq_processing_finished IS NULL
+    AND bq_processing_finished IS NOT NULL
     AND release_date IS NOT NULL
     AND sp_release_date IS NULL
     ORDER BY release_date
