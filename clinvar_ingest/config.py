@@ -35,6 +35,7 @@ class BaseEnv(Env):
     location: str
     release_tag: str
     schema_version: str
+    file_format_mode: Literal["vcv", "rcv", "bq", "sp"]
 
 
 def _get_base_env() -> BaseEnv:
@@ -50,6 +51,7 @@ def _get_base_env() -> BaseEnv:
         release_tag=env_or_dotenv_or("CLINVAR_INGEST_RELEASE_TAG", throw=True),
         schema_version=env_or_dotenv_or("CLINVAR_INGEST_SCHEMA_VERSION", default="v2"),
         location = env_or_dotenv_or("CLINVAR_INGEST_LOCATION", default="us-east1"),
+        file_format_mode = env_or_dotenv_or("file_format", throw=True),
         )
 
 
@@ -58,7 +60,6 @@ class ClinVarEnv(BaseEnv):
     bucket_staging_prefix: str
     parse_output_prefix: str
     executions_output_prefix: str
-    file_format_mode: Literal["vcv", "rcv", "bq", "sp"] = "vcv"
 
     @field_validator("bucket_name")
     @classmethod

@@ -92,7 +92,7 @@ processing_history_view = processing_history.ensure_history_view_exists(
 )
 processing_history.write_started(
     processing_history_table=processing_history_table,
-    release_date=release_date,
+    release_date=None,
     release_tag=env.release_tag,
     schema_version=env.schema_version,
     file_type=file_mode,
@@ -101,6 +101,7 @@ processing_history.write_started(
     client=_get_bq_client(),
     ftp_released=wf_input.released.isoformat(),
     ftp_last_modified=wf_input.last_modified.isoformat(),
+    xml_release_date=release_date,
     error_if_exists=False,
 )
 

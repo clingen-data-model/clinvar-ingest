@@ -130,7 +130,15 @@ def ensure_history_view_exists(
     AND vcv.pipeline_version = rcv.pipeline_version
     LEFT JOIN
     (SELECT * FROM `{processing_history_table}` WHERE file_type = "bq") bq
-    ON bq.release_date = vcv.release_date
+    ON (
+        bq.release_date >= DATE_SUB(vcv.xml_release_date, INTERVAL 1 DAY)
+        AND
+        bq.release_date <= DATE_ADD(vcv.xml_release_date, INTERVAL 1 DAY)
+        AND
+        bq.release_date >= DATE_SUB(rcv.xml_release_date, INTERVAL 1 DAY)
+        AND
+        bq.release_date <= DATE_ADD(rcv.xml_release_date, INTERVAL 1 DAY)
+    )
     LEFT JOIN
     (SELECT * FROM `{processing_history_table}` WHERE file_type = "sp") sp
     ON sp.release_date = bq.release_date
@@ -219,7 +227,7 @@ def check_started_exists(
 
 def write_started(  # noqa: PLR0913
         processing_history_table: bigquery.Table,
-        release_date: str,
+        release_date: str | None,
         release_tag: str,
         schema_version: str,
         file_type: ClinVarIngestFileFormat,
@@ -227,6 +235,7 @@ def write_started(  # noqa: PLR0913
         client: bigquery.Client | None = None,
         ftp_released: str | None = None,
         ftp_last_modified: str | None = None,
+        xml_release_date: str | None = None,
         error_if_exists=True,
 ):
     """
@@ -248,21 +257,35 @@ def write_started(  # noqa: PLR0913
         client = bigquery.Client()
     fully_qualified_table_id = str(processing_history_table)
 
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("release_date", "STRING", release_date),
+            bigquery.ScalarQueryParameter("release_tag", "STRING", release_tag),
+            bigquery.ScalarQueryParameter("schema_version", "STRING", schema_version),
+            bigquery.ScalarQueryParameter("file_type", "STRING", file_type),
+            bigquery.ScalarQueryParameter("bucket_dir", "STRING", bucket_dir),
+            bigquery.ScalarQueryParameter("xml_release_date", "STRING", xml_release_date),
+            bigquery.ScalarQueryParameter("ftp_released", "STRING", ftp_released),
+            bigquery.ScalarQueryParameter("ftp_last_modified", "STRING", ftp_last_modified),
+            bigquery.ScalarQueryParameter("pipeline_version", "STRING", release_tag),
+        ]
+    )
+
     # Check to see if there is a matching existing row
     select_query = f"""
     SELECT COUNT(*) as c
-    FROM {fully_qualified_table_id}
-    WHERE file_type = '{file_type}'
-    AND pipeline_version = '{release_tag}'
-    AND xml_release_date = '{release_date}'
-    AND bucket_dir = '{bucket_dir}'
+    FROM `{fully_qualified_table_id}`
+    WHERE file_type = @file_type
+    AND pipeline_version = @release_tag
+    AND xml_release_date = @release_date
+    AND bucket_dir = @bucket_dir
     """  # TODO prepared statement  # noqa: S608
     _logger.info(
         f"Checking if matching row exists for job started event. "
         f"file_type={file_type}, release_date={release_date}, "
         f"release_tag={release_tag}, bucket_dir={bucket_dir}"
     )
-    query_job = client.query(select_query)
+    query_job = client.query(select_query, job_config=job_config)
     results = query_job.result()
     for row in results:
         if row.c != 0:
@@ -280,12 +303,12 @@ def write_started(  # noqa: PLR0913
             _logger.warning("Deleting existing row.")
             delete_query = f"""
                 DELETE FROM {fully_qualified_table_id}
-                WHERE file_type = '{file_type}'
-                AND pipeline_version = '{release_tag}'
-                AND xml_release_date = '{release_date}'
-                AND bucket_dir = '{bucket_dir}'
+                WHERE file_type = @file_type
+                AND pipeline_version = @release_tag
+                AND xml_release_date = @release_date
+                AND bucket_dir = @bucket_dir
                 """  # noqa: S608
-            query_job = client.query(delete_query)
+            query_job = client.query(delete_query, job_config=job_config)
             _ = query_job.result()
             _logger.info(f"Deleted {query_job.dml_stats.deleted_row_count} rows.")
 
@@ -293,20 +316,8 @@ def write_started(  # noqa: PLR0913
     INSERT INTO {fully_qualified_table_id}
     (release_date, file_type, pipeline_version, schema_version, processing_started, xml_release_date, bucket_dir, ftp_released, ftp_last_modified)
     VALUES
-    (NULL, @file_type, @pipeline_version, @schema_version, CURRENT_TIMESTAMP(), @xml_release_date, @bucket_dir, @ftp_released, @ftp_last_modified);
+    (@release_date, @file_type, @pipeline_version, @schema_version, CURRENT_TIMESTAMP(), @xml_release_date, @bucket_dir, @ftp_released, @ftp_last_modified);
     """
-    job_config = bigquery.QueryJobConfig(
-        query_parameters=[
-            # bigquery.ScalarQueryParameter("release_date", "STRING", None),
-            bigquery.ScalarQueryParameter("file_type", "STRING", file_type),
-            bigquery.ScalarQueryParameter("pipeline_version", "STRING", release_tag),
-            bigquery.ScalarQueryParameter("schema_version", "STRING", schema_version),
-            bigquery.ScalarQueryParameter("xml_release_date", "STRING", release_date),
-            bigquery.ScalarQueryParameter("bucket_dir", "STRING", bucket_dir),
-            bigquery.ScalarQueryParameter("ftp_released", "STRING", ftp_released),
-            bigquery.ScalarQueryParameter("ftp_last_modified", "STRING", ftp_last_modified),
-        ]
-    )
 
     # Run a synchronous query job and get the results
     query_job = client.query(sql, job_config=job_config)
@@ -327,21 +338,11 @@ def write_finished(
         release_tag: str,
         file_type: ClinVarIngestFileFormat,
         bucket_dir: str,
-        parsed_files: dict,  # ParseResponse.parsed_files
+        parsed_files: dict | None = None,  # ParseResponse.parsed_files
         client: bigquery.Client | None = None,
 ):
     """
     Writes the status of the VCV processing to the processing_history table.
-
-    Example:
-    write_finished(
-        processing_history_table=table,
-        release_date="2024-07-23",
-        release_tag="local_dev",
-        file_type=ClinVarIngestFileFormat("vcv"),
-        vcv_bucket_dir="clinvar_vcv_2024_07_23_local_dev",
-        client=client,
-    )
 
     TODO might consider using the client.insert_rows method instead of a query
     since it returns the rows inserted.
@@ -350,21 +351,35 @@ def write_finished(
         client = bigquery.Client()
     fully_qualified_table_id = str(processing_history_table)
 
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("release_date", "STRING", release_date),
+            bigquery.ScalarQueryParameter("release_tag", "STRING", release_tag),
+            #bigquery.ScalarQueryParameter("schema_version", "STRING", schema_version),
+            bigquery.ScalarQueryParameter("file_type", "STRING", file_type),
+            bigquery.ScalarQueryParameter("bucket_dir", "STRING", bucket_dir),
+            # bigquery.ScalarQueryParameter("xml_release_date", "STRING", xml_release_date),
+            #bigquery.ScalarQueryParameter("ftp_released", "STRING", ftp_released),
+            #bigquery.ScalarQueryParameter("ftp_last_modified", "STRING", ftp_last_modified),
+            #bigquery.ScalarQueryParameter("pipeline_version", "STRING", release_tag),
+        ]
+    )
+
     # Check to make sure there is exactly 1 started row before doing the update
     select_query = f"""
     SELECT COUNT(*) as c
     FROM {fully_qualified_table_id}
-    WHERE file_type = '{file_type}'
-    AND pipeline_version = '{release_tag}'
-    AND xml_release_date = '{release_date}'
-    AND bucket_dir = '{bucket_dir}'
+    WHERE file_type = @file_type
+    AND pipeline_version = @release_tag
+    AND xml_release_date = @release_date
+    AND bucket_dir = @bucket_dir
     """  # noqa: S608
     _logger.info(
         f"Ensuring 1 started row exists before writing finished event. "
         f"file_type={file_type}, release_date={release_date}, "
         f"release_tag={release_tag}, bucket_dir={bucket_dir}"
     )
-    query_job = client.query(select_query)
+    query_job = client.query(select_query, job_config=job_config)
     results = query_job.result()
     for row in results:
         if row.c != 1:
@@ -380,17 +395,21 @@ def write_finished(
     UPDATE {fully_qualified_table_id}
     SET processing_finished = CURRENT_TIMESTAMP(),
         parsed_files = @parsed_files
-    WHERE file_type = '{file_type}'
-    AND pipeline_version = '{release_tag}'
-    AND xml_release_date = '{release_date}'
-    AND bucket_dir = '{bucket_dir}'
+    WHERE file_type = @file_type
+    AND pipeline_version = @release_tag
+    AND xml_release_date = @release_date
+    AND bucket_dir = @bucket_dir
     """  # noqa: S608
     # print(f"Query: {query}")
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
-            bigquery.ScalarQueryParameter(
-                "parsed_files", "JSON", json.dumps(_internal_model_dump(parsed_files))
-            )
+            bigquery.ScalarQueryParameter("parsed_files", "JSON", json.dumps(_internal_model_dump(parsed_files))
+            ),
+            bigquery.ScalarQueryParameter("release_date", "STRING", release_date),
+            bigquery.ScalarQueryParameter("release_tag", "STRING", release_tag),
+            bigquery.ScalarQueryParameter("file_type", "STRING", file_type),
+            bigquery.ScalarQueryParameter("bucket_dir", "STRING", bucket_dir),
+
         ]
     )
 
@@ -576,14 +595,15 @@ def processed_entries_ready_for_bq_ingest(
         release_date,
         vcv_file_type,
         vcv_pipeline_version,
+        vcv_schema_version,
         vcv_processing_started,
         vcv_processing_finished,
         vcv_xml_release_date,
         vcv_bucket_dir,
         vcv_parsed_files,
-        vcv_bq_ingest_processing,
         rcv_file_type,
         rcv_pipeline_version,
+        rcv_schema_version,
         rcv_processing_started,
         rcv_processing_finished,
         rcv_xml_release_date,
@@ -595,9 +615,11 @@ def processed_entries_ready_for_bq_ingest(
     AND release_date IS NULL
     AND bq_release_date IS NULL
     AND bq_processing_started IS NULL
+    ORDER BY vcv_xml_release_date
     """
     query_job = client.query(query)
-    return query_job.result()
+    results = query_job.result()
+    return results
 
 
 def processed_entries_ready_for_sp_processing(
@@ -622,7 +644,6 @@ def processed_entries_ready_for_sp_processing(
         vcv_xml_release_date,
         vcv_bucket_dir,
         vcv_parsed_files,
-        vcv_bq_ingest_processing,
         rcv_file_type,
         rcv_pipeline_version,
         rcv_processing_started,
@@ -636,6 +657,7 @@ def processed_entries_ready_for_sp_processing(
     AND bq_processing_finished IS NULL
     AND release_date IS NOT NULL
     AND sp_release_date IS NULL
+    ORDER BY release_date
     """
     query_job = client.query(query)
     return query_job.result()
