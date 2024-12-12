@@ -24,6 +24,11 @@ def env_config() -> config.Env:
     clinvar.api.main is imported, necessary since the app is constructed upon import
     and checks whether the required environment variables are set.
     """
-    config._bucket_name = "clinvar-ingest-not-a-real-bucket"
+    config._dotenv_values = {
+        "file_format": "vcv",
+        "CLINVAR_INGEST_BUCKET": "clinvar-ingest-not-a-real-bucket",
+        "BQ_DEST_PROJECT": "not a real project",
+        "CLINVAR_INGEST_RELEASE_TAG": "not a real tag",
+    }
 
     return config.get_env()

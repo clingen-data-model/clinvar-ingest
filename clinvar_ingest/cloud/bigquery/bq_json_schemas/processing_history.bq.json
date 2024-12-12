@@ -40,7 +40,11 @@
     "type": "JSON"
   },
   {
-      "name": "bq_ingest_processing",
-      "type": "BOOLEAN"
+      "name": "ftp_released",
+      "type": "TIMESTAMP"
+  },
+  {
+      "name": "ftp_last_modified",
+      "type": "TIMESTAMP"
   }
 ]

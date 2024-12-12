@@ -26,18 +26,43 @@ def env_or_dotenv_or(
 
 
 class Env(BaseModel):
+    pass
+
+
+class BaseEnv(Env):
     bq_dest_project: str
     bq_meta_dataset: str
+    slack_token: str | None
+    slack_channel: str
+    location: str
+    release_tag: str
+    schema_version: str
+    file_format_mode: Literal["vcv", "rcv", "bq", "sp"]
+
+
+def _get_base_env() -> BaseEnv:
+    return BaseEnv(
+        bq_dest_project=env_or_dotenv_or("BQ_DEST_PROJECT", throw=True),
+        bq_meta_dataset=env_or_dotenv_or(
+            "CLINVAR_INGEST_BQ_META_DATASET", default="clinvar_ingest"
+        ),
+        slack_token=env_or_dotenv_or("CLINVAR_INGEST_SLACK_TOKEN"),
+        # defaults to test "clinvar-message-test"
+        slack_channel=env_or_dotenv_or(
+            "CLINVAR_INGEST_SLACK_CHANNEL", default="C06QFR0278D"
+        ),
+        release_tag=env_or_dotenv_or("CLINVAR_INGEST_RELEASE_TAG", throw=True),
+        schema_version=env_or_dotenv_or("CLINVAR_INGEST_SCHEMA_VERSION", default="v2"),
+        location=env_or_dotenv_or("CLINVAR_INGEST_LOCATION", default="us-east1"),
+        file_format_mode=env_or_dotenv_or("file_format", throw=True),
+    )
+
+
+class ClinVarEnv(BaseEnv):
     bucket_name: str
     bucket_staging_prefix: str
     parse_output_prefix: str
     executions_output_prefix: str
-    slack_token: str | None
-    slack_channel: str
-    release_tag: str
-    schema_version: str
-    # TODO unused aside from the default value. Never set from the environment or dotenv. Remove?
-    file_format_mode: Literal["vcv", "rcv"] = "vcv"
 
     @field_validator("bucket_name")
     @classmethod
@@ -47,16 +72,10 @@ class Env(BaseModel):
         return v
 
 
-def get_env() -> Env:
-    """
-    Returns an Env object using the default environment
-    variables and any default values.
-    """
-    return Env(
-        bq_dest_project=env_or_dotenv_or("BQ_DEST_PROJECT", throw=True),
-        bq_meta_dataset=env_or_dotenv_or(
-            "CLINVAR_INGEST_BQ_META_DATASET", default="clinvar_ingest"
-        ),
+def get_file_ingest_env() -> ClinVarEnv:
+    _base_env = _get_base_env()
+    env = ClinVarEnv(
+        **_base_env.model_dump(),
         bucket_name=env_or_dotenv_or("CLINVAR_INGEST_BUCKET", throw=True),
         bucket_staging_prefix=env_or_dotenv_or(
             "CLINVAR_INGEST_STAGING_PREFIX", default="clinvar_xml"
@@ -67,11 +86,29 @@ def get_env() -> Env:
         executions_output_prefix=env_or_dotenv_or(
             "CLINVAR_INGEST_EXECUTIONS_PREFIX", default="executions"
         ),
-        slack_token=env_or_dotenv_or("CLINVAR_INGEST_SLACK_TOKEN"),
-        # defaults to test "clinvar-message-test"
-        slack_channel=env_or_dotenv_or(
-            "CLINVAR_INGEST_SLACK_CHANNEL", default="C06QFR0278D"
-        ),
-        release_tag=env_or_dotenv_or("CLINVAR_INGEST_RELEASE_TAG", throw=True),
-        schema_version=env_or_dotenv_or("CLINVAR_INGEST_SCHEMA_VERSION", default="v2"),
     )
+    _set_env(env)
+    return env
+
+
+class StoredProceduresEnv(BaseEnv):
+    pass
+
+
+def get_stored_procedures_env() -> StoredProceduresEnv:
+    _base_env = _get_base_env()
+    env = StoredProceduresEnv(
+        **_base_env.model_dump(),
+    )
+    _set_env(env)
+    return env
+
+
+def _set_env(env: Env):
+    if getattr(Env, "env", None) is None:
+        Env.env = env
+    return Env.env
+
+
+def get_env() -> Env:
+    return getattr(Env, "env", get_file_ingest_env())

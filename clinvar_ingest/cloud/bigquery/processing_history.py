@@ -4,7 +4,7 @@ from pathlib import PurePath
 
 import google.cloud.bigquery.table
 from google.api_core.exceptions import NotFound
-from google.cloud import bigquery, storage
+from google.cloud import bigquery
 from pydantic import BaseModel
 
 from clinvar_ingest.api.model.requests import walk_and_replace
@@ -12,7 +12,7 @@ from clinvar_ingest.cloud.bigquery.create_tables import (
     ensure_dataset_exists,
     schema_file_path_for_table,
 )
-from clinvar_ingest.config import Env, get_env
+from clinvar_ingest.config import get_env
 from clinvar_ingest.utils import ClinVarIngestFileFormat
 
 _logger = logging.getLogger("clinvar_ingest")
@@ -52,25 +52,30 @@ def create_processing_history_table(
     return client.create_table(table)  # error if exists
 
 
-def ensure_pairs_view_exists(
+def ensure_history_view_exists(
     processing_history_table: bigquery.Table,
     client: bigquery.Client | None = None,
 ):
     """
-    Creates the pairwise view of the processing history table linking
-    VCV and RCV processing events within a day of each other.
-    Used downstream during the ingest to bigquery step.
+    Creates the view of the processing history table linking
+    VCV, RCV processing events within a day of each other,
+    along with subsequent BQ Ingest and Stored procedures
+    processing steps (the latter two may not have run yet).
+
+    Used downstream by the BQ Ingest and Stored procedures
+    cloud scheduler invoked processing steps, to determine
+    when to run and track start and end times of each step.
     """
     if client is None:
         client = bigquery.Client()
     # Get the project from the client
     project = client.project
-    env: Env = get_env()
+    env = get_env()
     dataset_name = env.bq_meta_dataset  # The last part of <project>.<dataset_name>
-    table_name = "processing_history_pairs"
+    table_name = "processing_history_view"
 
-    # saved in bigquery as a saved query in clingen-dev called "processing_history_pairs"
-    # creates a view called clingen-dev.clinvar_ingest.processing_history_pairs
+    # saved in bigquery as a saved query in clingen-dev called "processing_history_view"
+    # creates a view called clingen-dev.clinvar_ingest.processing_history_view
     query = f"""
     CREATE OR REPLACE VIEW `{project}.{dataset_name}.{table_name}` AS
     SELECT
@@ -88,7 +93,6 @@ def ensure_pairs_view_exists(
         vcv.xml_release_date as vcv_xml_release_date,
         vcv.bucket_dir as vcv_bucket_dir,
         vcv.parsed_files as vcv_parsed_files,
-        vcv.bq_ingest_processing as vcv_bq_ingest_processing,
         -- RCV fields
         rcv.file_type as rcv_file_type,
         rcv.pipeline_version as rcv_pipeline_version,
@@ -98,7 +102,22 @@ def ensure_pairs_view_exists(
         rcv.release_date as rcv_release_date,
         rcv.xml_release_date as rcv_xml_release_date,
         rcv.bucket_dir as rcv_bucket_dir,
-        rcv.parsed_files as rcv_parsed_files
+        rcv.parsed_files as rcv_parsed_files,
+        -- BQ Ingest fields
+        bq.file_type as bq_file_type,
+        bq.release_date as bq_release_date,
+        bq.pipeline_version as bq_pipeline_version,
+        bq.schema_version as bq_schema_version,
+        bq.processing_started as bq_processing_started,
+        bq.processing_finished as bq_processing_finished,
+        -- Stored procedure processing fields
+        sp.file_type as sp_file_type,
+        sp.release_date as sp_release_date,
+        sp.pipeline_version as sp_pipeline_version,
+        sp.schema_version as sp_schema_version,
+        sp.processing_started as sp_processing_started,
+        sp.processing_finished as sp_processing_finished,
+        --
     FROM
     (SELECT * FROM `{processing_history_table}` WHERE file_type = "vcv") vcv
     INNER JOIN
@@ -109,6 +128,20 @@ def ensure_pairs_view_exists(
         vcv.xml_release_date <= DATE_ADD(rcv.xml_release_date, INTERVAL 1 DAY)
     )
     AND vcv.pipeline_version = rcv.pipeline_version
+    LEFT JOIN
+    (SELECT * FROM `{processing_history_table}` WHERE file_type = "bq") bq
+    ON (
+        bq.release_date >= DATE_SUB(vcv.xml_release_date, INTERVAL 1 DAY)
+        AND
+        bq.release_date <= DATE_ADD(vcv.xml_release_date, INTERVAL 1 DAY)
+        AND
+        bq.release_date >= DATE_SUB(rcv.xml_release_date, INTERVAL 1 DAY)
+        AND
+        bq.release_date <= DATE_ADD(rcv.xml_release_date, INTERVAL 1 DAY)
+    )
+    LEFT JOIN
+    (SELECT * FROM `{processing_history_table}` WHERE file_type = "sp") sp
+    ON sp.release_date = bq.release_date
     """  # noqa: S608
     query_job = client.query(query)
     _ = query_job.result()
@@ -116,7 +149,8 @@ def ensure_pairs_view_exists(
 
 
 def ensure_initialized(
-    client: bigquery.Client | None = None, storage_client: storage.Client | None = None
+    client: bigquery.Client | None = None,
+    # storage_client: storage.Client | None = None,
 ) -> bigquery.Table:
     """
     Ensures that the bigquery clinvar-ingest metadata dataset and processing_history
@@ -133,25 +167,17 @@ def ensure_initialized(
     table = ensure_initialized(client=client, storage_client=storage_client)
     print(str(table))
     """
-    env: Env = get_env()
+    env = get_env()
     dataset_name = env.bq_meta_dataset  # The last part of <project>.<dataset_name>
 
     if client is None:
         client = bigquery.Client()
 
-    if storage_client is None:
-        storage_client = storage.Client()
-
-    # Look up the bucket from the env and get its location
-    # Throws error if bucket not found
-    bucket = storage_client.get_bucket(env.bucket_name)
-    bucket_location = bucket.location
-
     dataset = ensure_dataset_exists(
         client,
         project=env.bq_dest_project,
         dataset_id=dataset_name,
-        location=bucket_location,
+        location=env.location,
     )
 
     # Check to see if a table named "processing_history" exists in that dataset
@@ -201,16 +227,19 @@ def check_started_exists(
 
 def write_started(  # noqa: PLR0913
     processing_history_table: bigquery.Table,
-    release_date: str,
+    release_date: str | None,
     release_tag: str,
     schema_version: str,
     file_type: ClinVarIngestFileFormat,
-    bucket_dir: str,
+    bucket_dir: str | None = None,  # TODO - Causes problems due to SQl Lookup?
     client: bigquery.Client | None = None,
+    ftp_released: str | None = None,
+    ftp_last_modified: str | None = None,
+    xml_release_date: str | None = None,
     error_if_exists=True,
 ):
     """
-    Writes the status of the VCV processing to the processing_history table.
+    Writes the status of processing to the processing_history table.
 
     Example:
     write_vcv_started(
@@ -228,21 +257,39 @@ def write_started(  # noqa: PLR0913
         client = bigquery.Client()
     fully_qualified_table_id = str(processing_history_table)
 
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("release_date", "STRING", release_date),
+            bigquery.ScalarQueryParameter("release_tag", "STRING", release_tag),
+            bigquery.ScalarQueryParameter("schema_version", "STRING", schema_version),
+            bigquery.ScalarQueryParameter("file_type", "STRING", file_type),
+            bigquery.ScalarQueryParameter("bucket_dir", "STRING", bucket_dir),
+            bigquery.ScalarQueryParameter(
+                "xml_release_date", "STRING", xml_release_date
+            ),
+            bigquery.ScalarQueryParameter("ftp_released", "STRING", ftp_released),
+            bigquery.ScalarQueryParameter(
+                "ftp_last_modified", "STRING", ftp_last_modified
+            ),
+            bigquery.ScalarQueryParameter("pipeline_version", "STRING", release_tag),
+        ]
+    )
+
     # Check to see if there is a matching existing row
     select_query = f"""
     SELECT COUNT(*) as c
-    FROM {fully_qualified_table_id}
-    WHERE file_type = '{file_type}'
-    AND pipeline_version = '{release_tag}'
-    AND xml_release_date = '{release_date}'
-    AND bucket_dir = '{bucket_dir}'
+    FROM `{fully_qualified_table_id}`
+    WHERE file_type = @file_type
+    AND pipeline_version = @release_tag
+    AND xml_release_date = @release_date
+    AND bucket_dir = @bucket_dir
     """  # TODO prepared statement  # noqa: S608
     _logger.info(
         f"Checking if matching row exists for job started event. "
         f"file_type={file_type}, release_date={release_date}, "
         f"release_tag={release_tag}, bucket_dir={bucket_dir}"
     )
-    query_job = client.query(select_query)
+    query_job = client.query(select_query, job_config=job_config)
     results = query_job.result()
     for row in results:
         if row.c != 0:
@@ -260,32 +307,21 @@ def write_started(  # noqa: PLR0913
             _logger.warning("Deleting existing row.")
             delete_query = f"""
                 DELETE FROM {fully_qualified_table_id}
-                WHERE file_type = '{file_type}'
-                AND pipeline_version = '{release_tag}'
-                AND xml_release_date = '{release_date}'
-                AND bucket_dir = '{bucket_dir}'
+                WHERE file_type = @file_type
+                AND pipeline_version = @release_tag
+                AND xml_release_date = @release_date
+                AND bucket_dir = @bucket_dir
                 """  # noqa: S608
-            query_job = client.query(delete_query)
+            query_job = client.query(delete_query, job_config=job_config)
             _ = query_job.result()
             _logger.info(f"Deleted {query_job.dml_stats.deleted_row_count} rows.")
 
     sql = f"""
     INSERT INTO {fully_qualified_table_id}
-    (release_date, file_type, pipeline_version, schema_version, processing_started, xml_release_date, bucket_dir)
+    (release_date, file_type, pipeline_version, schema_version, processing_started, xml_release_date, bucket_dir, ftp_released, ftp_last_modified)
     VALUES
-    (NULL, @file_type, @pipeline_version, @schema_version, CURRENT_TIMESTAMP(), @xml_release_date, @bucket_dir);
+    (@release_date, @file_type, @pipeline_version, @schema_version, CURRENT_TIMESTAMP(), @xml_release_date, @bucket_dir, @ftp_released, @ftp_last_modified);
     """
-    job_config = bigquery.QueryJobConfig(
-        query_parameters=[
-            # Omitting release_date until VCV and RCV are merged
-            # bigquery.ScalarQueryParameter("release_date", "STRING", None),
-            bigquery.ScalarQueryParameter("file_type", "STRING", file_type),
-            bigquery.ScalarQueryParameter("pipeline_version", "STRING", release_tag),
-            bigquery.ScalarQueryParameter("schema_version", "STRING", schema_version),
-            bigquery.ScalarQueryParameter("xml_release_date", "STRING", release_date),
-            bigquery.ScalarQueryParameter("bucket_dir", "STRING", bucket_dir),
-        ]
-    )
 
     # Run a synchronous query job and get the results
     query_job = client.query(sql, job_config=job_config)
@@ -306,21 +342,11 @@ def write_finished(
     release_tag: str,
     file_type: ClinVarIngestFileFormat,
     bucket_dir: str,
-    parsed_files: dict,  # ParseResponse.parsed_files
+    parsed_files: dict | None = None,  # ParseResponse.parsed_files
     client: bigquery.Client | None = None,
 ):
     """
     Writes the status of the VCV processing to the processing_history table.
-
-    Example:
-    write_finished(
-        processing_history_table=table,
-        release_date="2024-07-23",
-        release_tag="local_dev",
-        file_type=ClinVarIngestFileFormat("vcv"),
-        vcv_bucket_dir="clinvar_vcv_2024_07_23_local_dev",
-        client=client,
-    )
 
     TODO might consider using the client.insert_rows method instead of a query
     since it returns the rows inserted.
@@ -329,21 +355,30 @@ def write_finished(
         client = bigquery.Client()
     fully_qualified_table_id = str(processing_history_table)
 
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("release_date", "STRING", release_date),
+            bigquery.ScalarQueryParameter("release_tag", "STRING", release_tag),
+            bigquery.ScalarQueryParameter("file_type", "STRING", file_type),
+            bigquery.ScalarQueryParameter("bucket_dir", "STRING", bucket_dir),
+        ]
+    )
+
     # Check to make sure there is exactly 1 started row before doing the update
     select_query = f"""
     SELECT COUNT(*) as c
     FROM {fully_qualified_table_id}
-    WHERE file_type = '{file_type}'
-    AND pipeline_version = '{release_tag}'
-    AND xml_release_date = '{release_date}'
-    AND bucket_dir = '{bucket_dir}'
+    WHERE file_type = @file_type
+    AND pipeline_version = @release_tag
+    AND xml_release_date = @release_date
+    AND bucket_dir = @bucket_dir
     """  # noqa: S608
     _logger.info(
         f"Ensuring 1 started row exists before writing finished event. "
         f"file_type={file_type}, release_date={release_date}, "
         f"release_tag={release_tag}, bucket_dir={bucket_dir}"
     )
-    query_job = client.query(select_query)
+    query_job = client.query(select_query, job_config=job_config)
     results = query_job.result()
     for row in results:
         if row.c != 1:
@@ -359,17 +394,21 @@ def write_finished(
     UPDATE {fully_qualified_table_id}
     SET processing_finished = CURRENT_TIMESTAMP(),
         parsed_files = @parsed_files
-    WHERE file_type = '{file_type}'
-    AND pipeline_version = '{release_tag}'
-    AND xml_release_date = '{release_date}'
-    AND bucket_dir = '{bucket_dir}'
+    WHERE file_type = @file_type
+    AND pipeline_version = @release_tag
+    AND xml_release_date = @release_date
+    AND bucket_dir = @bucket_dir
     """  # noqa: S608
     # print(f"Query: {query}")
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
             bigquery.ScalarQueryParameter(
                 "parsed_files", "JSON", json.dumps(_internal_model_dump(parsed_files))
-            )
+            ),
+            bigquery.ScalarQueryParameter("release_date", "STRING", release_date),
+            bigquery.ScalarQueryParameter("release_tag", "STRING", release_tag),
+            bigquery.ScalarQueryParameter("file_type", "STRING", file_type),
+            bigquery.ScalarQueryParameter("bucket_dir", "STRING", bucket_dir),
         ]
     )
 
@@ -504,8 +543,8 @@ def update_final_release_date(  # noqa: PLR0913
     return result, query_job
 
 
-def read_processing_history_pairs(
-    processing_history_pairs_table: bigquery.Table,
+def read_processing_history_entries(
+    processing_history_view_table: bigquery.Table,
     client: bigquery.Client | None = None,
 ) -> google.cloud.bigquery.table.RowIterator:
     """
@@ -532,23 +571,64 @@ def read_processing_history_pairs(
         rcv_xml_release_date,
         rcv_bucket_dir,
         rcv_parsed_files
-    FROM {processing_history_pairs_table}
+    FROM {processing_history_view_table}
     """
     query_job = client.query(query)
     return query_job.result()
 
 
-def processed_pairs_ready_to_be_ingested(
-    processing_history_pairs_table: bigquery.Table,
+def processed_entries_ready_for_bq_ingest(
+    processing_history_view_table: bigquery.Table,
     client: bigquery.Client | None = None,
 ) -> google.cloud.bigquery.table.RowIterator:
     """
     Reads the pairwise view of the processing history table linking
-    VCV and RCV processing events within a day of each other.
-    Returns those which have finished processing but have not
-    yet been ingested and assigned a final `release_date`.
+    VCV and RCV processing events within a day of each other, and
+    returns those which have finished vcv/rcv ingest processing but have not
+    yet run bq ingest against them.
+    """
+    if client is None:
+        client = bigquery.Client()
+    query = f"""
+    SELECT
+        release_date,
+        vcv_file_type,
+        vcv_pipeline_version,
+        vcv_schema_version,
+        vcv_processing_started,
+        vcv_processing_finished,
+        vcv_xml_release_date,
+        vcv_bucket_dir,
+        vcv_parsed_files,
+        rcv_file_type,
+        rcv_pipeline_version,
+        rcv_schema_version,
+        rcv_processing_started,
+        rcv_processing_finished,
+        rcv_xml_release_date,
+        rcv_bucket_dir,
+        rcv_parsed_files
+    FROM {processing_history_view_table}
+    WHERE vcv_processing_finished IS NOT NULL
+    AND rcv_processing_finished IS NOT NULL
+    AND release_date IS NULL
+    AND bq_release_date IS NULL
+    AND bq_processing_started IS NULL
+    ORDER BY vcv_xml_release_date
+    """
+    query_job = client.query(query)
+    return query_job.result()
 
-    TODO maybe be more explicit about this rather than relying on NULL release_date
+
+def processed_entries_ready_for_sp_processing(
+    processing_history_view_table: bigquery.Table,
+    client: bigquery.Client | None = None,
+) -> google.cloud.bigquery.table.RowIterator:
+    """
+    Reads the pairwise view of the processing history table linking
+    VCV and RCV processing events within a day of each other, and
+    returns those which have finished bq ingest processing but have not
+    yet had stored procedures (sp) executed against them.
     """
     if client is None:
         client = bigquery.Client()
@@ -562,7 +642,6 @@ def processed_pairs_ready_to_be_ingested(
         vcv_xml_release_date,
         vcv_bucket_dir,
         vcv_parsed_files,
-        vcv_bq_ingest_processing,
         rcv_file_type,
         rcv_pipeline_version,
         rcv_processing_started,
@@ -570,17 +649,26 @@ def processed_pairs_ready_to_be_ingested(
         rcv_xml_release_date,
         rcv_bucket_dir,
         rcv_parsed_files
-    FROM {processing_history_pairs_table}
+    FROM {processing_history_view_table}
     WHERE vcv_processing_finished IS NOT NULL
     AND rcv_processing_finished IS NOT NULL
-    AND release_date IS NULL
-    AND vcv_bq_ingest_processing IS NOT TRUE
+    AND bq_processing_finished IS NOT NULL
+    AND release_date IS NOT NULL
+    AND sp_release_date IS NULL
+    ORDER BY release_date
     """
     query_job = client.query(query)
     return query_job.result()
 
 
-def update_bq_ingest_processing_flag(
+def ingested_entries_ready_to_be_processed(
+    processing_history_view_table: bigquery.Table,
+    client: bigquery.Client | None = None,
+) -> google.cloud.bigquery.table.RowIterator:
+    pass
+
+
+def update_bq_ingest_processing(
     processing_history_table: bigquery.Table,
     pipeline_version: str,
     xml_release_date: str,
@@ -600,6 +688,8 @@ def update_bq_ingest_processing_flag(
     query_job = client.query(query)
     return query_job.result()
 
+
+# TODO - Insert a BQ record type entry in this method above vs updating the flag
 
 # def write_vcv_started(
 #     processing_history_table: bigquery.Table,
