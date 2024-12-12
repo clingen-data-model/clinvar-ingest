@@ -8,8 +8,9 @@ from pydantic import BaseModel, field_validator
 _dotenv_env = os.environ.get("DOTENV_ENV", "dev")
 _dotenv_values = dotenv_values(pathlib.Path(__file__).parent / f".{_dotenv_env}.env")
 
+
 def env_or_dotenv_or(
-        key_name: str, default: str | None = None, throw: bool = False
+    key_name: str, default: str | None = None, throw: bool = False
 ) -> str:
     """
     Retrieves a value from the environment.
@@ -22,6 +23,7 @@ def env_or_dotenv_or(
     if throw and not val:
         raise ValueError(f"{key_name} must be set")
     return val
+
 
 class Env(BaseModel):
     pass
@@ -47,12 +49,13 @@ def _get_base_env() -> BaseEnv:
         slack_token=env_or_dotenv_or("CLINVAR_INGEST_SLACK_TOKEN"),
         # defaults to test "clinvar-message-test"
         slack_channel=env_or_dotenv_or(
-            "CLINVAR_INGEST_SLACK_CHANNEL", default="C06QFR0278D"),
+            "CLINVAR_INGEST_SLACK_CHANNEL", default="C06QFR0278D"
+        ),
         release_tag=env_or_dotenv_or("CLINVAR_INGEST_RELEASE_TAG", throw=True),
         schema_version=env_or_dotenv_or("CLINVAR_INGEST_SCHEMA_VERSION", default="v2"),
-        location = env_or_dotenv_or("CLINVAR_INGEST_LOCATION", default="us-east1"),
-        file_format_mode = env_or_dotenv_or("file_format", throw=True),
-        )
+        location=env_or_dotenv_or("CLINVAR_INGEST_LOCATION", default="us-east1"),
+        file_format_mode=env_or_dotenv_or("file_format", throw=True),
+    )
 
 
 class ClinVarEnv(BaseEnv):
@@ -101,7 +104,7 @@ def get_stored_procedures_env() -> StoredProceduresEnv:
     return env
 
 
-def _set_env(env:Env):
+def _set_env(env: Env):
     if getattr(Env, "env", None) is None:
         Env.env = env
     return Env.env
