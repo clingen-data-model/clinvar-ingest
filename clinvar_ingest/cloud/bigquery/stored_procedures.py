@@ -1,7 +1,9 @@
 """
 Functions for executing stored procedures in bigquery.
 """
+
 import logging
+
 from google.cloud import bigquery
 from google.cloud.bigquery.table import RowIterator
 
@@ -33,7 +35,6 @@ stored_procedures = [
     "CALL `clinvar_ingest.gc_scv_proc`({0});",
     # -- 02 single_gene_variation
     "CALL `clinvar_ingest.single_gene_variation_proc`({0});",
-
     # post-ingest-step-2
     # -- clinvar_genes
     "CALL `clinvar_ingest.clinvar_genes_proc`({0});",
@@ -59,7 +60,6 @@ stored_procedures = [
     "CALL `clinvar_ingest.voi_top_group_change_proc`();",
     # -- voi_summary_change
     "CALL `clinvar_ingest.voi_summary_change_proc`();",
-
     # post-ingest-step-3
     # -- gather variations for tracker reports
     "CALL `variation_tracker.report_variation_proc`();",
@@ -70,7 +70,9 @@ stored_procedures = [
 ]
 
 
-def execute_each(client: bigquery.Client, project_id: str, release_date: str|None) -> RowIterator:
+def execute_each(
+    client: bigquery.Client, project_id: str, release_date: str | None
+) -> RowIterator:
     """Execute each procedure in the list of stored procedures individualy,
        substituting the release_date date if provided.
 
@@ -78,21 +80,28 @@ def execute_each(client: bigquery.Client, project_id: str, release_date: str|Non
     :param project_id: project id
     :param release_date: yyyy_mm_dd, the yyyy_mm_dd formatted date or None to use the BQ `CURRENT_DATE()`
     """
-    as_of_date = 'CURRENT_DATE()' if release_date is None else f"'{release_date}'"
+    as_of_date = "CURRENT_DATE()" if release_date is None else f"'{release_date}'"
+    results = []
     for query in stored_procedures:
         query_with_args = query.format(as_of_date)
         try:
             logging.info(f"Executing stored procedure: {query_with_args}")
             job = client.query(query_with_args, project=project_id)
             result = job.result()
-            logging.info(f"Successfully ran stored procedure: {query_with_args}\nresult={result}")
-            return result
+            logging.info(
+                f"Successfully ran stored procedure: {query_with_args}\nresult={result}"
+            )
+            results.append(result)
         except Exception as e:
             msg = f"Failed to execute stored procedure: {query_with_args} {e}"
             logging.error(msg)
             raise e
+    return results
 
-def execute_all(client: bigquery.Client, project_id: str, release_date: str|None) -> RowIterator:
+
+def execute_all(
+    client: bigquery.Client, project_id: str, release_date: str | None
+) -> RowIterator:
     """Execute the list of stored procedures as one single script,
        substituting the release_date date if provided.
 
@@ -100,7 +109,7 @@ def execute_all(client: bigquery.Client, project_id: str, release_date: str|None
     :param project_id: project id
     :param release_date: yyyy_mm_dd, the yyyy_mm_dd formatted date or None to use the BQ `CURRENT_DATE()`
     """
-    as_of_date = 'CURRENT_DATE()' if release_date is None else f"'{release_date}'"
+    as_of_date = "CURRENT_DATE()" if release_date is None else f"'{release_date}'"
     query_with_args = [query.format(as_of_date) for query in stored_procedures]
     query = "\n".join(query_with_args)
     _logger.info(f"Executing stored procedures via query: {query}")
@@ -113,6 +122,7 @@ def execute_all(client: bigquery.Client, project_id: str, release_date: str|None
         msg = f"Failed to execute stored procedure: {e}"
         logging.error(msg)
         raise e
+
 
 # TODO Consider external file vs inline as above - might make maintenance easier?
 # TODO def execute_all_from_file(file=...,):

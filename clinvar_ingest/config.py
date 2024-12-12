@@ -103,8 +103,8 @@ def get_stored_procedures_env() -> StoredProceduresEnv:
 
 def _set_env(env:Env):
     if getattr(Env, "env", None) is None:
-        setattr(Env, "env", env)
-    return getattr(Env, "env")
+        Env.env = env
+    return Env.env
 
 
 def get_env() -> Env:
