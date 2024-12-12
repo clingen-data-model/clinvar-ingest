@@ -119,16 +119,19 @@ if [ ! -v CLINVAR_INGEST_BQ_META_DATASET ]; then
 fi
 env_vars="$env_vars,CLINVAR_INGEST_BQ_META_DATASET=${CLINVAR_INGEST_BQ_META_DATASET}"
 
-# if instance_name contains bq_ingest - add extra env vars
-if [[ $instance_name =~ ^.*bq-ingest.*$ ]]; then
-    # If BQ_DEST_PROJECT is not set, default to clingen-dev
-    if [ ! -v BQ_DEST_PROJECT ]; then
-        BQ_DEST_PROJECT=clingen-dev
-    fi
-    env_vars="$env_vars,BQ_DEST_PROJECT=${BQ_DEST_PROJECT}"
+if [ ! -v BQ_DEST_PROJECT ]; then
+  BQ_DEST_PROJECT=clingen-dev
+fi
+env_vars="$env_vars,BQ_DEST_PROJECT=${BQ_DEST_PROJECT}"
+
+# if instance_name contains stored-procedures make env vars
+if [[ $instance_name =~ ^.*stored-procedures.*$ ]]; then
+    # Resetting env_vars here - not inheriting previous
+    env_vars="BQ_DEST_PROJECT=${BQ_DEST_PROJECT},CLINVAR_INGEST_BQ_META_DATASET=${CLINVAR_INGEST_BQ_META_DATASET}"
+    env_vars="$env_vars,CLINVAR_INGEST_RELEASE_TAG=${CLINVAR_INGEST_RELEASE_TAG}"
 fi
 
-
+### TODO - stored-procedures
 gcloud run jobs $command $instance_name \
       --cpu=2 \
       --memory=8Gi \
@@ -140,7 +143,7 @@ gcloud run jobs $command $instance_name \
       --set-env-vars=$env_vars \
       --set-secrets=CLINVAR_INGEST_SLACK_TOKEN=clinvar-ingest-slack-token:latest
 
-if [[ $instance_name =~ ^.*bq-ingest.*$ ]]; then
+if [[ $instance_name =~ ^.*bq-ingest.*$|^.*stored-procedures.*$ ]]; then
     # turn off file globbing
     set -f
     gcloud scheduler jobs ${command} http ${instance_name} \

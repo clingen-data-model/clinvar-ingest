@@ -144,3 +144,5 @@ def make_counter():
 class ClinVarIngestFileFormat(StrEnum):
     VCV = "vcv"
     RCV = "rcv"
+    BQ = "bq"
+    SP = "sp"

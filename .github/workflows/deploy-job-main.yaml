@@ -83,11 +83,31 @@ jobs:
           export CLINVAR_INGEST_BQ_META_DATASET=clinvar_ingest
           export instance_name=clinvar-bq-ingest
           export clinvar_ingest_cmd=python,/app/bq_ingester.py
+          export file_format=bq
           echo "instance_name=$instance_name" >> $GITHUB_ENV
           echo "CLINVAR_INGEST_RELEASE_TAG=$CLINVAR_INGEST_RELEASE_TAG" >> $GITHUB_ENV
           echo "CLINVAR_INGEST_BQ_META_DATASET=$CLINVAR_INGEST_BQ_META_DATASET" >> $GITHUB_ENV
           echo "clinvar_ingest_cmd=$clinvar_ingest_cmd" >> $GITHUB_ENV
+          echo "file_format=$file_format" >> $GITHUB_ENV
 
       - name: build and deploy bq-ingest pipeline (vcv v2 + rcv v2)
+        run: |
+          bash misc/bin/deploy-job.sh
+
+      ## Deploy stored procedures pipeline (job stored-procedures, dataset clinvar_ingest)
+      - name: set env vars for stored-procedures pipeline
+        run: |
+          export CLINVAR_INGEST_RELEASE_TAG=${{ github.ref_name }}
+          export CLINVAR_INGEST_BQ_META_DATASET=clinvar_ingest
+          export instance_name=stored-procedures
+          export clinvar_ingest_cmd=python,/app/stored_procedures_workflow.py
+          export file_format=sp
+          echo "instance_name=$instance_name" >> $GITHUB_ENV
+          echo "CLINVAR_INGEST_RELEASE_TAG=$CLINVAR_INGEST_RELEASE_TAG" >> $GITHUB_ENV
+          echo "CLINVAR_INGEST_BQ_META_DATASET=$CLINVAR_INGEST_BQ_META_DATASET" >> $GITHUB_ENV
+          echo "clinvar_ingest_cmd=$clinvar_ingest_cmd" >> $GITHUB_ENV
+          echo "file_format=$file_format" >> $GITHUB_ENV
+
+      - name: build and deploy stored-procedures pipeline
         run: |
           bash misc/bin/deploy-job.sh

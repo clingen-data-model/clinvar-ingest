@@ -25,6 +25,7 @@ logging.basicConfig(
 )
 _logger = logging.getLogger("clinvar-ingest-workflow")
 
+
 # Example payload from the FTP Watcher
 # wf_input = {
 #     "Directory": "/pub/clinvar/xml/VCV_xml_old_format",
@@ -38,7 +39,7 @@ _logger = logging.getLogger("clinvar-ingest-workflow")
 
 
 def create_execution_id(
-    seed: str, file_format: ClinVarIngestFileFormat, reprocessed: bool = False
+        seed: str, file_format: ClinVarIngestFileFormat, reprocessed: bool = False
 ) -> str:
     if env.release_tag is None:
         raise RuntimeError("Must specify 'release_tag' in the environment")
@@ -82,26 +83,25 @@ _logger.info(workflow_id_message)
 
 ################################################################
 # Write record to processing_history indicating this workflow has begun
-# write_start_processing_fn = {
-#     ClinVarIngestFileFormat.RCV: processing_history.write_rcv_started,
-#     ClinVarIngestFileFormat.VCV: processing_history.write_vcv_started,
-# }[file_mode]
 processing_history_table = processing_history.ensure_initialized(
     client=_get_bq_client()
 )
-processing_history_pairs_view = processing_history.ensure_pairs_view_exists(
+processing_history_view = processing_history.ensure_history_view_exists(
     processing_history_table=processing_history_table,
     client=_get_bq_client(),
 )
 processing_history.write_started(
     processing_history_table=processing_history_table,
-    release_date=release_date,
+    release_date=None,
     release_tag=env.release_tag,
     schema_version=env.schema_version,
     file_type=file_mode,
     # The directory within the executions_output_prefix. See gcs_base in copy()
     bucket_dir=workflow_execution_id,
     client=_get_bq_client(),
+    ftp_released=wf_input.released.isoformat(),
+    ftp_last_modified=wf_input.last_modified.isoformat(),
+    xml_release_date=release_date,
     error_if_exists=False,
 )
 
@@ -138,7 +138,7 @@ def copy(payload: ClinvarFTPWatcherRequest, skip_existing: bool = True) -> CopyR
         # from the `payload`, return early.
         bucket = client.bucket(env.bucket_name)
         # Remove the scheme and bucket name
-        gcs_blob_name = gcs_path[len(f"gs://{env.bucket_name}/") :]
+        gcs_blob_name = gcs_path[len(f"gs://{env.bucket_name}/"):]
         # Retrieve blob metadata
         blob = bucket.get_blob(gcs_blob_name)
 
@@ -222,14 +222,15 @@ except Exception as e:
     send_slack_message(workflow_id_message + " - " + msg)
     raise e
 
-
 ################################################################
 # Write record to processing_history indicating this workflow has begun
 # write_start_processing_fn = {
 #     ClinVarIngestFileFormat.RCV: processing_history.write_rcv_started,
 #     ClinVarIngestFileFormat.VCV: processing_history.write_vcv_started,
 # }[file_mode]
-processing_history_table = processing_history.ensure_initialized()
+processing_history_table = processing_history.ensure_initialized(
+    client=_get_bq_client(),
+)
 processing_history.write_finished(
     processing_history_table=processing_history_table,
     release_date=release_date,
@@ -240,7 +241,6 @@ processing_history.write_finished(
     parsed_files=parse_response.parsed_files,
     client=_get_bq_client(),
 )
-
 
 ################################################################
 _logger.info("Workflow succeeded")
