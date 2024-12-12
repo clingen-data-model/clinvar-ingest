@@ -6,9 +6,12 @@ import google.cloud.storage as storage
 # e.g.
 # gs://clinvar-ingest-dev/prior_xml_archives/vcv/ClinVarVCVRelease_2024-0126.xml.gz
 bucket = "clinvar-ingest-dev"
-prefix = "prior_xml_archives/vcv/"
 
-output_file = "prior_xml_archives-ftp-watcher.txt"
+# prefix = "prior_xml_archives/vcv/"
+# output_file = "prior_xml_archives-ftp-watcher-vcv.txt"
+prefix = "prior_xml_archives/rcv/"
+output_file = "prior_xml_archives-ftp-watcher-rcv.txt"
+
 
 gs_client = storage.Client()
 
