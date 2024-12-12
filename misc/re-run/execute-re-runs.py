@@ -14,32 +14,21 @@ import subprocess
 
 region = "us-east1"
 bq_meta_dataset = "clinvar_kyle"
-# ftp_watcher_file = "confluent-prod_clinvar-somatic-ftp-watcher_20241203.txt"
 
-
-# ftp_watcher_file = "misc/re-run/ftp-watcher-vcv-2024-10-27.txt"
-# ftp_watcher_file = "misc/re-run/ftp-watcher-vcv-2024-11-03.txt"
-# instance_name = "clinvar-vcv-ingest"
-# file_format = "vcv"
+instance_name = "clinvar-vcv-ingest-kyle-dev"
 
 # ftp_watcher_file = "misc/re-run/ftp-watcher-rcv-2024-10-27.txt"
 # ftp_watcher_file = "misc/re-run/ftp-watcher-rcv-2024-11-03.txt"
-# instance_name = "clinvar-vcv-ingest"
+# job-id: clinvar-vcv-ingest-kyle-dev-fnhpd
+# ftp_watcher_file = "misc/re-run/ftp-watcher-rcv-2024-01-26.txt"
 # file_format = "rcv"
 
-# clinvar-vcv-ingest-kyle-dev-ncvkq
-# ftp_watcher_file = "misc/re-run/ftp-watcher-rcv-2024-10-27.txt"
-# clinvar-vcv-ingest-kyle-dev-qbh7x
-ftp_watcher_file = "misc/re-run/ftp-watcher-rcv-2024-11-03.txt"
-instance_name = "clinvar-vcv-ingest-kyle-dev"
-file_format = "rcv"
 
-# clinvar-vcv-ingest-kyle-dev-bl8w5
 # ftp_watcher_file = "misc/re-run/ftp-watcher-vcv-2024-10-27.txt"
-# clinvar-vcv-ingest-kyle-dev-vn2md
 # ftp_watcher_file = "misc/re-run/ftp-watcher-vcv-2024-11-03.txt"
-# instance_name = "clinvar-vcv-ingest-kyle-dev"
-# file_format = "vcv"
+# job-id: clinvar-vcv-ingest-kyle-dev-cbjdv
+ftp_watcher_file = "misc/re-run/ftp-watcher-vcv-2024-01-26.txt"
+file_format = "vcv"
 
 
 def run_command(
