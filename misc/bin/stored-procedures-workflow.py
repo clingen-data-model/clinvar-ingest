@@ -9,11 +9,9 @@ import sys
 from google.cloud import bigquery
 
 from clinvar_ingest.cloud.bigquery import processing_history
+from clinvar_ingest.cloud.bigquery.stored_procedures import execute_all
 from clinvar_ingest.config import get_stored_procedures_env
 from clinvar_ingest.slack import send_slack_message
-
-from clinvar_ingest.cloud.bigquery.stored_procedures import execute_all
-
 
 logging.basicConfig(
     level=logging.INFO,
@@ -25,8 +23,8 @@ _logger = logging.getLogger("stored-procedures-workflow")
 
 def _get_bq_client() -> bigquery.Client:
     if getattr(_get_bq_client, "client", None) is None:
-        setattr(_get_bq_client, "client", bigquery.Client())
-    return getattr(_get_bq_client, "client")
+        _get_bq_client.client = bigquery.Client()
+    return _get_bq_client.client
 
 ################################################################
 ### Initialization code
@@ -96,7 +94,7 @@ for row in rows_to_ingest:
     # send_slack_message(msg)
     try:
         result = execute_all(client=_get_bq_client(), project_id=env.bq_dest_project, release_date=release_date)
-        msg = f""
+        msg = ""
         _logger.info(msg)
         # send_slack_message(msg)
 

@@ -49,14 +49,14 @@ def create_execution_id(
 
 def _get_gcs_client() -> GCSClient:
     if getattr(_get_gcs_client, "client", None) is None:
-        setattr(_get_gcs_client, "client", GCSClient())
-    return getattr(_get_gcs_client, "client")
+        _get_gcs_client.client = GCSClient()
+    return _get_gcs_client.client
 
 
 def _get_bq_client() -> bigquery.Client:
     if getattr(_get_bq_client, "client", None) is None:
-        setattr(_get_bq_client, "client", bigquery.Client())
-    return getattr(_get_bq_client, "client")
+        _get_bq_client.client = bigquery.Client()
+    return _get_bq_client.client
 
 
 ################################################################

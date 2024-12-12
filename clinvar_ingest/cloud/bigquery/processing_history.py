@@ -4,7 +4,7 @@ from pathlib import PurePath
 
 import google.cloud.bigquery.table
 from google.api_core.exceptions import NotFound
-from google.cloud import bigquery, storage
+from google.cloud import bigquery
 from pydantic import BaseModel
 
 from clinvar_ingest.api.model.requests import walk_and_replace
@@ -150,7 +150,6 @@ def ensure_history_view_exists(
 
 def ensure_initialized(
         client: bigquery.Client | None = None,
-        storage_client: storage.Client | None = None,
 ) -> bigquery.Table:
     """
     Ensures that the bigquery clinvar-ingest metadata dataset and processing_history
@@ -613,8 +612,7 @@ def processed_entries_ready_for_bq_ingest(
     ORDER BY vcv_xml_release_date
     """
     query_job = client.query(query)
-    results = query_job.result()
-    return results
+    return query_job.result()
 
 
 def processed_entries_ready_for_sp_processing(

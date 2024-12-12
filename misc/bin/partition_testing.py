@@ -13,8 +13,9 @@ import gzip
 import logging
 import time
 import xml.etree.ElementTree as ET
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Iterator, TextIO, Tuple
+from typing import Any, TextIO
 
 import xmltodict
 
@@ -46,7 +47,7 @@ file_path = "/Users/kferrite/dev/data/ClinVarVariationRelease_2024-0107.xml.gz"
 # Parse this file path as xml using ElementTree, element b
 
 
-def _handle_text_nodes(path, key, value) -> Tuple[Any, Any]:
+def _handle_text_nodes(path, key, value) -> tuple[Any, Any]:
     """
     Takes a path, key, value, returns a tuple of new (key, value)
 
@@ -57,8 +58,7 @@ def _handle_text_nodes(path, key, value) -> Tuple[Any, Any]:
     if isinstance(value, str) and not key.startswith("@"):
         if key == "#text":
             return ("$", value)
-        else:
-            return (key, {"$": value})
+        return (key, {"$": value})
     return (key, value)
 
 
@@ -163,7 +163,7 @@ def split_clinvar_xml(
         raise e
     finally:
         for _f in output_files:
-            _f.write(f"</{ROOT_ELEMENT}>\n".encode("utf-8"))
+            _f.write(f"</{ROOT_ELEMENT}>\n".encode())
             _f.close()
 
 

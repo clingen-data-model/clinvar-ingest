@@ -1,7 +1,7 @@
 import logging
+from typing import Any
 
 from google.cloud import run_v2
-from typing import Any
 
 _logger = logging.getLogger("clinvar_ingest")
 
@@ -14,8 +14,8 @@ def invoke_job(project_id: str, location: str, job_name: str, **env_vars: dict) 
         env_var_list = [
             run_v2.EnvVar({"name": key, "value": value}) for key, value in env_vars.items()
         ]
-        overrides = run_v2.RunJobRequest.Overrides({'container_overrides': [
-            run_v2.RunJobRequest.Overrides.ContainerOverride({'env': env_var_list})]})
+        overrides = run_v2.RunJobRequest.Overrides({"container_overrides": [
+            run_v2.RunJobRequest.Overrides.ContainerOverride({"env": env_var_list})]})
 
         execution_request = run_v2.RunJobRequest({
             "name": job_path,

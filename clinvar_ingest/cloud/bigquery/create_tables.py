@@ -47,18 +47,6 @@ def ensure_dataset_exists(
     return dataset
 
 
-def check_dataset_exists(
-    client: bigquery.Client, project: str, dataset_id: str
-) -> (bigquery.Dataset|None):
-    """Check if dataset exists. Returns the Dataset object or None.
-    """
-    dataset_ref = DatasetReference(project=project, dataset_id=dataset_id)
-    try:
-        dataset = client.get_dataset(dataset_ref=dataset_ref)
-    except:
-        dataset = None
-    return dataset
-
 def schema_file_path_for_table(table_name: str) -> Path:
     """
     Returns the path to the BigQuery schema file for the given table name.

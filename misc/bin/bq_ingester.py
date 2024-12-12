@@ -8,6 +8,7 @@
 import json
 import logging
 import sys
+
 from google.cloud import bigquery
 from google.cloud.storage import Client as GCSClient
 
@@ -46,14 +47,14 @@ _logger = logging.getLogger("clinvar-ingest-workflow")
 
 def _get_gcs_client() -> GCSClient:
     if getattr(_get_gcs_client, "client", None) is None:
-        setattr(_get_gcs_client, "client", GCSClient())
-    return getattr(_get_gcs_client, "client")
+        _get_gcs_client.client = GCSClient()
+    return _get_gcs_client.client
 
 
 def _get_bq_client() -> bigquery.Client:
     if getattr(_get_bq_client, "client", None) is None:
-        setattr(_get_bq_client, "client", bigquery.Client())
-    return getattr(_get_bq_client, "client")
+        _get_bq_client.client = bigquery.Client()
+    return _get_bq_client.client
 
 
 ################################################################
@@ -336,7 +337,7 @@ for row in rows_to_ingest:
             """
         _logger.info(msg)
         send_slack_message(msg)
-    except Exception as e:
+    except Exception:
         msg = f"""
             Error processing VCV release dated {vcv_xml_release_date} from {vcv_bucket_dir} and
             RCV release dated {rcv_xml_release_date} from {rcv_bucket_dir} into dataset {dataset.dataset_id}.
