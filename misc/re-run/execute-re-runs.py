@@ -13,6 +13,7 @@ import os
 import subprocess
 
 region = "us-east1"
+bq_meta_dataset = "clinvar_kyle"
 # ftp_watcher_file = "confluent-prod_clinvar-somatic-ftp-watcher_20241203.txt"
 
 
@@ -88,7 +89,7 @@ global_env = {
     "CLINVAR_INGEST_SLACK_CHANNEL": "",  # Override job variable to disable messaging
     "CLINVAR_INGEST_BUCKET": "clinvar-ingest-dev",  # Already set on job, no need to override
     # "CLINVAR_INGEST_RELEASE_TAG": "v2_0_4_alpha",  # Already set on job, no need to override
-    "CLINVAR_INGEST_BQ_META_DATASET": "clinvar_ingest",  # Already set on job, no need to override
+    "CLINVAR_INGEST_BQ_META_DATASET": bq_meta_dataset,  # Already set on job, no need to override
     "BQ_DEST_PROJECT": "clingen-dev",
     "file_format": file_format,  # Set already on job but provide again for explicitness
 }
