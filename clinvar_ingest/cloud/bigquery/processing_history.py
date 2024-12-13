@@ -295,7 +295,7 @@ def write_started(  # noqa: PLR0913
         if row.c != 0:
             if error_if_exists:
                 raise RuntimeError(
-                    f"Expected 1 row to exist for the finished event, but found {row.c}. "
+                    f"Expected 0 row to exist for the finished event, but found {row.c}. "
                     f"file_type={file_type}, release_date={release_date}, "
                     f"release_tag={release_tag}, bucket_dir={bucket_dir}"
                 )

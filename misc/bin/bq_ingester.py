@@ -8,6 +8,7 @@
 import json
 import logging
 import sys
+
 from google.cloud import bigquery
 from google.cloud.storage import Client as GCSClient
 
@@ -72,8 +73,10 @@ processing_history_view = processing_history.ensure_history_view_exists(
     processing_history_table=processing_history_table,
     client=_get_bq_client(),
 )
-processing_history_needing_bq_ingest = processing_history.processed_entries_ready_for_bq_ingest(
-    processing_history_view, client=_get_bq_client()
+processing_history_needing_bq_ingest = (
+    processing_history.processed_entries_ready_for_bq_ingest(
+        processing_history_view, client=_get_bq_client()
+    )
 )
 msg = f"Found {processing_history_needing_bq_ingest.total_rows} VCV/RCV datasets to ingest."
 _logger.info(msg)
@@ -82,6 +85,13 @@ if not processing_history_needing_bq_ingest.total_rows:
     sys.exit(0)
 
 send_slack_message(msg)
+
+
+def json_parse_if_string(value):
+    if isinstance(value, str):
+        return json.loads(value)
+    return value
+
 
 # update processing_history to set the bq ingest as having started
 rows_to_ingest = []
@@ -100,7 +110,7 @@ for row in processing_history_needing_bq_ingest:
         client=_get_bq_client(),
         bucket_dir=vcv_bucket_dir,
         xml_release_date=str(vcv_xml_release_date),
-        error_if_exists=True,
+        error_if_exists=False,
     )
     _logger.info(
         f"Created bq_ingest_processing record with version {vcv_pipeline_version} and "
@@ -119,7 +129,7 @@ for row in rows_to_ingest:
     vcv_release_date = row.get("vcv_release_date", None)
     vcv_xml_release_date = row.get("vcv_xml_release_date", None)
     vcv_bucket_dir = row.get("vcv_bucket_dir", None)
-    vcv_parsed_files = json.loads(row.get("vcv_parsed_files", None))
+    vcv_parsed_files = json_parse_if_string(row.get("vcv_parsed_files", None))
 
     rcv_file_type = row.get("rcv_file_type", None)
     rcv_pipeline_version = row.get("rcv_pipeline_version", None)
@@ -129,7 +139,7 @@ for row in rows_to_ingest:
     rcv_release_date = row.get("rcv_release_date", None)
     rcv_xml_release_date = row.get("rcv_xml_release_date", None)
     rcv_bucket_dir = row.get("rcv_bucket_dir", None)
-    rcv_parsed_files = json.loads(row.get("rcv_parsed_files", None))
+    rcv_parsed_files = json_parse_if_string(row.get("rcv_parsed_files", None))
 
     # We will use the VCV file's release date as the "release date" for both
     # And the VCV pipeline version as the "pipeline version"
@@ -173,9 +183,7 @@ for row in rows_to_ingest:
             vcv_create_tables_request
         )
         vcv_ext_resp_json = json.dumps(
-            walk_and_replace(
-                vcv_create_tables_response, processing_history._dump_fn
-            )
+            walk_and_replace(vcv_create_tables_response, processing_history._dump_fn)
         )
         _logger.info(f"VCV Create External Tables response: {vcv_ext_resp_json}")
 
@@ -191,9 +199,7 @@ for row in rows_to_ingest:
             rcv_create_tables_request
         )
         rcv_ext_resp_json = json.dumps(
-            walk_and_replace(
-                rcv_create_tables_response, processing_history._dump_fn
-            )
+            walk_and_replace(rcv_create_tables_response, processing_history._dump_fn)
         )
         _logger.info(f"RCV Create External Tables response: {rcv_ext_resp_json}")
 
