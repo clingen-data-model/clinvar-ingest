@@ -637,6 +637,7 @@ def processed_entries_ready_for_sp_processing(
         release_date,
         vcv_file_type,
         vcv_pipeline_version,
+        vcv_schema_version,        
         vcv_processing_started,
         vcv_processing_finished,
         vcv_xml_release_date,
@@ -644,11 +645,18 @@ def processed_entries_ready_for_sp_processing(
         vcv_parsed_files,
         rcv_file_type,
         rcv_pipeline_version,
+        rcv_schema_version
         rcv_processing_started,
         rcv_processing_finished,
         rcv_xml_release_date,
         rcv_bucket_dir,
-        rcv_parsed_files
+        rcv_parsed_files,
+        bq_file_type,
+        bq_release_date,
+        bq_pipeline_version,
+        bq_schema_version,
+        bq_processing_started,
+        bq_processing_finished,
     FROM {processing_history_view_table}
     WHERE vcv_processing_finished IS NOT NULL
     AND rcv_processing_finished IS NOT NULL
