@@ -100,7 +100,7 @@ jobs:
           export CLINVAR_INGEST_RELEASE_TAG=${{ github.ref_name }}
           export CLINVAR_INGEST_BQ_META_DATASET=clinvar_ingest
           export instance_name=stored-procedures
-          export clinvar_ingest_cmd=python,/app/stored_procedures_workflow.py
+          export clinvar_ingest_cmd=python,/app/stored-procedures-workflow.py
           export file_format=sp
           echo "instance_name=$instance_name" >> $GITHUB_ENV
           echo "CLINVAR_INGEST_RELEASE_TAG=$CLINVAR_INGEST_RELEASE_TAG" >> $GITHUB_ENV
