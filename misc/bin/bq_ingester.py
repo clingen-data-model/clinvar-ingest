@@ -330,7 +330,7 @@ for row in rows_to_ingest:
             release_date=str(final_release_date),
             release_tag=env.release_tag,
             file_type=env.file_format_mode,
-            parsed_files=None,
+            parsed_files={},
             bucket_dir=vcv_bucket_dir,
             client=_get_bq_client(),
         )
