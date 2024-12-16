@@ -13,22 +13,20 @@ import os
 import subprocess
 
 region = "us-east1"
-bq_meta_dataset = "clinvar_kyle"
+bq_meta_dataset = "clinvar_ingest"
 
-instance_name = "clinvar-vcv-ingest-kyle-dev"
 
-# ftp_watcher_file = "misc/re-run/ftp-watcher-rcv-2024-10-27.txt"
-# ftp_watcher_file = "misc/re-run/ftp-watcher-rcv-2024-11-03.txt"
-# job-id: clinvar-vcv-ingest-kyle-dev-fnhpd
+instance_name = "clinvar-rcv-ingest"
 # ftp_watcher_file = "misc/re-run/ftp-watcher-rcv-2024-01-26.txt"
-# file_format = "rcv"
+# ftp_watcher_file = "misc/re-run/prior_xml_archives-ftp-watcher-rcv-no1-26.txt"
+ftp_watcher_file = "misc/re-run/prior_xml_archives-ftp-watcher-rcv.txt"
+file_format = "rcv"
 
 
-# ftp_watcher_file = "misc/re-run/ftp-watcher-vcv-2024-10-27.txt"
-# ftp_watcher_file = "misc/re-run/ftp-watcher-vcv-2024-11-03.txt"
-# job-id: clinvar-vcv-ingest-kyle-dev-cbjdv
-ftp_watcher_file = "misc/re-run/ftp-watcher-vcv-2024-01-26.txt"
-file_format = "vcv"
+# instance_name = "clinvar-vcv-ingest"
+# ftp_watcher_file = "misc/re-run/ftp-watcher-vcv-2024-01-26.txt"
+# ftp_watcher_file = "misc/re-run/prior_xml_archives-ftp-watcher-vcv.txt"
+# file_format = "vcv"
 
 
 def run_command(
