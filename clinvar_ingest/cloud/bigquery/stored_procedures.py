@@ -28,45 +28,7 @@ from google.cloud.bigquery.table import RowIterator
 _logger = logging.getLogger("clinvar_ingest")
 
 stored_procedures = [
-    # post-ingest-step-1
-    # -- 01 scv_summary
-    "CALL `clinvar_ingest.scv_summary_proc`({0});",
-    # -- 01.1 gc_scvs
-    "CALL `clinvar_ingest.gc_scv_proc`({0});",
-    # -- 02 single_gene_variation
-    "CALL `clinvar_ingest.single_gene_variation_proc`({0});",
-    # post-ingest-step-2
-    # -- clinvar_genes
-    "CALL `clinvar_ingest.clinvar_genes_proc`({0});",
-    # -- clinvar_submitters
-    "CALL `clinvar_ingest.clinvar_submitters_proc`({0});",
-    # -- clinvar_variations
-    "CALL `clinvar_ingest.clinvar_variations_proc`({0});",
-    # -- clinvar_vcvs
-    "CALL `clinvar_ingest.clinvar_vcvs_proc`({0});",
-    # -- clinvar_scvs
-    "CALL `clinvar_ingest.clinvar_scvs_proc`({0});",
-    # -- clinvar_gc_scvs
-    "CALL `clinvar_ingest.clinvar_gc_scvs_proc`({0});",
-    # -- clinvar_var_scv_change
-    "CALL `clinvar_ingest.clinvar_var_scv_change_proc`();",
-    # -- voi_vcv_scv
-    "CALL `clinvar_ingest.voi_vcv_scv_proc`();",
-    # -- voi_and_voi_scv_group
-    "CALL `clinvar_ingest.voi_and_voi_scv_group_proc`();",
-    # -- voi_group_change
-    "CALL `clinvar_ingest.voi_group_change_proc`();",
-    # -- voi_top_group_change
-    "CALL `clinvar_ingest.voi_top_group_change_proc`();",
-    # -- voi_summary_change
-    "CALL `clinvar_ingest.voi_summary_change_proc`();",
-    # post-ingest-step-3
-    # -- gather variations for tracker reports
-    "CALL `variation_tracker.report_variation_proc`();",
-    # -- build all VCEP tracker report tables
-    "CALL `variation_tracker.variation_track_proc`();",
-    # -- build genomeconnect tracker report tables
-    "CALL `variation_tracker.gc_report_proc`({0});",
+    "CALL `clinvar_ingest.dataset_preparation_v2`({0});",
 ]
 
 

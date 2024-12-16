@@ -11,9 +11,9 @@ from google.cloud import bigquery
 from clinvar_ingest.cloud.bigquery import processing_history
 from clinvar_ingest.config import get_stored_procedures_env
 from clinvar_ingest.slack import send_slack_message
+from clinvar_ingest.utils import ClinVarIngestFileFormat
 
 from clinvar_ingest.cloud.bigquery.stored_procedures import execute_all
-
 
 logging.basicConfig(
     level=logging.INFO,
@@ -27,6 +27,7 @@ def _get_bq_client() -> bigquery.Client:
     if getattr(_get_bq_client, "client", None) is None:
         setattr(_get_bq_client, "client", bigquery.Client())
     return getattr(_get_bq_client, "client")
+
 
 ################################################################
 ### Initialization code
@@ -70,16 +71,18 @@ for row in processed_entries_needing_sp_run:
         release_date=str(vcv_xml_release_date),
         release_tag=vcv_pipeline_version,
         schema_version=schema_version,
-        file_type=env.file_format_mode,
+        file_type=ClinVarIngestFileFormat(env.file_format_mode),
         client=_get_bq_client(),
         bucket_dir=vcv_bucket_dir,
         xml_release_date=str(vcv_xml_release_date),
-        error_if_exists=True,
+        error_if_exists=False,
     )
-    _logger.info(
-        f"Initiated stored procedure processing for {vcv_pipeline_version} and "
-        f"{vcv_xml_release_date}."
-    )
+
+    msg = f"""
+        Initiated stored procedure processing for release dated {vcv_xml_release_date} version
+        {vcv_pipeline_version}.
+        """
+    _logger.info(msg)
 
 # Now process individual rows
 for row in rows_to_ingest:
@@ -93,38 +96,41 @@ for row in rows_to_ingest:
 
     msg = f"Executing stored procedures on dataset dated {release_date}"
     _logger.info(msg)
-    # send_slack_message(msg)
+    send_slack_message(msg)
     try:
         result = execute_all(client=_get_bq_client(), project_id=env.bq_dest_project, release_date=release_date)
-        msg = f""
-        _logger.info(msg)
-        # send_slack_message(msg)
 
         processing_history.write_finished(
             processing_history_table=processing_history_table,
             release_date=str(release_date),
             release_tag=env.release_tag,
-            file_type=env.file_format_mode,
-            parsed_files=None,
+            file_type=ClinVarIngestFileFormat(env.file_format_mode),
+            parsed_files={},
             bucket_dir=vcv_bucket_dir,
             client=_get_bq_client(),
         )
+        msg = f"""
+                Stored procedure execution successful for release dated {vcv_xml_release_date} version
+                {vcv_pipeline_version}.
+            """
+        _logger.info(msg)
+        send_slack_message(msg)
     except Exception as e:
         processing_history.write_started(
             processing_history_table=processing_history_table,
             release_date=None,
             release_tag=vcv_pipeline_version,
             schema_version=schema_version,
-            file_type=env.file_format_mode,
+            file_type=ClinVarIngestFileFormat(env.file_format_mode),
             client=_get_bq_client(),
             bucket_dir=vcv_bucket_dir,
             xml_release_date=str(vcv_xml_release_date),
-            error_if_exists=True,
-            )
+            error_if_exists=False,
+        )
         msg = f"""
-              Reset processing_history_table VCV bq_ingest_processing dated {vcv_xml_release_date} version
+              Stored procedure execution failed for release dated {vcv_xml_release_date} version
               {vcv_pipeline_version}.
               """
+        _logger.error(msg)
+        send_slack_message(msg)
         raise e
-        # send_slack_message(msg)
-
