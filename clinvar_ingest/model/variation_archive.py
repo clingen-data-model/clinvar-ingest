@@ -804,8 +804,14 @@ class RcvAccessionClassification(Model):
         or OncogenicityClassification entry. The statement_type is the key
         from the original `Classifications` XML/dict, indicating the type.
         """
-        # TODO is there a chance they add fields to Description? Maybe don't extract.
-        # raw_description = extract(inp, "Description")
+        # Don't extract Description because there's a chance more XML attributes could be added.
+        # TODO some SomaticClinicalImpact classifications have more than 1 Description element, causing this
+        # get() call to return an array rather than a single {} dict. The `"Description": [..]` key-value is then
+        # placed in the resulting `content` field of the classification, since it is non-empty, and the date_last_evaluated,
+        # num_submissions, interp_description, clinical_impact_assertion_type, and clinical_impact_clinical_significance
+        # fields are null.
+        # This is rare, and we are deferring handling this until it can be discussed with ClinVar.  Possibly it will
+        # just have to be handled downstream. Or we can make a 'description' field that is an array of dicts/records.
         raw_description = get(inp, "Description") or {}
         return RcvAccessionClassification(
             rcv_id=rcv_id,
@@ -1119,6 +1125,13 @@ class VariationArchive(Model):
         if record_type == "ClassifiedRecord":
             raw_classifications = extract(interp_record, "Classifications")
         else:
+            # IncludedRecord classifications are added by ClinVar in the XML, however
+            # they are always "empty", saying the number of submissions is 0 and there
+            # is no classification for the variant. We will ignore these.
+            # e.g.:
+            # {"@VariationID": "267462", "@VariationType": "Deletion", "@RecordType": "included", "IncludedRecord": {"Classifications": {
+            # "GermlineClassification": {"@NumberOfSubmissions": "0", "@NumberOfSubmitters": "0", "ReviewStatus": {"$": "no classification for the single variant"}, "Description": {"$": "no classification for the single variant"}}, "SomaticClinicalImpact": {"@NumberOfSubmissions": "0", "@NumberOfSubmitters": "0", "ReviewStatus": {"$": "no classification for the single variant"}, "Description": {"$": "no classification for the single variant"}},
+            # "OncogenicityClassification": {"@NumberOfSubmissions": "0", "@NumberOfSubmitters": "0", "ReviewStatus": {"$": "no classification for the single variant"}, "Description": {"$": "no classification for the single variant"}}}, "SubmittedClassificationList": {"SCV": {"@Accession": "SCV000328413", "@Version": "2"}}, "ClassifiedVariationList": {"ClassifiedVariation": {"@VariationID": "267444", "@Accession": "VCV000267444", "@Version": "4"}}}}
             raw_classifications = {}
         raw_classification_types = {r.value for r in StatementType}.intersection(
             set(raw_classifications.keys())
