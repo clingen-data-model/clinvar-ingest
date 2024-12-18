@@ -93,6 +93,12 @@ def json_parse_if_string(value):
     return value
 
 
+if env.file_format_mode != "bq":
+    msg = (
+        f'bq_ingester invoked but file_format_mode {env.file_format_mode} is not "bq".'
+    )
+    raise ValueError(msg)
+
 # update processing_history to set the bq ingest as having started
 rows_to_ingest = []
 for row in processing_history_needing_bq_ingest:
