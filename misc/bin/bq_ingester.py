@@ -359,6 +359,8 @@ for row in rows_to_ingest:
         # TODO Does it make sense to reset bq_ingest_processing to NULL
         # when it is possible that other parts of the record may have been updated
         # such as release_date?
+        # TODO either delete or write started date to null?
+        # a record with a non-null started date is treated as in progress
         bq_ingest_write_result = processing_history.write_started(
             processing_history_table=processing_history_table,
             release_date=None,
@@ -374,3 +376,5 @@ for row in rows_to_ingest:
               """
         _logger.exception(msg)
         send_slack_message(msg)
+
+        raise e
