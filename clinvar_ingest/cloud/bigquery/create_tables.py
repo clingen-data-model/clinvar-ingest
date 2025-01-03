@@ -163,8 +163,8 @@ def create_internal_tables(
 ) -> CreateInternalTablesRequest:
     """
     -- clingen-dev.2023_10_07_2024_02_19T172113657352.variation_archive
-    CREATE TABLE `clingen-dev.2023_10_07_2024_02_19T172113657352.variation_archive_internal`
-    AS SELECT * from `clingen-dev.2023_10_07_2024_02_19T172113657352.variation_archive`
+    CREATE TABLE `clingen-dev.2023_10_07_2024_02_19T172113657352.variation_archive`
+    AS SELECT * from `clingen-dev.2023_10_07_2024_02_19T172113657352.variation_archive_external`
 
     """
 
