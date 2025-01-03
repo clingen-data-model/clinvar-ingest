@@ -135,7 +135,7 @@ fi
 gcloud run jobs $command $instance_name \
       --cpu=2 \
       --memory=8Gi \
-      --task-timeout=10h \
+      --task-timeout=24h \
       --image=$image \
       --region=$region \
       --command="$clinvar_ingest_cmd" \
@@ -146,10 +146,10 @@ gcloud run jobs $command $instance_name \
 if [[ $instance_name =~ ^.*bq-ingest.*$|^.*stored-procedures.*$ ]]; then
     # turn off file globbing
     set -f
-    # gcloud scheduler jobs ${command} http ${instance_name} \
-    #   --location ${region} \
-    #   --uri=https://${region}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${project}/jobs/${instance_name}:run \
-    #   --http-method POST \
-    #   --oauth-service-account-email=$pipeline_service_account \
-    #   --schedule='*/15 * * * *'
+    gcloud scheduler jobs ${command} http ${instance_name} \
+      --location ${region} \
+      --uri=https://${region}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${project}/jobs/${instance_name}:run \
+      --http-method POST \
+      --oauth-service-account-email=$pipeline_service_account \
+      --schedule='*/15 * * * *'
 fi
