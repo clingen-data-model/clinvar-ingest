@@ -141,7 +141,35 @@ def reader_fn_for_format(
     return reader_fn
 
 
-def parse_and_write_files(  # noqa: PLR0912
+def get_release_date_and_iterate_type(
+    input_filename: str, file_format: ClinVarIngestFileFormat
+) -> dict[str, str]:
+    """
+    Returns the release date from inside the file and the iterate type, in a dict.
+
+    Example:
+        get_release_date_and_iterate_type("gs://bucket/ClinVarVCV_2021-04-01.xml.gz", ClinVarIngestFileFormat.VCV)
+
+        {
+            "release_date": "2021-04-01",
+            "iterate_type": "variation_archive"
+        }
+    """
+    with _open(input_filename) as f_in:
+        match file_format:
+            case ClinVarIngestFileFormat.VCV:
+                releaseinfo = get_clinvar_vcv_xml_releaseinfo(f_in)
+                iterate_type = "variation_archive"
+            case ClinVarIngestFileFormat.RCV:
+                releaseinfo = get_clinvar_rcv_xml_releaseinfo(f_in)
+                iterate_type = "rcv_mapping"
+            case _:
+                raise ValueError(f"Unknown file format: {file_format}")
+        release_date = releaseinfo["release_date"]
+    return {"release_date": release_date, "iterate_type": iterate_type}
+
+
+def parse_and_write_files(
     input_filename: str,
     output_directory: str,
     gzip_output=True,
@@ -156,18 +184,10 @@ def parse_and_write_files(  # noqa: PLR0912
     Returns the dict of types to their output files.
     """
     open_output_files = {}
-    with _open(input_filename) as f_in:
-        match file_format:
-            case ClinVarIngestFileFormat.VCV:
-                releaseinfo = get_clinvar_vcv_xml_releaseinfo(f_in)
-                iterate_type = "variation_archive"
-            case ClinVarIngestFileFormat.RCV:
-                releaseinfo = get_clinvar_rcv_xml_releaseinfo(f_in)
-                iterate_type = "rcv_mapping"
-            case _:
-                raise ValueError(f"Unknown file format: {file_format}")
-        release_date = releaseinfo["release_date"]
-        _logger.info(f"Parsing release date: {release_date}")
+    release_info = get_release_date_and_iterate_type(input_filename, file_format)
+    release_date = release_info["release_date"]
+    iterate_type = release_info["iterate_type"]
+    _logger.info(f"Parsing release date: {release_date}, iterate_type: {iterate_type}")
 
     # Release directory is within the output directory
     output_release_directory = f"{output_directory}/{release_date}"
