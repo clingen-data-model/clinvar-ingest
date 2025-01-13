@@ -6,6 +6,8 @@ import pathlib
 from collections.abc import Callable, Iterator
 from typing import IO, Any, TextIO
 
+import requests
+
 from clinvar_ingest.cloud.gcs import blob_reader, blob_size, blob_writer
 from clinvar_ingest.fs import BinaryOpenMode, ReadCounter, fs_open
 from clinvar_ingest.model.common import Model, dictify
@@ -155,7 +157,17 @@ def get_release_date_and_iterate_type(
             "iterate_type": "variation_archive"
         }
     """
-    with _open(input_filename) as f_in:
+
+    def ftp_http_reader(input_filename):
+        if input_filename.startswith(("http://", "https://", "ftp://")):
+            response = requests.get(input_filename, stream=True, timeout=60)
+            response.raise_for_status()  # Raises exception for error status codes
+            if input_filename.endswith(".gz"):
+                return gzip.open(response.raw)
+            return response.raw
+        return None
+
+    with ftp_http_reader(input_filename) or _open(input_filename) as f_in:
         match file_format:
             case ClinVarIngestFileFormat.VCV:
                 releaseinfo = get_clinvar_vcv_xml_releaseinfo(f_in)

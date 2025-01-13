@@ -45,12 +45,15 @@ _logger = logging.getLogger("clinvar-ingest-workflow")
 
 
 def create_execution_id(
-    seed: str, file_format: ClinVarIngestFileFormat, reprocessed: bool = False
+    seed: str,
+    file_format: ClinVarIngestFileFormat,
+    reprocessed: bool = False,
+    suffix: str = "",
 ) -> str:
     if env.release_tag is None:
         raise RuntimeError("Must specify 'release_tag' in the environment")
     repro = "_reprocessed" if reprocessed else ""
-    return f"clinvar_{file_format}_{seed}_{env.release_tag}{repro}"
+    return f"clinvar_{file_format}_{seed}_{env.release_tag}{repro}{suffix}"
 
 
 def _get_gcs_client() -> GCSClient:
@@ -86,6 +89,7 @@ _logger.info(
 
 ################################################################
 # Get the release date from the XML file
+# TODO add try catch to send slack message if it fails
 source_base = str(wf_input.host).strip("/")
 source_dir = PurePosixPath(wf_input.directory)
 source_file = PurePosixPath(wf_input.name)
@@ -204,6 +208,9 @@ except Exception as e:
 
 if copy_only:
     msg = f"{workflow_id_message} - Copy-only workflow succeeded. Copied {source_path} to {copy_response.gcs_path}"
+    _logger.info(msg)
+    send_slack_message(msg)
+    sys.exit(0)
 
 ################################################################
 # Reads an XML file from GCS, parses it, and writes the parsed data to GCS
