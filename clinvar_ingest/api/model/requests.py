@@ -14,7 +14,6 @@ from pydantic import (
     ValidationInfo,
     field_serializer,
     field_validator,
-    validator,
 )
 
 from clinvar_ingest.status import StepName, StepStatus
@@ -140,7 +139,7 @@ class GcsBlobPath(RootModel):
 
     root: str
 
-    @validator("root")
+    @field_validator("root")
     def _validate(cls, v):  # pylint: disable=E0213
         if not v.startswith("gs://"):
             raise ValueError(f"Must be a gs:// URL: {v}")
@@ -157,7 +156,7 @@ class PurePathStr(RootModel):
 
     root: str
 
-    @validator("root")
+    @field_validator("root")
     def _validate(cls, v):  # pylint: disable=E0213
         PurePath(v)
         return v
