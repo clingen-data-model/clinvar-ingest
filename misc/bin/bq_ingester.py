@@ -64,6 +64,12 @@ def _get_bq_client() -> bigquery.Client:
 env = get_env()
 _logger.info(f"BQ Ingest environment: {env}")
 
+if env.file_format_mode != "bq":
+    msg = f"Expected file_format_mode to be 'bq' but got '{env.file_format_mode}'"
+    _logger.error(msg)
+    send_slack_message(msg)
+    sys.exit(1)
+
 ################################################################
 # Write record to processing_history indicating this workflow has begun
 processing_history_table = processing_history.ensure_initialized(
@@ -353,18 +359,31 @@ for row in rows_to_ingest:
         # TODO Does it make sense to reset bq_ingest_processing to NULL
         # when it is possible that other parts of the record may have been updated
         # such as release_date?
-        bq_ingest_write_result = processing_history.write_started(
+        # bq_ingest_write_result = processing_history.write_started(
+        #     processing_history_table=processing_history_table,
+        #     release_date=None,
+        #     release_tag=vcv_pipeline_version,
+        #     schema_version=vcv_schema_version,
+        #     file_type=env.file_format_mode,
+        #     client=_get_bq_client(),
+        #     error_if_exists=False,
+        # )
+        bq_ingest_rows_deleted = processing_history.delete(
             processing_history_table=processing_history_table,
-            release_date=None,
+            release_date=vcv_xml_release_date,
             release_tag=vcv_pipeline_version,
-            schema_version=vcv_schema_version,
             file_type=env.file_format_mode,
+            xml_release_date=vcv_xml_release_date,
             client=_get_bq_client(),
-            error_if_exists=False,
         )
-        msg = f"""
-              Reset processing_history_table VCV bq_ingest_processing dated {vcv_xml_release_date} version
-              {vcv_pipeline_version}.
-              """
+        msg = (
+            f"Reset processing_history table {processing_history_table} due to failure in bq-ingest processing of "
+            f"VCV release `{vcv_xml_release_date}` pipeline_version {vcv_pipeline_version} "
+            f"from `{vcv_bucket_dir}` and "
+            f"RCV release dated `{rcv_xml_release_date}` pipeline_version {rcv_pipeline_version} "
+            f"from `{rcv_bucket_dir}`. Dataset {dataset.dataset_id} may be in inconsistent state."
+        )
+
         _logger.exception(msg)
         send_slack_message(msg)
+        raise e

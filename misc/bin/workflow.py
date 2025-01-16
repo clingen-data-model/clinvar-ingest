@@ -90,12 +90,19 @@ _logger.info(
 ################################################################
 # Get the release date from the XML file
 # TODO add try catch to send slack message if it fails
+
 source_base = str(wf_input.host).strip("/")
 source_dir = PurePosixPath(wf_input.directory)
 source_file = PurePosixPath(wf_input.name)
 source_path = f"{source_base}/{source_dir.relative_to(source_dir.anchor) / source_file}"
 _logger.info(f"Determining release date from {source_path}")
-release_info = get_release_date_and_iterate_type(source_path, file_mode)
+try:
+    release_info = get_release_date_and_iterate_type(source_path, file_mode)
+except Exception as e:
+    msg = f"Failed to get release date from source file {source_path}"
+    _logger.exception(msg)
+    send_slack_message(msg)
+    raise e
 release_date = release_info["release_date"]
 
 workflow_execution_id = create_execution_id(
