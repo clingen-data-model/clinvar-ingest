@@ -28,7 +28,10 @@ from google.cloud.bigquery.table import RowIterator
 _logger = logging.getLogger("clinvar_ingest")
 
 stored_procedures = [
-    "CALL `clinvar_ingest.dataset_preparation_v2`({0});",
+    "CALL `clinvar_ingest.dataset_preparation`({0});",
+    "CALL `clinvar_ingest.temporal_data_collection`({0});",
+    "CALL `clinvar_ingest.temporal_data_summation`({0});",
+    "CALL `clinvar_ingest.tracker_report_update`({0});",
 ]
 
 
