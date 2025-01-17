@@ -30,14 +30,14 @@ _logger = logging.getLogger("clinvar_ingest")
 stored_procedures = [
     "CALL `clinvar_ingest.dataset_preparation`({0});",
     "CALL `clinvar_ingest.temporal_data_collection`({0});",
-    "CALL `clinvar_ingest.temporal_data_summation`({0});",
-    "CALL `clinvar_ingest.tracker_report_update`({0});",
+    "CALL `clinvar_ingest.temporal_data_summation`();",
+    "CALL `clinvar_ingest.variation_tracker`();",
 ]
 
 
 def execute_each(
     client: bigquery.Client, project_id: str, release_date: str | None
-) -> RowIterator:
+) -> list[RowIterator]:
     """Execute each procedure in the list of stored procedures individualy,
        substituting the release_date date if provided.
 
