@@ -8,6 +8,7 @@
 import json
 import logging
 import sys
+import traceback
 
 from google.cloud import bigquery
 from google.cloud.storage import Client as GCSClient
@@ -57,6 +58,40 @@ def _get_bq_client() -> bigquery.Client:
     return getattr(_get_bq_client, "client")
 
 
+rollback_rows = []
+
+
+def bq_ingest_rollback_exception_handler(exc_type, exc_value, exc_traceback):
+    """
+    https://docs.python.org/3/library/sys.html#sys.excepthook
+    """
+    exception_details = "".join(
+        traceback.format_exception(exc_type, exc_value, exc_traceback)
+    )
+
+    # Log the exception
+    _logger.error("Uncaught exception:\n%s", exception_details)
+
+    _logger.warning("Rolling back started BQ ingest rows.")
+    for row in rollback_rows:
+        _logger.info(f"Rolling back row: {row}")
+        c = processing_history.delete(
+            processing_history_table=row["processing_history_table"],
+            release_tag=row["release_tag"],
+            file_type=row["file_type"],
+            xml_release_date=row["xml_release_date"],
+            client=_get_bq_client(),
+        )
+        _logger.info(f"Deleted {c} rows from processing_history.")
+
+    # Call the default exception handler
+    sys.__excepthook__(exc_type, exc_value, exc_traceback)
+
+
+# Add the exception handler as the global exception handler.
+# NOTE: this modifies global state and will affect all subsequent exceptions in this script or any other script which imports this script.
+sys.excepthook = bq_ingest_rollback_exception_handler
+
 ################################################################
 ### Initialization code
 
@@ -99,6 +134,17 @@ def json_parse_if_string(value):
     return value
 
 
+# Store the information needed to roll back a started ingest if an error occurs
+# bq_ingest_rows_deleted = processing_history.delete(
+#     processing_history_table=processing_history_table,
+#     release_date=vcv_xml_release_date,
+#     release_tag=vcv_pipeline_version,
+#     file_type=env.file_format_mode,
+#     xml_release_date=vcv_xml_release_date,
+#     client=_get_bq_client(),
+# )
+
+
 # update processing_history to set the bq ingest as having started
 rows_to_ingest = []
 for row in processing_history_needing_bq_ingest:
@@ -107,7 +153,7 @@ for row in processing_history_needing_bq_ingest:
     vcv_xml_release_date = row.get("vcv_xml_release_date", None)
     vcv_bucket_dir = row.get("vcv_bucket_dir", None)
     schema_version = row.get("vcv_schema_version", None)
-    bq_ingest_write_result = processing_history.write_started(
+    bq_ingest_write_result, query_job = processing_history.write_started(
         processing_history_table=processing_history_table,
         release_date=str(vcv_xml_release_date),
         release_tag=vcv_pipeline_version,
@@ -121,6 +167,16 @@ for row in processing_history_needing_bq_ingest:
     _logger.info(
         f"Created bq_ingest_processing record with version {vcv_pipeline_version} and "
         f"release date {vcv_xml_release_date}."
+    )
+    # Add the started row to the rollback list
+    rollback_rows.append(
+        {
+            "processing_history_table": processing_history_table,
+            "release_tag": vcv_pipeline_version,
+            "file_type": env.file_format_mode,
+            "xml_release_date": str(vcv_xml_release_date),
+            "client": _get_bq_client(),
+        }
     )
 
 # Now process individual rows
@@ -176,6 +232,9 @@ for row in rows_to_ingest:
             """
         _logger.info(msg)
         send_slack_message(msg)
+
+        # TODO throw fake exception to test rollback
+        raise Exception("Fake exception to test rollback")
 
         # Create VCV external tables
         vcv_create_tables_request = CreateExternalTablesRequest(
@@ -348,42 +407,42 @@ for row in rows_to_ingest:
             """
         _logger.info(msg)
         send_slack_message(msg)
-    except Exception as e:
-        msg = f"""
-            Error processing VCV release dated {vcv_xml_release_date} from {vcv_bucket_dir} and
-            RCV release dated {rcv_xml_release_date} from {rcv_bucket_dir} into dataset {dataset.dataset_id}.
-            """
-        _logger.exception(msg)
-        send_slack_message(msg)
-        # rollback on exception
-        # TODO Does it make sense to reset bq_ingest_processing to NULL
-        # when it is possible that other parts of the record may have been updated
-        # such as release_date?
-        # bq_ingest_write_result = processing_history.write_started(
-        #     processing_history_table=processing_history_table,
-        #     release_date=None,
-        #     release_tag=vcv_pipeline_version,
-        #     schema_version=vcv_schema_version,
-        #     file_type=env.file_format_mode,
-        #     client=_get_bq_client(),
-        #     error_if_exists=False,
-        # )
-        bq_ingest_rows_deleted = processing_history.delete(
-            processing_history_table=processing_history_table,
-            release_date=vcv_xml_release_date,
-            release_tag=vcv_pipeline_version,
-            file_type=env.file_format_mode,
-            xml_release_date=vcv_xml_release_date,
-            client=_get_bq_client(),
-        )
-        msg = (
-            f"Reset processing_history table {processing_history_table} due to failure in bq-ingest processing of "
-            f"VCV release `{vcv_xml_release_date}` pipeline_version {vcv_pipeline_version} "
-            f"from `{vcv_bucket_dir}` and "
-            f"RCV release dated `{rcv_xml_release_date}` pipeline_version {rcv_pipeline_version} "
-            f"from `{rcv_bucket_dir}`. Dataset {dataset.dataset_id} may be in inconsistent state."
-        )
 
-        _logger.exception(msg)
-        send_slack_message(msg)
+        # Remove the started row from the rollback list, since this ingest has succeeded
+        rollback_rows = [
+            row
+            for row in rollback_rows
+            if row["xml_release_date"] != str(vcv_xml_release_date)
+            or row["release_tag"] != vcv_pipeline_version
+        ]
+    except Exception as e:
         raise e
+        # msg = f"""
+        #     Error processing VCV release dated {vcv_xml_release_date} from {vcv_bucket_dir} and
+        #     RCV release dated {rcv_xml_release_date} from {rcv_bucket_dir} into dataset {dataset.dataset_id}.
+        #     """
+        # _logger.exception(msg)
+        # send_slack_message(msg)
+        # # rollback on exception
+        # # TODO Does it make sense to reset bq_ingest_processing to NULL
+        # # when it is possible that other parts of the record may have been updated
+        # # such as release_date?
+        # bq_ingest_rows_deleted = processing_history.delete(
+        #     processing_history_table=processing_history_table,
+        #     release_date=vcv_xml_release_date,
+        #     release_tag=vcv_pipeline_version,
+        #     file_type=env.file_format_mode,
+        #     xml_release_date=vcv_xml_release_date,
+        #     client=_get_bq_client(),
+        # )
+        # msg = (
+        #     f"Reset processing_history table {processing_history_table} due to failure in bq-ingest processing of "
+        #     f"VCV release `{vcv_xml_release_date}` pipeline_version {vcv_pipeline_version} "
+        #     f"from `{vcv_bucket_dir}` and "
+        #     f"RCV release dated `{rcv_xml_release_date}` pipeline_version {rcv_pipeline_version} "
+        #     f"from `{rcv_bucket_dir}`. Dataset {dataset.dataset_id} may be in inconsistent state."
+        # )
+
+        # _logger.exception(msg)
+        # send_slack_message(msg)
+        # raise e

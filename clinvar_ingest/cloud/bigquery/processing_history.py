@@ -227,7 +227,7 @@ def check_started_exists(
 
 def delete(
     processing_history_table: bigquery.Table,
-    release_date: str | None,
+    # release_date: str | None,
     release_tag: str,
     file_type: ClinVarIngestFileFormat,
     xml_release_date: str | None = None,
@@ -238,14 +238,13 @@ def delete(
     """
     stmt = f"""
     DELETE FROM {processing_history_table}
-    WHERE release_date = @release_date
-    AND pipeline_version = @release_tag
+    WHERE pipeline_version = @release_tag
     AND file_type = @file_type
     AND xml_release_date = @xml_release_date
     """
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
-            bigquery.ScalarQueryParameter("release_date", "STRING", release_date),
+            # bigquery.ScalarQueryParameter("release_date", "STRING", release_date),
             bigquery.ScalarQueryParameter("release_tag", "STRING", release_tag),
             bigquery.ScalarQueryParameter("file_type", "STRING", file_type),
             bigquery.ScalarQueryParameter(
@@ -257,7 +256,7 @@ def delete(
         client = bigquery.Client()
 
     _logger.info(
-        f"Deleting rows from processing_history: {stmt} (release_date={release_date}, release_tag={release_tag}, file_type={file_type}, xml_release_date={xml_release_date})"
+        f"Deleting rows from processing_history: {stmt} (release_tag={release_tag}, file_type={file_type}, xml_release_date={xml_release_date})"
     )
     query_job = client.query(stmt, job_config=job_config)
     _ = query_job.result()
@@ -366,7 +365,7 @@ def write_started(  # noqa: PLR0913
 
     # Run a synchronous query job and get the results
     query_job = client.query(sql, job_config=job_config)
-    _ = query_job.result()
+    result = query_job.result()
     _logger.info(
         (
             "processing_history record written for job started event."
@@ -375,6 +374,7 @@ def write_started(  # noqa: PLR0913
         release_date,
         file_type,
     )
+    return result, query_job
 
 
 def write_finished(
