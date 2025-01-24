@@ -217,232 +217,192 @@ for row in rows_to_ingest:
     bucket = _get_gcs_client().get_bucket(env.bucket_name)
     bucket_location = bucket.location
 
-    dataset = None
-    try:
-        dataset = ensure_dataset_exists(
-            project=bq_client.project,
-            dataset_id=target_dataset_name,
-            client=bq_client,
-            location=bucket_location,
-        )
-        _logger.info(f"Created dataset: {dataset.dataset_id}")
+    dataset = ensure_dataset_exists(
+        project=bq_client.project,
+        dataset_id=target_dataset_name,
+        client=bq_client,
+        location=bucket_location,
+    )
+    _logger.info(f"Created dataset: {dataset.dataset_id}")
 
-        msg = f"""
-            BQ Ingest now processing {vcv_bucket_dir} and {rcv_bucket_dir} files into dataset: {dataset.dataset_id}.
-            """
-        _logger.info(msg)
-        send_slack_message(msg)
+    msg = f"""
+        BQ Ingest now processing {vcv_bucket_dir} and {rcv_bucket_dir} files into dataset: {dataset.dataset_id}.
+        """
+    _logger.info(msg)
+    send_slack_message(msg)
 
-        # TODO throw fake exception to test rollback
-        raise Exception("Fake exception to test rollback")
+    # Create VCV external tables
+    vcv_create_tables_request = CreateExternalTablesRequest(
+        destination_dataset=target_dataset_name,
+        source_table_paths=vcv_parsed_files,
+    )
+    _logger.info(
+        f"VCV Create External Tables request: {vcv_create_tables_request.model_dump_json()}"
+    )
+    vcv_create_tables_response = run_create_external_tables(vcv_create_tables_request)
+    vcv_ext_resp_json = json.dumps(
+        walk_and_replace(vcv_create_tables_response, processing_history._dump_fn)
+    )
+    _logger.info(f"VCV Create External Tables response: {vcv_ext_resp_json}")
 
-        # Create VCV external tables
-        vcv_create_tables_request = CreateExternalTablesRequest(
-            destination_dataset=target_dataset_name,
-            source_table_paths=vcv_parsed_files,
-        )
-        _logger.info(
-            f"VCV Create External Tables request: {vcv_create_tables_request.model_dump_json()}"
-        )
-        vcv_create_tables_response = run_create_external_tables(
-            vcv_create_tables_request
-        )
-        vcv_ext_resp_json = json.dumps(
-            walk_and_replace(vcv_create_tables_response, processing_history._dump_fn)
-        )
-        _logger.info(f"VCV Create External Tables response: {vcv_ext_resp_json}")
+    # Create RCV external tables
+    rcv_create_tables_request = CreateExternalTablesRequest(
+        destination_dataset=target_dataset_name,
+        source_table_paths=rcv_parsed_files,
+    )
+    _logger.info(
+        f"RCV Create External Tables request: {rcv_create_tables_request.model_dump_json()}"
+    )
+    rcv_create_tables_response = run_create_external_tables(rcv_create_tables_request)
+    rcv_ext_resp_json = json.dumps(
+        walk_and_replace(rcv_create_tables_response, processing_history._dump_fn)
+    )
+    _logger.info(f"RCV Create External Tables response: {rcv_ext_resp_json}")
 
-        # Create RCV external tables
-        rcv_create_tables_request = CreateExternalTablesRequest(
-            destination_dataset=target_dataset_name,
-            source_table_paths=rcv_parsed_files,
-        )
-        _logger.info(
-            f"RCV Create External Tables request: {rcv_create_tables_request.model_dump_json()}"
-        )
-        rcv_create_tables_response = run_create_external_tables(
-            rcv_create_tables_request
-        )
-        rcv_ext_resp_json = json.dumps(
-            walk_and_replace(rcv_create_tables_response, processing_history._dump_fn)
-        )
-        _logger.info(f"RCV Create External Tables response: {rcv_ext_resp_json}")
+    # VCV create internal tables
+    vcv_create_internal_tables_request = CreateInternalTablesRequest(
+        source_dest_table_map={
+            # source -> destination
+            str(table): str(table).replace("_external", "")
+            for _, table in vcv_create_tables_response.items()
+        }
+    )
+    _logger.info(
+        f"VCV Create Internal Tables request: {vcv_create_internal_tables_request.model_dump_json()}"
+    )
+    vcv_create_internal_tables_response = create_internal_tables(
+        vcv_create_internal_tables_request
+    )
+    _logger.info(
+        f"VCV Create Internal Tables response: {vcv_create_internal_tables_response.model_dump_json()}"
+    )
 
-        # VCV create internal tables
-        vcv_create_internal_tables_request = CreateInternalTablesRequest(
-            source_dest_table_map={
-                # source -> destination
-                str(table): str(table).replace("_external", "")
-                for _, table in vcv_create_tables_response.items()
-            }
-        )
-        _logger.info(
-            f"VCV Create Internal Tables request: {vcv_create_internal_tables_request.model_dump_json()}"
-        )
-        vcv_create_internal_tables_response = create_internal_tables(
-            vcv_create_internal_tables_request
-        )
-        _logger.info(
-            f"VCV Create Internal Tables response: {vcv_create_internal_tables_response.model_dump_json()}"
-        )
+    # RCV create internal tables
+    rcv_create_internal_tables_request = CreateInternalTablesRequest(
+        source_dest_table_map={
+            # source -> destination
+            str(table): str(table).replace("_external", "")
+            for _, table in rcv_create_tables_response.items()
+        }
+    )
+    _logger.info(
+        f"RCV Create Internal Tables request: {rcv_create_internal_tables_request.model_dump_json()}"
+    )
+    rcv_create_internal_tables_response = create_internal_tables(
+        rcv_create_internal_tables_request
+    )
+    _logger.info(
+        f"RCV Create Internal Tables response: {rcv_create_internal_tables_response.model_dump_json()}"
+    )
 
-        # RCV create internal tables
-        rcv_create_internal_tables_request = CreateInternalTablesRequest(
-            source_dest_table_map={
-                # source -> destination
-                str(table): str(table).replace("_external", "")
-                for _, table in rcv_create_tables_response.items()
-            }
-        )
-        _logger.info(
-            f"RCV Create Internal Tables request: {rcv_create_internal_tables_request.model_dump_json()}"
-        )
-        rcv_create_internal_tables_response = create_internal_tables(
-            rcv_create_internal_tables_request
-        )
-        _logger.info(
-            f"RCV Create Internal Tables response: {rcv_create_internal_tables_response.model_dump_json()}"
-        )
+    # Drop VCV external tables
+    vcv_drop_external_tables_request = DropExternalTablesRequest(
+        root=vcv_create_tables_response
+    )
+    _logger.info(
+        f"VCV Drop External Tables request: {vcv_drop_external_tables_request.model_dump_json()}"
+    )
+    vcv_drop_external_tables_response = drop_external_tables(
+        vcv_drop_external_tables_request
+    )
 
-        # Drop VCV external tables
-        vcv_drop_external_tables_request = DropExternalTablesRequest(
-            root=vcv_create_tables_response
-        )
-        _logger.info(
-            f"VCV Drop External Tables request: {vcv_drop_external_tables_request.model_dump_json()}"
-        )
-        vcv_drop_external_tables_response = drop_external_tables(
-            vcv_drop_external_tables_request
-        )
+    # Drop RCV external tables
+    rcv_drop_external_tables_request = DropExternalTablesRequest(
+        root=rcv_create_tables_response
+    )
+    _logger.info(
+        f"RCV Drop External Tables request: {rcv_drop_external_tables_request.model_dump_json()}"
+    )
+    rcv_drop_external_tables_response = drop_external_tables(
+        rcv_drop_external_tables_request
+    )
 
-        # Drop RCV external tables
-        rcv_drop_external_tables_request = DropExternalTablesRequest(
-            root=rcv_create_tables_response
-        )
-        _logger.info(
-            f"RCV Drop External Tables request: {rcv_drop_external_tables_request.model_dump_json()}"
-        )
-        rcv_drop_external_tables_response = drop_external_tables(
-            rcv_drop_external_tables_request
-        )
+    # Update the processing history table to insert the final release date into the VCV
+    # and RCV rows to indicate that they have been ingested
+    # Update VCV final release_date
+    _logger.info("Updating VCV final release date.")
+    _logger.info(
+        f"processing_history_table: {processing_history_table}, "
+        f"xml_release_date: {vcv_xml_release_date}, "
+        f"release_tag: {vcv_pipeline_version}, "
+        f"file_type: {vcv_file_type}, "
+        f"bucket_dir: {vcv_bucket_dir}, "
+        f"final_release_date: {final_release_date}"
+    )
+    processing_history.update_final_release_date(
+        processing_history_table=processing_history_table,
+        xml_release_date=vcv_xml_release_date,
+        release_tag=vcv_pipeline_version,
+        file_type=vcv_file_type,
+        bucket_dir=vcv_bucket_dir,
+        final_release_date=final_release_date,
+        final_dataset_id=dataset.dataset_id,
+        client=bq_client,
+    )
+    # Update RCV final release_date
+    _logger.info("Updating RCV final release date.")
+    _logger.info(
+        f"processing_history_table: {processing_history_table}, "
+        f"xml_release_date: {rcv_xml_release_date}, "
+        f"release_tag: {rcv_pipeline_version}, "
+        f"file_type: {rcv_file_type}, "
+        f"bucket_dir: {rcv_bucket_dir}, "
+        f"final_release_date: {final_release_date}"
+    )
+    processing_history.update_final_release_date(
+        processing_history_table=processing_history_table,
+        xml_release_date=rcv_xml_release_date,
+        release_tag=rcv_pipeline_version,
+        file_type=rcv_file_type,
+        bucket_dir=rcv_bucket_dir,
+        final_release_date=final_release_date,
+        final_dataset_id=dataset.dataset_id,
+        client=bq_client,
+    )
 
-        # Update the processing history table to insert the final release date into the VCV
-        # and RCV rows to indicate that they have been ingested
-        # Update VCV final release_date
-        _logger.info("Updating VCV final release date.")
-        _logger.info(
-            f"processing_history_table: {processing_history_table}, "
-            f"xml_release_date: {vcv_xml_release_date}, "
-            f"release_tag: {vcv_pipeline_version}, "
-            f"file_type: {vcv_file_type}, "
-            f"bucket_dir: {vcv_bucket_dir}, "
-            f"final_release_date: {final_release_date}"
-        )
-        processing_history.update_final_release_date(
-            processing_history_table=processing_history_table,
-            xml_release_date=vcv_xml_release_date,
-            release_tag=vcv_pipeline_version,
-            file_type=vcv_file_type,
-            bucket_dir=vcv_bucket_dir,
-            final_release_date=final_release_date,
-            final_dataset_id=dataset.dataset_id,
-            client=bq_client,
-        )
-        # Update RCV final release_date
-        _logger.info("Updating RCV final release date.")
-        _logger.info(
-            f"processing_history_table: {processing_history_table}, "
-            f"xml_release_date: {rcv_xml_release_date}, "
-            f"release_tag: {rcv_pipeline_version}, "
-            f"file_type: {rcv_file_type}, "
-            f"bucket_dir: {rcv_bucket_dir}, "
-            f"final_release_date: {final_release_date}"
-        )
-        processing_history.update_final_release_date(
-            processing_history_table=processing_history_table,
-            xml_release_date=rcv_xml_release_date,
-            release_tag=rcv_pipeline_version,
-            file_type=rcv_file_type,
-            bucket_dir=rcv_bucket_dir,
-            final_release_date=final_release_date,
-            final_dataset_id=dataset.dataset_id,
-            client=bq_client,
-        )
+    # Update BQ final release_date
+    _logger.info("Updating BQ final release date.")
+    _logger.info(
+        f"processing_history_table: {processing_history_table}, "
+        f"xml_release_date: {vcv_xml_release_date}, "
+        f"release_tag: {vcv_pipeline_version}, "
+        f"file_type: {env.file_format_mode}, "
+        f"bucket_dir: {vcv_bucket_dir}, "
+        f"final_release_date: {final_release_date}"
+    )
+    processing_history.update_final_release_date(
+        processing_history_table=processing_history_table,
+        xml_release_date=vcv_xml_release_date,
+        release_tag=vcv_pipeline_version,
+        file_type=env.file_format_mode,
+        bucket_dir=vcv_bucket_dir,
+        final_release_date=final_release_date,
+        final_dataset_id=dataset.dataset_id,
+        client=bq_client,
+    )
 
-        # Update BQ final release_date
-        _logger.info("Updating BQ final release date.")
-        _logger.info(
-            f"processing_history_table: {processing_history_table}, "
-            f"xml_release_date: {vcv_xml_release_date}, "
-            f"release_tag: {vcv_pipeline_version}, "
-            f"file_type: {env.file_format_mode}, "
-            f"bucket_dir: {vcv_bucket_dir}, "
-            f"final_release_date: {final_release_date}"
-        )
-        processing_history.update_final_release_date(
-            processing_history_table=processing_history_table,
-            xml_release_date=vcv_xml_release_date,
-            release_tag=vcv_pipeline_version,
-            file_type=env.file_format_mode,
-            bucket_dir=vcv_bucket_dir,
-            final_release_date=final_release_date,
-            final_dataset_id=dataset.dataset_id,
-            client=bq_client,
-        )
+    processing_history.write_finished(
+        processing_history_table=processing_history_table,
+        release_date=str(final_release_date),
+        release_tag=env.release_tag,
+        file_type=env.file_format_mode,
+        parsed_files={},
+        bucket_dir=vcv_bucket_dir,
+        client=_get_bq_client(),
+    )
 
-        processing_history.write_finished(
-            processing_history_table=processing_history_table,
-            release_date=str(final_release_date),
-            release_tag=env.release_tag,
-            file_type=env.file_format_mode,
-            parsed_files={},
-            bucket_dir=vcv_bucket_dir,
-            client=_get_bq_client(),
-        )
+    msg = f"""
+        BQ Ingest workflow succeeded.
+        Processed VCV release dated {vcv_xml_release_date} from {vcv_bucket_dir} and
+        RCV release dated {rcv_xml_release_date} from {rcv_bucket_dir} into dataset {dataset.dataset_id}.
+        """
+    _logger.info(msg)
+    send_slack_message(msg)
 
-        msg = f"""
-            BQ Ingest workflow succeeded.
-            Processed VCV release dated {vcv_xml_release_date} from {vcv_bucket_dir} and
-            RCV release dated {rcv_xml_release_date} from {rcv_bucket_dir} into dataset {dataset.dataset_id}.
-            """
-        _logger.info(msg)
-        send_slack_message(msg)
-
-        # Remove the started row from the rollback list, since this ingest has succeeded
-        rollback_rows = [
-            row
-            for row in rollback_rows
-            if row["xml_release_date"] != str(vcv_xml_release_date)
-            or row["release_tag"] != vcv_pipeline_version
-        ]
-    except Exception as e:
-        raise e
-        # msg = f"""
-        #     Error processing VCV release dated {vcv_xml_release_date} from {vcv_bucket_dir} and
-        #     RCV release dated {rcv_xml_release_date} from {rcv_bucket_dir} into dataset {dataset.dataset_id}.
-        #     """
-        # _logger.exception(msg)
-        # send_slack_message(msg)
-        # # rollback on exception
-        # # TODO Does it make sense to reset bq_ingest_processing to NULL
-        # # when it is possible that other parts of the record may have been updated
-        # # such as release_date?
-        # bq_ingest_rows_deleted = processing_history.delete(
-        #     processing_history_table=processing_history_table,
-        #     release_date=vcv_xml_release_date,
-        #     release_tag=vcv_pipeline_version,
-        #     file_type=env.file_format_mode,
-        #     xml_release_date=vcv_xml_release_date,
-        #     client=_get_bq_client(),
-        # )
-        # msg = (
-        #     f"Reset processing_history table {processing_history_table} due to failure in bq-ingest processing of "
-        #     f"VCV release `{vcv_xml_release_date}` pipeline_version {vcv_pipeline_version} "
-        #     f"from `{vcv_bucket_dir}` and "
-        #     f"RCV release dated `{rcv_xml_release_date}` pipeline_version {rcv_pipeline_version} "
-        #     f"from `{rcv_bucket_dir}`. Dataset {dataset.dataset_id} may be in inconsistent state."
-        # )
-
-        # _logger.exception(msg)
-        # send_slack_message(msg)
-        # raise e
+    # Remove the started row from the rollback list, since this ingest has succeeded
+    rollback_rows = [
+        row
+        for row in rollback_rows
+        if row["xml_release_date"] != str(vcv_xml_release_date)
+        or row["release_tag"] != vcv_pipeline_version
+    ]

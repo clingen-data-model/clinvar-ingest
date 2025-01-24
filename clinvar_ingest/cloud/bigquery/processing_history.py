@@ -241,7 +241,7 @@ def delete(
     WHERE pipeline_version = @release_tag
     AND file_type = @file_type
     AND xml_release_date = @xml_release_date
-    """
+    """  # noqa: S608
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
             # bigquery.ScalarQueryParameter("release_date", "STRING", release_date),
