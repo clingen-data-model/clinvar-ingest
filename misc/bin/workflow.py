@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
+import argparse
 import logging
 import os
+import sys
 from pathlib import Path, PurePosixPath
 
 from google.cloud import bigquery
@@ -15,7 +17,11 @@ from clinvar_ingest.api.model.requests import (
 from clinvar_ingest.cloud.bigquery import processing_history
 from clinvar_ingest.cloud.gcs import copy_file_to_bucket, http_download_requests
 from clinvar_ingest.config import get_env
-from clinvar_ingest.parse import ClinVarIngestFileFormat, parse_and_write_files
+from clinvar_ingest.parse import (
+    ClinVarIngestFileFormat,
+    get_release_date_and_iterate_type,
+    parse_and_write_files,
+)
 from clinvar_ingest.slack import send_slack_message
 
 logging.basicConfig(
@@ -39,24 +45,27 @@ _logger = logging.getLogger("clinvar-ingest-workflow")
 
 
 def create_execution_id(
-        seed: str, file_format: ClinVarIngestFileFormat, reprocessed: bool = False
+    seed: str,
+    file_format: ClinVarIngestFileFormat,
+    reprocessed: bool = False,
+    suffix: str = "",
 ) -> str:
     if env.release_tag is None:
         raise RuntimeError("Must specify 'release_tag' in the environment")
     repro = "_reprocessed" if reprocessed else ""
-    return f"clinvar_{file_format}_{seed}_{env.release_tag}{repro}"
+    return f"clinvar_{file_format}_{seed}_{env.release_tag}{repro}{suffix}"
 
 
 def _get_gcs_client() -> GCSClient:
     if getattr(_get_gcs_client, "client", None) is None:
-        setattr(_get_gcs_client, "client", GCSClient())
-    return getattr(_get_gcs_client, "client")
+        _get_gcs_client.client = GCSClient()
+    return _get_gcs_client.client
 
 
 def _get_bq_client() -> bigquery.Client:
     if getattr(_get_bq_client, "client", None) is None:
-        setattr(_get_bq_client, "client", bigquery.Client())
-    return getattr(_get_bq_client, "client")
+        _get_bq_client.client = bigquery.Client()
+    return _get_bq_client.client
 
 
 ################################################################
@@ -66,16 +75,41 @@ def _get_bq_client() -> bigquery.Client:
 env = get_env()
 
 # Workflow specific input (which also comes from the env)
-wf_input = ClinvarFTPWatcherRequest(**os.environ)  # type: ignore
+wf_input = ClinvarFTPWatcherRequest(**os.environ)
 file_mode = ClinVarIngestFileFormat(wf_input.file_format or env.file_format_mode)
-release_date = wf_input.release_date.isoformat()
+ftp_file_name_release_date = wf_input.release_date.isoformat()
 
-_logger.info(f"File mode: {file_mode}, release_date: {release_date}")
+# Lookup one more val just for copy-only mode
+copy_only = os.environ.get("CLINVAR_INGEST_COPY_ONLY", "false").lower() == "true"
+
+_logger.info(
+    f"File mode: {file_mode}, ftp_file_name_release_date: {ftp_file_name_release_date}"
+)
+
+
+################################################################
+# Get the release date from the XML file
+# TODO add try catch to send slack message if it fails
+
+source_base = str(wf_input.host).strip("/")
+source_dir = PurePosixPath(wf_input.directory)
+source_file = PurePosixPath(wf_input.name)
+source_path = f"{source_base}/{source_dir.relative_to(source_dir.anchor) / source_file}"
+_logger.info(f"Determining release date from {source_path}")
+try:
+    release_info = get_release_date_and_iterate_type(source_path, file_mode)
+except Exception as e:
+    msg = f"Failed to get release date from source file {source_path}"
+    _logger.exception(msg)
+    send_slack_message(msg)
+    raise e
+release_date = release_info["release_date"]
 
 workflow_execution_id = create_execution_id(
     release_date.replace("-", "_"),
     file_mode,
     wf_input.released != wf_input.last_modified,
+    suffix="_copy_only" if copy_only else "",
 )
 workflow_id_message = f"Workflow Execution ID: {workflow_execution_id}"
 send_slack_message("Starting " + workflow_id_message)
@@ -90,6 +124,7 @@ processing_history_view = processing_history.ensure_history_view_exists(
     processing_history_table=processing_history_table,
     client=_get_bq_client(),
 )
+
 processing_history.write_started(
     processing_history_table=processing_history_table,
     release_date=None,
@@ -121,24 +156,15 @@ def copy(payload: ClinvarFTPWatcherRequest, skip_existing: bool = True) -> CopyR
     gcs_file = PurePosixPath(payload.name)
     gcs_path = f"{gcs_base}/{gcs_dir.relative_to(gcs_dir.anchor) / gcs_file}"
 
-    client = _get_gcs_client()
-
     source_host = str(payload.host)
     source_file_size = payload.size
-
-    source_base = str(payload.host).strip("/")
-    source_dir = PurePosixPath(payload.directory)
-    source_file = PurePosixPath(payload.name)
-    source_path = (
-        f"{source_base}/{source_dir.relative_to(source_dir.anchor) / source_file}"
-    )
 
     if skip_existing:
         # If the blob already exists and the size matches the expected size
         # from the `payload`, return early.
-        bucket = client.bucket(env.bucket_name)
+        bucket = _get_gcs_client().bucket(env.bucket_name)
         # Remove the scheme and bucket name
-        gcs_blob_name = gcs_path[len(f"gs://{env.bucket_name}/"):]
+        gcs_blob_name = gcs_path[len(f"gs://{env.bucket_name}/") :]
         # Retrieve blob metadata
         blob = bucket.get_blob(gcs_blob_name)
 
@@ -160,7 +186,7 @@ def copy(payload: ClinvarFTPWatcherRequest, skip_existing: bool = True) -> CopyR
     elif source_host.startswith("gs://"):
         _logger.info(f"Copying {source_path} to {gcs_path}")
         with open(source_file, "wb") as f:
-            client.download_blob_to_file(source_path, f)
+            _get_gcs_client().download_blob_to_file(source_path, f)
         local_path = Path(source_file)
         _logger.info(f"Downloaded {source_path} to {local_path}")
 
@@ -169,7 +195,9 @@ def copy(payload: ClinvarFTPWatcherRequest, skip_existing: bool = True) -> CopyR
 
     # Upload file to GCS
     copy_file_to_bucket(
-        local_file_uri=str(local_path), remote_blob_uri=gcs_path, client=client
+        local_file_uri=str(local_path),
+        remote_blob_uri=gcs_path,
+        client=_get_gcs_client(),
     )
     _logger.info(f"Uploaded {local_path} to {gcs_path}")
     return CopyResponse(ftp_path=source_path, gcs_path=gcs_path)
@@ -184,6 +212,12 @@ except Exception as e:
     send_slack_message(workflow_id_message + " - " + msg)
     raise e
 
+
+if copy_only:
+    msg = f"{workflow_id_message} - Copy-only workflow succeeded. Copied {source_path} to {copy_response.gcs_path}"
+    _logger.info(msg)
+    send_slack_message(msg)
+    sys.exit(0)
 
 ################################################################
 # Reads an XML file from GCS, parses it, and writes the parsed data to GCS
@@ -207,7 +241,7 @@ def parse(payload: ParseRequest, limit=None) -> ParseResponse:
         file_format=parse_format_mode,
         limit=limit,
     )
-    return ParseResponse(parsed_files=output_files)  # type: ignore
+    return ParseResponse(parsed_files=output_files)
 
 
 try:
