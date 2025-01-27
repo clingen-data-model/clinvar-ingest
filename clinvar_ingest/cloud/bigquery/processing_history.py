@@ -652,7 +652,6 @@ def processed_entries_ready_for_bq_ingest(
     FROM {processing_history_view_table}
     WHERE vcv_processing_finished IS NOT NULL
     AND rcv_processing_finished IS NOT NULL
-    AND release_date IS NULL
     AND bq_release_date IS NULL
     AND bq_processing_started IS NULL
     ORDER BY vcv_xml_release_date
