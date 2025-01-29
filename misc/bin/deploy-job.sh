@@ -127,11 +127,24 @@ env_vars="$env_vars,BQ_DEST_PROJECT=${BQ_DEST_PROJECT}"
 # if instance_name contains stored-procedures make env vars
 if [[ $instance_name =~ ^.*stored-procedures.*$ ]]; then
     # Resetting env_vars here - not inheriting previous
-    env_vars="BQ_DEST_PROJECT=${BQ_DEST_PROJECT},CLINVAR_INGEST_BQ_META_DATASET=${CLINVAR_INGEST_BQ_META_DATASET}"
+    env_vars="file_format=${file_format}"
+    env_vars="$env_vars,BQ_DEST_PROJECT=${BQ_DEST_PROJECT}"
+    env_vars="$env_vars,CLINVAR_INGEST_BQ_META_DATASET=${CLINVAR_INGEST_BQ_META_DATASET}"
     env_vars="$env_vars,CLINVAR_INGEST_RELEASE_TAG=${CLINVAR_INGEST_RELEASE_TAG}"
 fi
 
-### TODO - stored-procedures
+####
+# gcloud project level labels must exist before use
+####
+metadata=`gcloud projects describe $project --format=json`
+service=`echo $metadata | jq '.labels["service"]'`
+component=`echo $metadata | jq '.labels["component"]'`
+if [ $service == "null" || $component == "null" ]; then
+  # set default labels on the project
+  gcloud projects update $project --update-labels=service="service",component="component"
+fi
+#####
+
 gcloud run jobs $command $instance_name \
       --cpu=2 \
       --memory=8Gi \
@@ -141,7 +154,8 @@ gcloud run jobs $command $instance_name \
       --command="$clinvar_ingest_cmd" \
       --service-account=$pipeline_service_account \
       --set-env-vars=$env_vars \
-      --set-secrets=CLINVAR_INGEST_SLACK_TOKEN=clinvar-ingest-slack-token:latest
+      --set-secrets=CLINVAR_INGEST_SLACK_TOKEN=clinvar-ingest-slack-token:latest \
+      --labels=service="clinvar-ingest",component=$instance_name
 
 if [[ $instance_name =~ ^.*bq-ingest.*$|^.*stored-procedures.*$ ]]; then
     # turn off file globbing
@@ -151,5 +165,6 @@ if [[ $instance_name =~ ^.*bq-ingest.*$|^.*stored-procedures.*$ ]]; then
       --uri=https://${region}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${project}/jobs/${instance_name}:run \
       --http-method POST \
       --oauth-service-account-email=$pipeline_service_account \
-      --schedule='*/15 * * * *'
+      --schedule='*/15 * * * *' \
+      --labels=service=clinvar-ingest,component=${instance_name}-scheduler
 fi
