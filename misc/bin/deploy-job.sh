@@ -166,5 +166,5 @@ if [[ $instance_name =~ ^.*bq-ingest.*$|^.*stored-procedures.*$ ]]; then
       --http-method POST \
       --oauth-service-account-email=$pipeline_service_account \
       --schedule='*/15 * * * *' \
-      --labels=service=clinvar-ingest,component=${instance_name}-scheduler
+      --labels=service="clinvar-ingest",component=${instance_name}-scheduler
 fi
