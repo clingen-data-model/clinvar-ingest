@@ -57,6 +57,8 @@ def _get_bq_client() -> bigquery.Client:
         setattr(_get_bq_client, "client", bigquery.Client())
     return getattr(_get_bq_client, "client")
 
+################################################################
+### rollback exception handler for deleting processing_history entries
 
 rollback_rows = []
 

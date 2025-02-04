@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-import argparse
 import logging
 import os
 import sys
+import traceback
 from pathlib import Path, PurePosixPath
 
 from google.cloud import bigquery
@@ -67,6 +67,44 @@ def _get_bq_client() -> bigquery.Client:
         _get_bq_client.client = bigquery.Client()
     return _get_bq_client.client
 
+################################################################
+### rollback exception handler for deleting processing_history entries
+
+rollback_rows = []
+
+def workflow_rollback_exception_handler(exc_type, exc_value, exc_traceback):
+    """
+    https://docs.python.org/3/library/sys.html#sys.excepthook
+    """
+
+    exception_details = "".join(
+        traceback.format_exception(exc_type, exc_value, exc_traceback)
+    )
+
+    # Log the exception
+    _logger.error("Uncaught exception:\n%s", exception_details)
+
+
+    _logger.warning("Rolling back started processing_history rows.")
+    for row in rollback_rows:
+        _logger.info(f"Rolling back row: {row}")
+        c = processing_history.delete(
+            processing_history_table=row["processing_history_table"],
+            release_tag=row["release_tag"],
+            file_type=row["file_type"],
+            xml_release_date=row["xml_release_date"],
+            client=_get_bq_client(),
+        )
+        _logger.info(f"Deleted {c} rows from processing_history.")
+
+    # Call the default exception handler
+    sys.__excepthook__(exc_type, exc_value, exc_traceback)
+
+
+# Add the exception handler as the global exception handler.
+# NOTE: this modifies global state and will affect all subsequent exceptions
+# in this script or any other script which imports this script.
+sys.excepthook = workflow_rollback_exception_handler
 
 ################################################################
 ### Initialization code
@@ -138,6 +176,17 @@ processing_history.write_started(
     ftp_last_modified=wf_input.last_modified.isoformat(),
     xml_release_date=release_date,
     error_if_exists=False,
+)
+
+# Add the started row to the rollback list
+rollback_rows.append(
+    {
+        "processing_history_table": processing_history_table,
+        "release_tag": env.release_tag,
+        "file_type": file_mode,
+        "xml_release_date": str(release_date),
+        "client": _get_bq_client(),
+    }
 )
 
 
@@ -247,7 +296,7 @@ def parse(payload: ParseRequest, limit=None) -> ParseResponse:
 try:
     parse_response = parse(
         ParseRequest(input_path=copy_response.gcs_path),
-        # limit=1000,
+        #limit=1000,
     )
     _logger.info(f"Parse response: {parse_response.model_dump_json}")
 except Exception as e:
@@ -279,3 +328,11 @@ processing_history.write_finished(
 ################################################################
 _logger.info("Workflow succeeded")
 send_slack_message(workflow_id_message + " - Workflow succeeded.")
+
+# Remove the started row from the rollback list, since this ingest has succeeded
+rollback_rows = [
+    row
+    for row in rollback_rows
+    if row["xml_release_date"] != release_date
+    or row["release_tag"] != env.release_tag
+]
