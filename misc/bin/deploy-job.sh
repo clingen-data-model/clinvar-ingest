@@ -165,6 +165,5 @@ if [[ $instance_name =~ ^.*bq-ingest.*$|^.*stored-procedures.*$ ]]; then
       --uri=https://${region}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${project}/jobs/${instance_name}:run \
       --http-method POST \
       --oauth-service-account-email=$pipeline_service_account \
-      --schedule='*/15 * * * *' \
-      --labels=service="clinvar-ingest",component=${instance_name}-scheduler
+      --schedule='*/15 * * * *'
 fi
