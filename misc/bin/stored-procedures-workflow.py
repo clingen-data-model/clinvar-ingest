@@ -4,17 +4,17 @@
 # stored procedures against on or more datasets in the ingestion workflow.
 
 import logging
+import subprocess
 import sys
 import traceback
 
 from google.cloud import bigquery
 
 from clinvar_ingest.cloud.bigquery import processing_history
+from clinvar_ingest.cloud.bigquery.stored_procedures import execute_all
 from clinvar_ingest.config import get_stored_procedures_env
 from clinvar_ingest.slack import send_slack_message
 from clinvar_ingest.utils import ClinVarIngestFileFormat
-
-from clinvar_ingest.cloud.bigquery.stored_procedures import execute_all
 
 logging.basicConfig(
     level=logging.INFO,
@@ -29,6 +29,7 @@ def _get_bq_client() -> bigquery.Client:
         setattr(_get_bq_client, "client", bigquery.Client())
     return getattr(_get_bq_client, "client")
 
+
 ################################################################
 ### rollback exception handler for deleting processing_history entries
 
@@ -39,9 +40,7 @@ def sp_rollback_exception_handler(exc_type, exc_value, exc_traceback):
     """
     https://docs.python.org/3/library/sys.html#sys.excepthook
     """
-    exception_details = "".join(
-        traceback.format_exception(exc_type, exc_value, exc_traceback)
-    )
+    exception_details = "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
 
     # Log the exception
     _logger.error("Uncaught exception:\n%s", exception_details)
@@ -61,6 +60,7 @@ def sp_rollback_exception_handler(exc_type, exc_value, exc_traceback):
     # Call the default exception handler
     sys.__excepthook__(exc_type, exc_value, exc_traceback)
 
+
 # Add the exception handler as the global exception handler.
 # NOTE: this modifies global state and will affect all subsequent exceptions
 # in this script or any other script which imports this script.
@@ -75,9 +75,7 @@ _logger.info(f"Stored procedures execution environment: {env}")
 
 ################################################################
 #
-processing_history_table = processing_history.ensure_initialized(
-    client=_get_bq_client()
-)
+processing_history_table = processing_history.ensure_initialized(client=_get_bq_client())
 
 processing_history_view = processing_history.ensure_history_view_exists(
     processing_history_table=processing_history_table,
@@ -172,11 +170,25 @@ for row in rows_to_ingest:
         send_slack_message(msg)
         raise e
 
-
     # Remove the started row from the rollback list, since this ingest has succeeded
     rollback_rows = [
         row
         for row in rollback_rows
-        if row["xml_release_date"] != str(vcv_xml_release_date)
-           or row["release_tag"] != vcv_pipeline_version
+        if row["xml_release_date"] != str(vcv_xml_release_date) or row["release_tag"] != vcv_pipeline_version
     ]
+
+    dataset_id = row.get("final_dataset_id")
+
+    cmd = f"""
+    bq extract \
+        --destination_format NEWLINE_DELIMITED_JSON \
+        --compression GZIP \
+        '{dataset_id}.variation_identity' \
+        gs://clinvar-gks/{release_date}/dev/vi.json.gz
+    """
+    try:
+        subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(
+            f"Command failed: {e.cmd}\nReturn code: {e.returncode}\nStdout: {e.stdout}\nStderr: {e.stderr}"
+        )
