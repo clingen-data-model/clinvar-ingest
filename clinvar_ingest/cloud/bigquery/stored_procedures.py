@@ -32,12 +32,11 @@ stored_procedures = [
     "CALL `clinvar_ingest.temporal_data_collection`({0});",
     "CALL `clinvar_ingest.temporal_data_summation`();",
     "CALL `clinvar_ingest.tracker_report_update`();",
+    "CALL `clinvar_ingest.variation_identity`({0});",
 ]
 
 
-def execute_each(
-    client: bigquery.Client, project_id: str, release_date: str | None
-) -> list[RowIterator]:
+def execute_each(client: bigquery.Client, project_id: str, release_date: str | None) -> list[RowIterator]:
     """Execute each procedure in the list of stored procedures individualy,
        substituting the release_date date if provided.
 
@@ -53,9 +52,7 @@ def execute_each(
             logging.info(f"Executing stored procedure: {query_with_args}")
             job = client.query(query_with_args, project=project_id)
             result = job.result()
-            logging.info(
-                f"Successfully ran stored procedure: {query_with_args}\nresult={result}"
-            )
+            logging.info(f"Successfully ran stored procedure: {query_with_args}\nresult={result}")
             results.append(result)
         except Exception as e:
             msg = f"Failed to execute stored procedure: {query_with_args} {e}"
@@ -64,9 +61,7 @@ def execute_each(
     return results
 
 
-def execute_all(
-    client: bigquery.Client, project_id: str, release_date: str | None
-) -> RowIterator:
+def execute_all(client: bigquery.Client, project_id: str, release_date: str | None) -> RowIterator:
     """Execute the list of stored procedures as one single script,
        substituting the release_date date if provided.
 
