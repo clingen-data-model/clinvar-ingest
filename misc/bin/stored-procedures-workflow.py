@@ -104,7 +104,7 @@ for row in processed_entries_needing_sp_run:
     sp_processing_write_result = processing_history.write_started(
         processing_history_table=processing_history_table,
         release_date=str(vcv_xml_release_date),
-        release_tag=vcv_pipeline_version,
+        release_tag=env.release_tag,
         schema_version=schema_version,
         file_type=ClinVarIngestFileFormat(env.file_format_mode),
         client=_get_bq_client(),
@@ -114,8 +114,7 @@ for row in processed_entries_needing_sp_run:
     )
 
     msg = f"""
-        Initiated stored procedure processing for release dated {vcv_xml_release_date} version
-        {vcv_pipeline_version}.
+        Initiated stored procedure processing for release dated {vcv_xml_release_date=} {vcv_pipeline_version=} release_tag={env.release_tag}.
         """
     _logger.info(msg)
 
@@ -123,10 +122,9 @@ for row in processed_entries_needing_sp_run:
     rollback_rows.append(
         {
             "processing_history_table": processing_history_table,
-            "release_tag": vcv_pipeline_version,
+            "release_tag": env.release_tag,
             "file_type": env.file_format_mode,
             "xml_release_date": str(vcv_xml_release_date),
-            "client": _get_bq_client(),
         }
     )
 
@@ -156,15 +154,13 @@ for row in rows_to_ingest:
             client=_get_bq_client(),
         )
         msg = f"""
-                Stored procedure execution successful for release dated {vcv_xml_release_date} version
-                {vcv_pipeline_version}.
+                Stored procedure execution successful for release dated {vcv_xml_release_date=} {vcv_pipeline_version=} release_tag={env.release_tag}.
             """
         _logger.info(msg)
         send_slack_message(msg)
     except Exception as e:
         msg = f"""
-              Stored procedure execution failed for release dated {vcv_xml_release_date} version
-              {vcv_pipeline_version}.
+              Stored procedure execution failed for release dated {vcv_xml_release_date=} {vcv_pipeline_version=} release_tag={env.release_tag}.
               """
         _logger.error(msg)
         send_slack_message(msg)
@@ -174,20 +170,24 @@ for row in rows_to_ingest:
     rollback_rows = [
         row
         for row in rollback_rows
-        if row["xml_release_date"] != str(vcv_xml_release_date) or row["release_tag"] != vcv_pipeline_version
+        if row["xml_release_date"] != str(vcv_xml_release_date) or row["release_tag"] != env.release_tag
     ]
 
     dataset_id = row.get("final_dataset_id")
 
+    vi_gs_url = f"gs://clinvar-gks/{release_date}/dev/vi.jsonl.gz"
     cmd = f"""
     bq extract \
         --destination_format NEWLINE_DELIMITED_JSON \
         --compression GZIP \
         '{dataset_id}.variation_identity' \
-        gs://clinvar-gks/{release_date}/dev/vi.json.gz
+        {vi_gs_url}
     """
     try:
         subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
+        msg = f"Successfully exported variation_identity file to {vi_gs_url}"
+        _logger.info(msg)
+        send_slack_message(msg)
     except subprocess.CalledProcessError as e:
         raise RuntimeError(
             f"Command failed: {e.cmd}\nReturn code: {e.returncode}\nStdout: {e.stdout}\nStderr: {e.stderr}"

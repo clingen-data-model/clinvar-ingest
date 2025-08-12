@@ -247,9 +247,7 @@ def delete(
             # bigquery.ScalarQueryParameter("release_date", "STRING", release_date),
             bigquery.ScalarQueryParameter("release_tag", "STRING", release_tag),
             bigquery.ScalarQueryParameter("file_type", "STRING", file_type),
-            bigquery.ScalarQueryParameter(
-                "xml_release_date", "STRING", xml_release_date
-            ),
+            bigquery.ScalarQueryParameter("xml_release_date", "STRING", xml_release_date),
         ]
     )
     if client is None:
@@ -261,7 +259,12 @@ def delete(
     query_job = client.query(stmt, job_config=job_config)
     _ = query_job.result()
     deleted_count = query_job.dml_stats.deleted_row_count
-    _logger.info(f"Deleted {deleted_count} rows from processing_history.")
+    msg = (
+        f"Deleted {deleted_count} rows from processing_history. "
+        f"file_type={file_type}, xml_release_date={xml_release_date}, "
+        f"release_tag={release_tag}"
+    )
+    _logger.info(msg)
     return deleted_count
 
 
@@ -304,13 +307,9 @@ def write_started(  # noqa: PLR0913
             bigquery.ScalarQueryParameter("schema_version", "STRING", schema_version),
             bigquery.ScalarQueryParameter("file_type", "STRING", file_type),
             bigquery.ScalarQueryParameter("bucket_dir", "STRING", bucket_dir),
-            bigquery.ScalarQueryParameter(
-                "xml_release_date", "STRING", xml_release_date
-            ),
+            bigquery.ScalarQueryParameter("xml_release_date", "STRING", xml_release_date),
             bigquery.ScalarQueryParameter("ftp_released", "STRING", ftp_released),
-            bigquery.ScalarQueryParameter(
-                "ftp_last_modified", "STRING", ftp_last_modified
-            ),
+            bigquery.ScalarQueryParameter("ftp_last_modified", "STRING", ftp_last_modified),
             bigquery.ScalarQueryParameter("pipeline_version", "STRING", release_tag),
         ]
     )
@@ -366,14 +365,12 @@ def write_started(  # noqa: PLR0913
     # Run a synchronous query job and get the results
     query_job = client.query(sql, job_config=job_config)
     result = query_job.result()
-    _logger.info(
-        (
-            "processing_history record written for job started event."
-            "release_date=%s, file_type=%s"
-        ),
-        release_date,
-        file_type,
+    msg = (
+        "processing_history record written for job started event. "
+        f"file_type={file_type}, release_date={release_date}, "
+        f"release_tag={release_tag}, bucket_dir={bucket_dir}"
     )
+    _logger.info(msg)
     return result, query_job
 
 
@@ -424,7 +421,7 @@ def write_finished(
     for row in results:
         if row.c != 1:
             raise RuntimeError(
-                f"Expected 1 row to exist for the finished event, but found {row.c}."
+                f"Expected 1 row to exist for the finished event, but found {row.c}. "
                 f"file_type={file_type}, release_date={release_date}, "
                 f"release_tag={release_tag}, bucket_dir={bucket_dir}"
             )
@@ -443,9 +440,7 @@ def write_finished(
     # print(f"Query: {query}")
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
-            bigquery.ScalarQueryParameter(
-                "parsed_files", "JSON", json.dumps(_internal_model_dump(parsed_files))
-            ),
+            bigquery.ScalarQueryParameter("parsed_files", "JSON", json.dumps(_internal_model_dump(parsed_files))),
             bigquery.ScalarQueryParameter("release_date", "STRING", release_date),
             bigquery.ScalarQueryParameter("release_tag", "STRING", release_tag),
             bigquery.ScalarQueryParameter("file_type", "STRING", file_type),
@@ -462,13 +457,8 @@ def write_finished(
             _logger.error("Errors occurred during the update operation:")
             for error in query_job.errors:
                 _logger.error(error)
-            raise RuntimeError(
-                f"Error occurred during update operation: {query_job.errors}"
-            )
-        if (
-            query_job.dml_stats.updated_row_count > 1
-            or query_job.dml_stats.inserted_row_count > 1
-        ):
+            raise RuntimeError(f"Error occurred during update operation: {query_job.errors}")
+        if query_job.dml_stats.updated_row_count > 1 or query_job.dml_stats.inserted_row_count > 1:
             msg = (
                 "More than one row was updated while updating processing_history "
                 f"for the finished event: dml_stats={query_job.dml_stats}, "
@@ -477,10 +467,7 @@ def write_finished(
             )
             _logger.error(msg)
             raise RuntimeError(msg)
-        if (
-            query_job.dml_stats.updated_row_count == 0
-            and query_job.dml_stats.inserted_row_count == 0
-        ):
+        if query_job.dml_stats.updated_row_count == 0 and query_job.dml_stats.inserted_row_count == 0:
             msg = (
                 "No rows were updated during the write_finished. "
                 f"file_type={file_type}, release_date={release_date}, "
@@ -488,14 +475,12 @@ def write_finished(
             )
             _logger.error(msg)
             raise RuntimeError(msg)
-        _logger.info(
-            (
-                "processing_history record written for job finished event."
-                "release_date=%s, file_type=%s"
-            ),
-            release_date,
-            file_type,
+        msg = (
+            "processing_history record written for job finished event. "
+            f"file_type={file_type}, release_date={release_date}, "
+            f"release_tag={release_tag}, bucket_dir={bucket_dir}"
         )
+        _logger.info(msg)
         return result, query_job
 
     except RuntimeError as e:
@@ -547,13 +532,8 @@ def update_final_release_date(  # noqa: PLR0913
         _logger.error("Errors occurred during the update operation:")
         for error in query_job.errors:
             _logger.error(error)
-        raise RuntimeError(
-            f"Error occurred during update operation: {query_job.errors}"
-        )
-    if (
-        query_job.dml_stats.updated_row_count > 1
-        or query_job.dml_stats.inserted_row_count > 1
-    ):
+        raise RuntimeError(f"Error occurred during update operation: {query_job.errors}")
+    if query_job.dml_stats.updated_row_count > 1 or query_job.dml_stats.inserted_row_count > 1:
         msg = (
             "More than one row was updated while updating processing_history "
             f"for the final release date: dml_stats={query_job.dml_stats}, "
@@ -562,10 +542,7 @@ def update_final_release_date(  # noqa: PLR0913
         )
         _logger.error(msg)
         raise RuntimeError(msg)
-    if (
-        query_job.dml_stats.updated_row_count == 0
-        and query_job.dml_stats.inserted_row_count == 0
-    ):
+    if query_job.dml_stats.updated_row_count == 0 and query_job.dml_stats.inserted_row_count == 0:
         msg = (
             "No rows were updated during the update_final_release_date. "
             f"file_type={file_type}, xml_release_date={xml_release_date}, "
@@ -573,14 +550,12 @@ def update_final_release_date(  # noqa: PLR0913
         )
         _logger.error(msg)
         raise RuntimeError(msg)
-    _logger.info(
-        (
-            "processing_history record updated for final release date."
-            "xml_release_date=%s, file_type=%s"
-        ),
-        xml_release_date,
-        file_type,
+    msg = (
+        "processing_history record updated for final release date. "
+        f"file_type={file_type}, xml_release_date={xml_release_date}, "
+        f"release_tag={release_tag}, bucket_dir={bucket_dir}"
     )
+    _logger.info(msg)
     return result, query_job
 
 
