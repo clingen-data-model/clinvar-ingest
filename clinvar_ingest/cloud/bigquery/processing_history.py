@@ -650,6 +650,7 @@ def processed_entries_ready_for_sp_processing(
     query = f"""
     SELECT
         release_date,
+        final_dataset_id,
         vcv_file_type,
         vcv_pipeline_version,
         vcv_schema_version,
