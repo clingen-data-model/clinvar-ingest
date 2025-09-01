@@ -1,17 +1,15 @@
 import os
 import pathlib
-from typing import Literal
+from typing import Annotated, Literal
 
 from dotenv import dotenv_values
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 _dotenv_env = os.environ.get("DOTENV_ENV", "dev")
 _dotenv_values = dotenv_values(pathlib.Path(__file__).parent / f".{_dotenv_env}.env")
 
 
-def env_or_dotenv_or(
-    key_name: str, default: str | None = None, throw: bool = False
-) -> str:
+def env_or_dotenv_or(key_name: str, default: str | None = None, throw: bool = False) -> str:
     """
     Retrieves a value from the environment.
     If not set, retrieve it from the dotenv file.
@@ -43,14 +41,10 @@ class BaseEnv(Env):
 def _get_base_env() -> BaseEnv:
     return BaseEnv(
         bq_dest_project=env_or_dotenv_or("BQ_DEST_PROJECT", throw=True),
-        bq_meta_dataset=env_or_dotenv_or(
-            "CLINVAR_INGEST_BQ_META_DATASET", default="clinvar_ingest"
-        ),
+        bq_meta_dataset=env_or_dotenv_or("CLINVAR_INGEST_BQ_META_DATASET", default="clinvar_ingest"),
         slack_token=env_or_dotenv_or("CLINVAR_INGEST_SLACK_TOKEN"),
         # defaults to test "clinvar-message-test"
-        slack_channel=env_or_dotenv_or(
-            "CLINVAR_INGEST_SLACK_CHANNEL", default="C06QFR0278D"
-        ),
+        slack_channel=env_or_dotenv_or("CLINVAR_INGEST_SLACK_CHANNEL", default="C06QFR0278D"),
         release_tag=env_or_dotenv_or("CLINVAR_INGEST_RELEASE_TAG", throw=True),
         schema_version=env_or_dotenv_or("CLINVAR_INGEST_SCHEMA_VERSION", default="v2"),
         location=env_or_dotenv_or("CLINVAR_INGEST_LOCATION", default="us-east1"),
@@ -77,28 +71,23 @@ def get_file_ingest_env() -> ClinVarEnv:
     env = ClinVarEnv(
         **_base_env.model_dump(),
         bucket_name=env_or_dotenv_or("CLINVAR_INGEST_BUCKET", throw=True),
-        bucket_staging_prefix=env_or_dotenv_or(
-            "CLINVAR_INGEST_STAGING_PREFIX", default="clinvar_xml"
-        ),
-        parse_output_prefix=env_or_dotenv_or(
-            "CLINVAR_INGEST_PARSED_PREFIX", default="clinvar_parsed"
-        ),
-        executions_output_prefix=env_or_dotenv_or(
-            "CLINVAR_INGEST_EXECUTIONS_PREFIX", default="executions"
-        ),
+        bucket_staging_prefix=env_or_dotenv_or("CLINVAR_INGEST_STAGING_PREFIX", default="clinvar_xml"),
+        parse_output_prefix=env_or_dotenv_or("CLINVAR_INGEST_PARSED_PREFIX", default="clinvar_parsed"),
+        executions_output_prefix=env_or_dotenv_or("CLINVAR_INGEST_EXECUTIONS_PREFIX", default="executions"),
     )
     _set_env(env)
     return env
 
 
 class StoredProceduresEnv(BaseEnv):
-    pass
+    clinvar_gks_bucket: Annotated[str, Field(description="The GKS bucket where the VI files are stored.")]
 
 
 def get_stored_procedures_env() -> StoredProceduresEnv:
     _base_env = _get_base_env()
     env = StoredProceduresEnv(
         **_base_env.model_dump(),
+        clinvar_gks_bucket=env_or_dotenv_or("CLINVAR_GKS_BUCKET", throw=True),
     )
     _set_env(env)
     return env
