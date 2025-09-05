@@ -28,15 +28,15 @@ from google.cloud.bigquery.table import RowIterator
 _logger = logging.getLogger("clinvar_ingest")
 
 stored_procedures = [
-    "CALL `clinvar_ingest.dataset_preparation`({0});",
-    "CALL `clinvar_ingest.temporal_data_collection`({0});",
+    "CALL `clinvar_ingest.dataset_preparation`({dataset});",
+    "CALL `clinvar_ingest.temporal_data_collection`({release_date});",
     "CALL `clinvar_ingest.temporal_data_summation`();",
     "CALL `clinvar_ingest.tracker_report_update`();",
-    "CALL `clinvar_ingest.variation_identity`({0});",
+    "CALL `clinvar_ingest.variation_identity`({release_date});",
 ]
 
 
-def execute_each(client: bigquery.Client, project_id: str, release_date: str | None) -> list[RowIterator]:
+def execute_each(client: bigquery.Client, project_id: str, release_date: str | None, dataset: str) -> list[RowIterator]:
     """Execute each procedure in the list of stored procedures individualy,
        substituting the release_date date if provided.
 
@@ -45,9 +45,10 @@ def execute_each(client: bigquery.Client, project_id: str, release_date: str | N
     :param release_date: yyyy_mm_dd, the yyyy_mm_dd formatted date or None to use the BQ `CURRENT_DATE()`
     """
     as_of_date = "CURRENT_DATE()" if release_date is None else f"'{release_date}'"
+    dataset_str = f"'{dataset}'"
     results = []
     for query in stored_procedures:
-        query_with_args = query.format(as_of_date)
+        query_with_args = query.format(release_date=as_of_date, dataset=dataset_str)
         try:
             logging.info(f"Executing stored procedure: {query_with_args}")
             job = client.query(query_with_args, project=project_id)
@@ -61,7 +62,7 @@ def execute_each(client: bigquery.Client, project_id: str, release_date: str | N
     return results
 
 
-def execute_all(client: bigquery.Client, project_id: str, release_date: str | None) -> RowIterator:
+def execute_all(client: bigquery.Client, project_id: str, release_date: str | None, dataset: str) -> RowIterator:
     """Execute the list of stored procedures as one single script,
        substituting the release_date date if provided.
 
@@ -70,7 +71,8 @@ def execute_all(client: bigquery.Client, project_id: str, release_date: str | No
     :param release_date: yyyy_mm_dd, the yyyy_mm_dd formatted date or None to use the BQ `CURRENT_DATE()`
     """
     as_of_date = "CURRENT_DATE()" if release_date is None else f"'{release_date}'"
-    query_with_args = [query.format(as_of_date) for query in stored_procedures]
+    dataset_str = f"'{dataset}'"
+    query_with_args = [query.format(release_date=as_of_date, dataset=dataset_str) for query in stored_procedures]
     query = "\n".join(query_with_args)
     _logger.info(f"Executing stored procedures via query: {query}")
     try:
