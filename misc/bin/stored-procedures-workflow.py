@@ -143,6 +143,7 @@ for row in rows_to_ingest:
     vcv_pipeline_version = row["vcv_pipeline_version"]
     vcv_xml_release_date = row["vcv_xml_release_date"]
     vcv_bucket_dir = row["vcv_bucket_dir"]
+    dataset_id = row["final_dataset_id"]
     # optional
     schema_version = row.get("vcv_schema_version")
 
@@ -150,7 +151,12 @@ for row in rows_to_ingest:
     _logger.info(msg)
     send_slack_message(msg)
     try:
-        result = execute_all(client=_get_bq_client(), project_id=env.bq_dest_project, release_date=release_date)
+        result = execute_all(
+            client=_get_bq_client(),
+            project_id=env.bq_dest_project,
+            release_date=release_date,
+            dataset=dataset_id,
+        )
 
         processing_history.write_finished(
             processing_history_table=processing_history_table,
@@ -180,8 +186,6 @@ for row in rows_to_ingest:
         for row in rollback_rows
         if row["xml_release_date"] != str(vcv_xml_release_date) or row["release_tag"] != env.release_tag
     ]
-
-    dataset_id = row["final_dataset_id"]
 
     vi_gs_url = f"gs://{env.clinvar_gks_bucket}/{release_date}/dev/vi.jsonl.gz"
     try:
