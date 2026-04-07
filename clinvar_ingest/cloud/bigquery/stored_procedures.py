@@ -32,7 +32,7 @@ stored_procedures = [
     "CALL `clinvar_ingest.temporal_data_collection`({release_date});",
     "CALL `clinvar_ingest.temporal_data_summation`();",
     "CALL `clinvar_ingest.tracker_report_update`();",
-    "CALL `clinvar_ingest.variation_identity`({release_date});",
+    "CALL `clinvar_ingest.variation_identity`({release_date}, false);",
 ]
 
 
