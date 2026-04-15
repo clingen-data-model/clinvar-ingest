@@ -88,10 +88,9 @@ for row in rows_needing_sp_run:
         """
     _logger.info(msg)
 
-# variation_identity export failures are recorded but do not halt the loop
-# (see VI except block below), so that later releases still get their
-# stored procedures run. We exit non-zero at the end if any occurred so
-# Cloud Run marks the execution as Failed.
+# variation_identity export failures are recorded and the loop continues
+# so later releases still get their stored procedures run. The job exits
+# non-zero at the end if any occurred so Cloud Run marks it Failed.
 vi_export_failures: list[str] = []
 
 # Now process individual rows
@@ -133,26 +132,31 @@ for idx, row in enumerate(rows_to_ingest):
         send_slack_message(msg)
     except Exception as e:
         # This run claimed every eligible release via write_started up front,
-        # so any release that did not reach write_finished is now stuck:
-        # the failing release itself, plus any later releases in this batch
-        # that were pre-claimed but never attempted. All of them need their
-        # sp processing_history rows cleared before the job will resume.
-        unattempted = [r["vcv_xml_release_date"].isoformat() for r in rows_to_ingest[idx + 1 :]]
-        unattempted_desc = (
-            f" Additionally, the following releases were pre-claimed earlier "
-            f"in this run but never attempted and also need their sp rows "
-            f"cleared: {', '.join(unattempted)}."
-            if unattempted
+        # so any release that did not reach write_finished is now stuck: the
+        # failing release itself plus any later releases in this batch that
+        # were pre-claimed but never attempted. All of them need their sp
+        # processing_history rows cleared before the job will resume.
+        stuck_releases = [vcv_xml_release_date.isoformat()] + [
+            r["vcv_xml_release_date"].isoformat() for r in rows_to_ingest[idx + 1 :]
+        ]
+        batch_note = (
+            f" This run claimed {len(rows_to_ingest)} releases as a batch "
+            f"at startup ({', '.join(r['vcv_xml_release_date'].isoformat() for r in rows_to_ingest)}) "
+            f"but did not complete all of them."
+            if len(rows_to_ingest) > 1
             else ""
         )
         msg = (
             f"Stored procedure execution failed for release dated "
             f"vcv_xml_release_date={vcv_xml_release_date.isoformat()} "
-            f"{vcv_pipeline_version=} release_tag={env.release_tag}. "
+            f"{vcv_pipeline_version=} release_tag={env.release_tag}.{batch_note} "
             f"The job will NOT retry automatically and is now paused until "
-            f"this is resolved.{unattempted_desc} Investigate the failure, "
-            f"then delete all stuck sp rows from processing_history to "
-            f"resume processing: "
+            f"this is resolved. The following release(s) have stuck sp "
+            f"processing_history rows that must be deleted before the job "
+            f"resumes (this includes the failing release and any later "
+            f"releases in this batch that were pre-claimed but never "
+            f"attempted): {', '.join(stuck_releases)}. Investigate the "
+            f"failure, then run: "
             f"DELETE FROM `{processing_history_table}` "
             f"WHERE pipeline_version = '{env.release_tag}' "
             f"AND file_type = '{ClinVarIngestFileFormat.SP.value}' "
