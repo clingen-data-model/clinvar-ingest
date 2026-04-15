@@ -5,7 +5,6 @@
 
 import logging
 import sys
-import traceback
 
 from google.cloud import bigquery
 
@@ -28,42 +27,6 @@ def _get_bq_client() -> bigquery.Client:
         setattr(_get_bq_client, "client", bigquery.Client())
     return getattr(_get_bq_client, "client")
 
-
-################################################################
-### rollback exception handler for deleting processing_history entries
-
-rollback_rows = []
-
-
-def sp_rollback_exception_handler(exc_type, exc_value, exc_traceback):
-    """
-    https://docs.python.org/3/library/sys.html#sys.excepthook
-    """
-    exception_details = "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
-
-    # Log the exception
-    _logger.error("Uncaught exception:\n%s", exception_details)
-
-    _logger.warning("Rolling back started SP ingest rows.")
-    for row in rollback_rows:
-        _logger.info(f"Rolling back row: {row}")
-        c = processing_history.delete(
-            processing_history_table=row["processing_history_table"],
-            release_tag=row["release_tag"],
-            file_type=row["file_type"],
-            xml_release_date=row["xml_release_date"],
-            client=_get_bq_client(),
-        )
-        _logger.info(f"Deleted {c} rows from processing_history.")
-
-    # Call the default exception handler
-    sys.__excepthook__(exc_type, exc_value, exc_traceback)
-
-
-# Add the exception handler as the global exception handler.
-# NOTE: this modifies global state and will affect all subsequent exceptions
-# in this script or any other script which imports this script.
-sys.excepthook = sp_rollback_exception_handler
 
 ################################################################
 ### Initialization code
@@ -125,18 +88,14 @@ for row in rows_needing_sp_run:
         """
     _logger.info(msg)
 
-    # Add the started row to the rollback list
-    rollback_rows.append(
-        {
-            "processing_history_table": processing_history_table,
-            "release_tag": env.release_tag,
-            "file_type": env.file_format_mode,
-            "xml_release_date": str(vcv_xml_release_date),
-        }
-    )
+# variation_identity export failures are recorded but do not halt the loop
+# (see VI except block below), so that later releases still get their
+# stored procedures run. We exit non-zero at the end if any occurred so
+# Cloud Run marks the execution as Failed.
+vi_export_failures: list[str] = []
 
 # Now process individual rows
-for row in rows_to_ingest:
+for idx, row in enumerate(rows_to_ingest):
     _logger.info(row)
     # required
     release_date = row["release_date"]
@@ -173,19 +132,36 @@ for row in rows_to_ingest:
         _logger.info(msg)
         send_slack_message(msg)
     except Exception as e:
-        msg = f"""
-              Stored procedure execution failed for release dated vcv_xml_release_date={vcv_xml_release_date.isoformat()} {vcv_pipeline_version=} release_tag={env.release_tag}.
-              """
+        # This run claimed every eligible release via write_started up front,
+        # so any release that did not reach write_finished is now stuck:
+        # the failing release itself, plus any later releases in this batch
+        # that were pre-claimed but never attempted. All of them need their
+        # sp processing_history rows cleared before the job will resume.
+        unattempted = [r["vcv_xml_release_date"].isoformat() for r in rows_to_ingest[idx + 1 :]]
+        unattempted_desc = (
+            f" Additionally, the following releases were pre-claimed earlier "
+            f"in this run but never attempted and also need their sp rows "
+            f"cleared: {', '.join(unattempted)}."
+            if unattempted
+            else ""
+        )
+        msg = (
+            f"Stored procedure execution failed for release dated "
+            f"vcv_xml_release_date={vcv_xml_release_date.isoformat()} "
+            f"{vcv_pipeline_version=} release_tag={env.release_tag}. "
+            f"The job will NOT retry automatically and is now paused until "
+            f"this is resolved.{unattempted_desc} Investigate the failure, "
+            f"then delete all stuck sp rows from processing_history to "
+            f"resume processing: "
+            f"DELETE FROM `{processing_history_table}` "
+            f"WHERE pipeline_version = '{env.release_tag}' "
+            f"AND file_type = '{ClinVarIngestFileFormat.SP.value}' "
+            f"AND processing_finished IS NULL;  "
+            f"Error: {e}"
+        )
         _logger.error(msg)
         send_slack_message(msg)
         raise e
-
-    # Remove the started row from the rollback list, since this ingest has succeeded
-    rollback_rows = [
-        row
-        for row in rollback_rows
-        if row["xml_release_date"] != str(vcv_xml_release_date) or row["release_tag"] != env.release_tag
-    ]
 
     vi_gs_url = f"gs://{env.clinvar_gks_bucket}/{release_date}/dev/vi.jsonl.gz"
     try:
@@ -200,7 +176,29 @@ for row in rows_to_ingest:
         _logger.info(msg)
         send_slack_message(msg)
     except Exception as e:
-        error_msg = f"BigQuery extract job to {vi_gs_url} failed: {e}"
+        # VI export is a BQ-to-GCS extract_table deliverable, not a data
+        # mutation. Record the failure and continue processing later releases
+        # so a flaky export on one release does not block stored procedure
+        # execution for the rest of the batch. We exit non-zero after the
+        # loop so Cloud Run still marks the execution as Failed.
+        vi_export_failures.append(vcv_xml_release_date.isoformat())
+        error_msg = (
+            f"variation_identity export failed for release dated "
+            f"vcv_xml_release_date={vcv_xml_release_date.isoformat()} "
+            f"{vcv_pipeline_version=} release_tag={env.release_tag}. "
+            f"Stored procedures already completed for this release, so its "
+            f"sp processing_history row is finished and does NOT need to be "
+            f"deleted. The SP job is NOT paused and will continue processing "
+            f"the remaining releases in this run. Re-run the BigQuery extract "
+            f"manually to {vi_gs_url} after investigating. "
+            f"Error: {e}"
+        )
         _logger.error(error_msg)
         send_slack_message(error_msg)
-        raise e
+
+if vi_export_failures:
+    sys.exit(
+        f"variation_identity export failed for {len(vi_export_failures)} "
+        f"release(s): {', '.join(vi_export_failures)}. See earlier Slack "
+        f"messages for details."
+    )
