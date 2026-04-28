@@ -691,7 +691,7 @@ def processed_entries_ready_for_sp_processing(
         AND sp_processing_finished IS NULL
     )
     ORDER BY release_date
-    """
+    """  # noqa: S608
     query_job = client.query(query)
     return query_job.result()
 
