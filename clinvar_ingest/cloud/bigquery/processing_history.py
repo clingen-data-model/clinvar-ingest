@@ -679,8 +679,19 @@ def processed_entries_ready_for_sp_processing(
     AND bq_processing_finished IS NOT NULL
     AND release_date IS NOT NULL
     AND sp_release_date IS NULL
+    -- Block all new SP work while any SP row is started-but-not-finished.
+    -- The SPs include temporal_data_collection/summation which mutate
+    -- cross-release tables, so running them out of order would corrupt the
+    -- temporal history. This also means a failed SP row acts as a hard stop
+    -- until a human deletes it.
+    AND NOT EXISTS (
+        SELECT 1
+        FROM {processing_history_view_table}
+        WHERE sp_processing_started IS NOT NULL
+        AND sp_processing_finished IS NULL
+    )
     ORDER BY release_date
-    """
+    """  # noqa: S608
     query_job = client.query(query)
     return query_job.result()
 

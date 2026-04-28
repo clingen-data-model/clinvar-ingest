@@ -145,6 +145,15 @@ if [ $service == "null" || $component == "null" ]; then
 fi
 #####
 
+# stored-procedures must not retry on failure: a failure there almost always
+# indicates a data issue that needs manual intervention, and retrying would
+# just produce an avalanche of Slack failure messages and repeated partial
+# mutations to cross-release temporal tables.
+extra_args=()
+if [[ "$instance_name" == *stored-procedures* ]]; then
+    extra_args+=(--max-retries=0)
+fi
+
 gcloud run jobs $command $instance_name \
       --cpu=2 \
       --memory=8Gi \
@@ -155,7 +164,8 @@ gcloud run jobs $command $instance_name \
       --service-account=$pipeline_service_account \
       --set-env-vars=$env_vars \
       --set-secrets=CLINVAR_INGEST_SLACK_TOKEN=clinvar-ingest-slack-token:latest \
-      --labels=service="clinvar-ingest",component=$instance_name
+      --labels=service="clinvar-ingest",component=$instance_name \
+      "${extra_args[@]}"
 
 if [[ $instance_name =~ ^.*bq-ingest.*$|^.*stored-procedures.*$ ]]; then
     # turn off file globbing
