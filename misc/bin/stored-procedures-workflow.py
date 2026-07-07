@@ -201,6 +201,7 @@ for idx, row in enumerate(rows_to_ingest):
         stuck_releases = [vcv_xml_release_date.isoformat()] + [
             r["vcv_xml_release_date"].isoformat() for r in rows_to_ingest[idx + 1 :]
         ]
+        stuck_releases_sql_list = ", ".join(f"'{d}'" for d in stuck_releases)
         batch_note = (
             f" This run claimed {len(rows_to_ingest)} releases as a batch "
             f"at startup ({', '.join(r['vcv_xml_release_date'].isoformat() for r in rows_to_ingest)}) "
@@ -222,7 +223,8 @@ for idx, row in enumerate(rows_to_ingest):
             f"DELETE FROM `{processing_history_table}` "
             f"WHERE pipeline_version = '{env.release_tag}' "
             f"AND file_type = '{ClinVarIngestFileFormat.SP.value}' "
-            f"AND processing_finished IS NULL;  "
+            f"AND processing_finished IS NULL "
+            f"AND xml_release_date IN ({stuck_releases_sql_list});  "
             f"Error: {e}"
         )
         _logger.error(msg)
