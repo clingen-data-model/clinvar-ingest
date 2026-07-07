@@ -28,6 +28,17 @@ def _get_bq_client() -> bigquery.Client:
     return getattr(_get_bq_client, "client")
 
 
+def _stuck_sp_rows_delete_sql(processing_history_table, release_tag, xml_release_dates):
+    dates_sql_list = ", ".join(f"'{d}'" for d in xml_release_dates)
+    return (
+        f"DELETE FROM `{processing_history_table}` "
+        f"WHERE pipeline_version = '{release_tag}' "
+        f"AND file_type = '{ClinVarIngestFileFormat.SP.value}' "
+        f"AND processing_finished IS NULL "
+        f"AND xml_release_date IN ({dates_sql_list});"
+    )
+
+
 ################################################################
 ### Initialization code
 
@@ -65,28 +76,62 @@ send_slack_message(msg)
 
 # update processing_history.bq_ingest_started for ALL processing_history_view
 rows_to_ingest = []
-for row in rows_needing_sp_run:
-    rows_to_ingest.append(row)
-    vcv_pipeline_version = row.get("vcv_pipeline_version", None)
-    vcv_xml_release_date = row.get("vcv_xml_release_date", None)
-    vcv_bucket_dir = row.get("vcv_bucket_dir", None)
-    schema_version = row.get("vcv_schema_version", None)
-    sp_processing_write_result = processing_history.write_started(
-        processing_history_table=processing_history_table,
-        release_date=str(vcv_xml_release_date),
-        release_tag=env.release_tag,
-        schema_version=schema_version,
-        file_type=ClinVarIngestFileFormat(env.file_format_mode),
-        client=_get_bq_client(),
-        bucket_dir=vcv_bucket_dir,
-        xml_release_date=str(vcv_xml_release_date),
-        error_if_exists=False,
-    )
+try:
+    for row in rows_needing_sp_run:
+        rows_to_ingest.append(row)
+        vcv_pipeline_version = row.get("vcv_pipeline_version", None)
+        vcv_xml_release_date = row.get("vcv_xml_release_date", None)
+        vcv_bucket_dir = row.get("vcv_bucket_dir", None)
+        schema_version = row.get("vcv_schema_version", None)
+        sp_processing_write_result = processing_history.write_started(
+            processing_history_table=processing_history_table,
+            release_date=str(vcv_xml_release_date),
+            release_tag=env.release_tag,
+            schema_version=schema_version,
+            file_type=ClinVarIngestFileFormat(env.file_format_mode),
+            client=_get_bq_client(),
+            bucket_dir=vcv_bucket_dir,
+            xml_release_date=str(vcv_xml_release_date),
+            error_if_exists=False,
+        )
 
-    msg = f"""
-        Initiated stored procedure processing for release dated {vcv_xml_release_date=} {vcv_pipeline_version=} release_tag={env.release_tag}.
-        """
-    _logger.info(msg)
+        msg = f"""
+            Initiated stored procedure processing for release dated {vcv_xml_release_date=} {vcv_pipeline_version=} release_tag={env.release_tag}.
+            """
+        _logger.info(msg)
+except Exception as e:
+    # rows_to_ingest holds every row we attempted to claim, including the one
+    # write_started was working on when it raised. Its own write_started call
+    # may or may not have actually committed a row (BigQuery DML is
+    # per-statement atomic, so a failure before/during the INSERT commits
+    # nothing), so we tell the operator to verify rather than assert it is
+    # stuck; every earlier row in the list did complete write_started and is
+    # definitely stuck.
+    claimed_releases = [r["vcv_xml_release_date"].isoformat() for r in rows_to_ingest]
+    if claimed_releases:
+        cleanup_note = (
+            f"The following release(s) may have been marked started in "
+            f"processing_history before this failure and must be checked "
+            f"(and deleted if their sp row is stuck, i.e. processing_started "
+            f"is set and processing_finished is NULL) before the job "
+            f"resumes: {', '.join(claimed_releases)}. If any are stuck, run: "
+            f"{_stuck_sp_rows_delete_sql(processing_history_table, env.release_tag, claimed_releases)}  "
+        )
+    else:
+        cleanup_note = (
+            "No releases were marked started before this failure, so no "
+            "processing_history cleanup should be required. "
+        )
+    msg = (
+        f"Failed to claim releases for stored procedure processing "
+        f"(release_tag={env.release_tag}) while marking them as started in "
+        f"processing_history. The job will NOT retry automatically and is "
+        f"now paused until this is resolved. {cleanup_note}"
+        f"Error: {e}"
+    )
+    _logger.error(msg)
+    send_slack_message(msg)
+    raise e
 
 # variation_identity export failures are recorded and the loop continues
 # so later releases still get their stored procedures run. The job exits
@@ -139,7 +184,6 @@ for idx, row in enumerate(rows_to_ingest):
         stuck_releases = [vcv_xml_release_date.isoformat()] + [
             r["vcv_xml_release_date"].isoformat() for r in rows_to_ingest[idx + 1 :]
         ]
-        stuck_releases_sql_list = ", ".join(f"'{d}'" for d in stuck_releases)
         batch_note = (
             f" This run claimed {len(rows_to_ingest)} releases as a batch "
             f"at startup ({', '.join(r['vcv_xml_release_date'].isoformat() for r in rows_to_ingest)}) "
@@ -158,11 +202,7 @@ for idx, row in enumerate(rows_to_ingest):
             f"releases in this batch that were pre-claimed but never "
             f"attempted): {', '.join(stuck_releases)}. Investigate the "
             f"failure, then run: "
-            f"DELETE FROM `{processing_history_table}` "
-            f"WHERE pipeline_version = '{env.release_tag}' "
-            f"AND file_type = '{ClinVarIngestFileFormat.SP.value}' "
-            f"AND processing_finished IS NULL "
-            f"AND xml_release_date IN ({stuck_releases_sql_list});  "
+            f"{_stuck_sp_rows_delete_sql(processing_history_table, env.release_tag, stuck_releases)}  "
             f"Error: {e}"
         )
         _logger.error(msg)
