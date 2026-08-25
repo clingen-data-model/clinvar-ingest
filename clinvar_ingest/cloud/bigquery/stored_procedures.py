@@ -27,12 +27,25 @@ from google.cloud.bigquery.table import RowIterator
 
 _logger = logging.getLogger("clinvar_ingest")
 
+# `dataset_diff_on` builds the {release}.diff_* driver tables that the incremental
+# procedures need. It MUST run before variation_identity_incremental: the incremental
+# guard in variation_identity_build checks that diff_variation,
+# diff_clinical_assertion and diff_clinical_assertion_variation exist, and silently
+# falls back to a full rebuild when they do not. Nothing else in the pipeline calls
+# it, so without this step "incremental" would be a no-op that always rebuilds fully.
+#
+# It is idempotent (CREATE OR REPLACE) and, on a first release with no baseline
+# snapshot, emits a warning and writes no diff tables - which correctly leaves the
+# incremental guards to fall back to a full rebuild.
+#
+# Mirrors stages 0-1 of clinvar-gkm's src/scripts/run-release.sh.
 stored_procedures = [
     "CALL `clinvar_ingest.dataset_preparation`({dataset});",
     "CALL `clinvar_ingest.temporal_data_collection`({release_date});",
     "CALL `clinvar_ingest.temporal_data_summation`();",
     "CALL `clinvar_ingest.tracker_report_update`();",
-    "CALL `clinvar_ingest.variation_identity`({release_date}, false);",
+    "CALL `clinvar_ingest.dataset_diff_on`({release_date});",
+    "CALL `clinvar_ingest.variation_identity_incremental`({release_date}, false);",
 ]
 
 
