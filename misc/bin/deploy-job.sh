@@ -131,10 +131,8 @@ if [[ $instance_name =~ ^.*stored-procedures.*$ ]]; then
     env_vars="$env_vars,BQ_DEST_PROJECT=${BQ_DEST_PROJECT}"
     env_vars="$env_vars,CLINVAR_INGEST_BQ_META_DATASET=${CLINVAR_INGEST_BQ_META_DATASET}"
     env_vars="$env_vars,CLINVAR_INGEST_RELEASE_TAG=${CLINVAR_INGEST_RELEASE_TAG}"
-    # Destination bucket for the variation_identity export. Set explicitly here
-    # so it is a deployment knob rather than whatever is baked into the image's
-    # .dev.env - a stale default there caused the 2026-08-22 export to 404
-    # after the clinvar-gks bucket was replaced by clinvar-gkm.
+    # Destination bucket for the variation_identity export.
+    # This overrides the .dev.env default baked into the container.
     if [ ! -v CLINVAR_GKS_BUCKET ]; then
       CLINVAR_GKS_BUCKET=clinvar-gkm
     fi

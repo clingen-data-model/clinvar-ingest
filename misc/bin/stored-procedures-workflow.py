@@ -188,7 +188,13 @@ for idx, row in enumerate(rows_to_ingest):
     vi_gs_url = f"gs://{env.clinvar_gks_bucket}/{release_date}/dev/vi.jsonl.gz"
     try:
         client = _get_bq_client()
-        vi_extract_table_id = f"{dataset_id}.vi_extract"
+        # Fully qualify every table reference. client.query() resolves
+        # unqualified names against BQ_DEST_PROJECT (passed below) while
+        # client.get_table()/extract_table() resolve against the client's own
+        # default project, so an unqualified id would silently split across two
+        # projects if those ever differ.
+        qualified_dataset = f"{env.bq_dest_project}.{dataset_id}"
+        vi_extract_table_id = f"{qualified_dataset}.vi_extract"
 
         # 1. Compute the changed / removed variation sets vs the prior release.
         client.query(
@@ -201,33 +207,50 @@ for idx, row in enumerate(rows_to_ingest):
             f"""
             CREATE OR REPLACE TABLE `{vi_extract_table_id}` AS
             SELECT vi.*
-            FROM `{dataset_id}.variation_identity` vi
-            JOIN `{dataset_id}.variation_vrs_changed` c USING(variation_id)
+            FROM `{qualified_dataset}.variation_identity` vi
+            JOIN `{qualified_dataset}.variation_vrs_changed` c USING(variation_id)
             """,
             project=env.bq_dest_project,
         ).result()
-        changed_count = client.get_table(vi_extract_table_id).num_rows
-        _logger.info(f"variation_identity changed rows to export for {release_date}: {changed_count}")
 
-        # 3. Extract the (small) changed set as a single file.
+        # variation_vrs_changed marks EVERY variation as changed whenever there
+        # is no usable baseline - a first release, but also a release whose
+        # predecessor's dataset has been pruned or lacks variation_identity. In
+        # that case this is a full snapshot, not a delta, so label it honestly
+        # rather than reporting ~4.5M "changed" rows as an incremental export.
+        changed_count = client.get_table(vi_extract_table_id).num_rows
+        total_count = client.get_table(f"{qualified_dataset}.variation_identity").num_rows
+        export_mode = "incremental" if changed_count < total_count else "FULL - no usable baseline"
+        _logger.info(
+            f"variation_identity export for {release_date}: {changed_count} of {total_count} rows ({export_mode})"
+        )
+
+        # 3. Extract the changed set as a single file. Deliberately not a
+        # wildcard URI: clinvar-gkm's vrsify.sh reads exactly this one object.
         job_config = bigquery.ExtractJobConfig(
             destination_format=bigquery.DestinationFormat.NEWLINE_DELIMITED_JSON, compression=bigquery.Compression.GZIP
         )
         extract_job = client.extract_table(vi_extract_table_id, vi_gs_url, job_config=job_config)
         extract_job.result(timeout=1800)  # Wait for the job to complete (30 minute timeout)
-        msg = f"Successfully exported {changed_count} changed variation_identity rows (incremental) to {vi_gs_url}"
+        msg = (
+            f"Successfully exported {changed_count} of {total_count} variation_identity "
+            f"rows ({export_mode}) to {vi_gs_url}"
+        )
         _logger.info(msg)
         send_slack_message(msg)
     except Exception as e:
-        # The VI export is a per-release deliverable, not a cross-release
-        # mutation: the only tables it writes (variation_vrs_changed,
-        # variation_vrs_removed, vi_extract) live in this release's own dataset
-        # and are rebuilt with CREATE OR REPLACE, so a partial failure here is
-        # safe to retry and cannot corrupt the temporal history the way a failed
-        # stored procedure can. Record the failure and continue processing later
-        # releases so one bad export does not block stored procedure execution
-        # for the rest of the batch. We exit non-zero after the loop so Cloud
-        # Run still marks the execution as Failed.
+        # The tables this export writes (variation_vrs_changed,
+        # variation_vrs_removed, vi_extract) all live in this release's own
+        # dataset and are rebuilt with CREATE OR REPLACE, so a partial failure
+        # is safe to retry and does not touch the cross-release temporal tables
+        # that make a failed stored procedure dangerous. Note it is not inert
+        # either: clinvar-gkm's vrs-to-bq-table.sh reads variation_vrs_changed
+        # and variation_vrs_removed to decide how to build gkm_vrs from the
+        # previous release's copy, so a stale set here can misdirect that step.
+        # Record the failure and continue processing later releases so one bad
+        # export does not block stored procedure execution for the rest of the
+        # batch. We exit non-zero after the loop so Cloud Run still marks the
+        # execution as Failed.
         vi_export_failures.append(vcv_xml_release_date.isoformat())
         error_msg = (
             f"variation_identity export failed for release dated "
@@ -238,9 +261,10 @@ for idx, row in enumerate(rows_to_ingest):
             f"deleted. The SP job is NOT paused and will continue processing "
             f"the remaining releases in this run. After investigating, re-run "
             f"the export manually from the clinvar-gkm repo with "
-            f"./src/scripts/export-vi-table-to-gcs.sh {release_date} "
-            f"(add --full to export the whole snapshot instead of the delta), "
-            f"which writes the same {vi_gs_url}. "
+            f"./src/scripts/export-vi-table-to-gcs.sh {release_date}, which "
+            f"writes the same {vi_gs_url}. Do NOT use its --full flag as a "
+            f"substitute: that writes sharded vi-*.jsonl.gz objects instead, "
+            f"and clinvar-gkm's vrsify.sh reads only vi.jsonl.gz. "
             f"Error: {e}"
         )
         _logger.error(error_msg)
