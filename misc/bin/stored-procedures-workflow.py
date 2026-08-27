@@ -110,6 +110,47 @@ for idx, row in enumerate(rows_to_ingest):
     _logger.info(msg)
     send_slack_message(msg)
     try:
+        # Resolve the current and baseline schemas the way the procedures
+        # resolve them for themselves, via clinvar_ingest.schema_on. Every
+        # procedure below (dataset_diff_on, variation_identity_incremental,
+        # variation_vrs_changed) takes only a date and writes into the schema it
+        # resolves, while we thread final_dataset_id separately - two sources of
+        # truth for one dataset. schema_on is ORDER BY release_date DESC LIMIT
+        # 1, so same-date duplicate datasets resolve arbitrarily.
+        #
+        # This runs BEFORE execute_all deliberately: once the procedures have
+        # run there is nothing left to protect, and a mismatch here means the
+        # procedures would write to a dataset we do not read. Raising in this
+        # block is fatal by design - write_finished is never reached, so this
+        # release's sp processing_history row stays unfinished and blocks all
+        # later runs until an operator resolves it out of band.
+        schema_row = next(
+            iter(
+                _get_bq_client()
+                .query(
+                    f"""
+                    SELECT
+                      (SELECT schema_name FROM `clinvar_ingest.schema_on`(DATE '{release_date}')) AS cur_schema,
+                      (SELECT schema_name FROM `clinvar_ingest.schema_on`(
+                         (SELECT prev_release_date FROM `clinvar_ingest.schema_on`(DATE '{release_date}')))
+                      ) AS base_schema
+                    """,
+                    project=env.bq_dest_project,
+                )
+                .result()
+            )
+        )
+        cur_schema = schema_row["cur_schema"]
+        base_schema = schema_row["base_schema"]
+        if cur_schema != dataset_id:
+            raise ValueError(
+                f"clinvar_ingest.schema_on(DATE '{release_date}') resolved schema "
+                f"'{cur_schema}' but processing_history final_dataset_id is "
+                f"'{dataset_id}'. The stored procedures resolve their target "
+                f"schema themselves, so they would write to a dataset this "
+                f"workflow does not read. Refusing to run them."
+            )
+
         result = execute_all(
             client=_get_bq_client(),
             project_id=env.bq_dest_project,
@@ -191,41 +232,10 @@ for idx, row in enumerate(rows_to_ingest):
         qualified_dataset = f"{env.bq_dest_project}.{dataset_id}"
         vi_extract_table_id = f"{qualified_dataset}.vi_extract"
 
-        # 1. Resolve the same current/baseline schemas that
-        # variation_vrs_changed itself resolves via clinvar_ingest.schema_on.
-        # The procedure takes only on_date and reports no status, so this is the
-        # only way to (a) confirm it will write into the dataset our CTAS below
-        # reads from and (b) tell a real delta from the no-baseline path, where
-        # it marks EVERY variation as changed.
-        schema_row = next(
-            iter(
-                client.query(
-                    f"""
-                    SELECT
-                      (SELECT schema_name FROM `clinvar_ingest.schema_on`(DATE '{release_date}')) AS cur_schema,
-                      (SELECT schema_name FROM `clinvar_ingest.schema_on`(
-                         (SELECT prev_release_date FROM `clinvar_ingest.schema_on`(DATE '{release_date}')))
-                      ) AS base_schema
-                    """,
-                    project=env.bq_dest_project,
-                ).result()
-            )
-        )
-        cur_schema = schema_row["cur_schema"]
-        base_schema = schema_row["base_schema"]
-
-        # schema_on is LIMIT 1, so same-date duplicate datasets resolve
-        # arbitrarily. If its answer differs from the dataset id threaded
-        # through processing_history, the procedure writes somewhere we are not
-        # reading and the export would be silently wrong.
-        if cur_schema != dataset_id:
-            raise ValueError(
-                f"clinvar_ingest.schema_on(DATE '{release_date}') resolved schema "
-                f"'{cur_schema}' but processing_history final_dataset_id is "
-                f"'{dataset_id}'. variation_vrs_changed writes into the schema it "
-                f"resolves itself, so this export would read the wrong dataset."
-            )
-
+        # 1. Decide the export mode. variation_vrs_changed reports no status and
+        # marks EVERY variation as changed when it finds no usable baseline, so
+        # the only honest signal is whether the baseline schema resolved above
+        # actually has a variation_identity table to diff against.
         has_baseline = base_schema is not None
         if has_baseline:
             try:
@@ -251,8 +261,23 @@ for idx, row in enumerate(rows_to_ingest):
             project=env.bq_dest_project,
         ).result()
 
-        changed_count = client.get_table(vi_extract_table_id).num_rows
-        total_count = client.get_table(f"{qualified_dataset}.variation_identity").num_rows
+        # Count with COUNT(*) rather than Table.num_rows, which is Optional and
+        # can be None before table metadata settles - that would skip the
+        # zero-change alert below and print "None of None" in Slack.
+        count_row = next(
+            iter(
+                client.query(
+                    f"""
+                    SELECT
+                      (SELECT COUNT(*) FROM `{vi_extract_table_id}`) AS changed_count,
+                      (SELECT COUNT(*) FROM `{qualified_dataset}.variation_identity`) AS total_count
+                    """,
+                    project=env.bq_dest_project,
+                ).result()
+            )
+        )
+        changed_count = count_row["changed_count"]
+        total_count = count_row["total_count"]
         _logger.info(
             f"variation_identity export for {release_date}: {changed_count} of {total_count} "
             f"rows ({export_mode}, baseline schema={base_schema})"
@@ -261,11 +286,14 @@ for idx, row in enumerate(rows_to_ingest):
         if changed_count == 0:
             zero_msg = (
                 f"NOTE: ZERO variations changed for release dated {release_date} "
-                f"(0 of {total_count}). The export is still being written and is a "
-                f"valid no-op: clinvar-gkm's vrs-to-bq-table.sh treats an empty "
-                f"changed set as 'clone the baseline unchanged'. This normally means "
-                f"a re-ingest of a release identical to its predecessor - if that is "
-                f"not expected, investigate before relying on gkm_vrs for {release_date}."
+                f"(0 of {total_count}). The export is still being written, since a "
+                f"missing object would break clinvar-gkm's vrsify.sh outright, and "
+                f"vrs-to-bq-table.sh's count check treats an empty changed set as "
+                f"'clone the baseline unchanged'. Whether that script can actually "
+                f"read an empty gzip export has NOT been verified - check "
+                f"{vi_gs_url} before relying on gkm_vrs for {release_date}. This "
+                f"normally means a re-ingest of a release identical to its "
+                f"predecessor; investigate if that is not expected."
             )
             _logger.warning(zero_msg)
             send_slack_message(zero_msg)
