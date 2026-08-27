@@ -27,12 +27,23 @@ from google.cloud.bigquery.table import RowIterator
 
 _logger = logging.getLogger("clinvar_ingest")
 
+# `dataset_diff_on` builds the {release}.diff_* driver tables and MUST run before
+# variation_identity_incremental: the guard in variation_identity_build only checks
+# that diff_variation, diff_clinical_assertion and diff_clinical_assertion_variation
+# *exist* and silently falls back to a full rebuild when they do not. It is
+# idempotent (CREATE OR REPLACE). Note dataset_diff_all isolates each of its 19
+# table diffs in `EXCEPTION WHEN ERROR THEN SELECT 'SKIPPED ...'` and still returns
+# success, so a missing diff table cannot fail this job - if a guard table is the
+# skipped one, the build silently rebuilds fully while everything reports success.
+#
+# Mirrors stages 0-1 of clinvar-gkm's src/scripts/run-release.sh.
 stored_procedures = [
     "CALL `clinvar_ingest.dataset_preparation`({dataset});",
     "CALL `clinvar_ingest.temporal_data_collection`({release_date});",
     "CALL `clinvar_ingest.temporal_data_summation`();",
     "CALL `clinvar_ingest.tracker_report_update`();",
-    "CALL `clinvar_ingest.variation_identity`({release_date}, false);",
+    "CALL `clinvar_ingest.dataset_diff_on`({release_date});",
+    "CALL `clinvar_ingest.variation_identity_incremental`({release_date}, false);",
 ]
 
 
