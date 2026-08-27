@@ -150,6 +150,26 @@ for idx, row in enumerate(rows_to_ingest):
                 f"schema themselves, so they would write to a dataset this "
                 f"workflow does not read. Refusing to run them."
             )
+        # A release cannot be its own baseline. Currently unreachable -
+        # all_releases derives prev_release_date with LAG over DISTINCT dates,
+        # so same-date duplicate datasets collapse to one row - but it UNION
+        # ALLs the schema scan with historic_release_dates without deduping, so
+        # a historic date coinciding with a live release would produce
+        # prev_release_date == release_date. That would have dataset_diff_on
+        # diff a schema against itself into empty-but-present diff_* tables,
+        # which is exactly the state variation_identity_build's existence-only
+        # guard reads as "incremental is safe": it would then rebuild
+        # variation_identity from itself and leave the release never updated,
+        # with a 0-row delta exported and every step reporting success.
+        if base_schema == cur_schema:
+            raise ValueError(
+                f"clinvar_ingest.schema_on resolved the same schema "
+                f"'{cur_schema}' as both the current and the baseline release "
+                f"for {release_date}, so the incremental build would use this "
+                f"release as its own baseline and silently never update it. "
+                f"Check all_releases/historic_release_dates for a duplicate "
+                f"release date. Refusing to run the stored procedures."
+            )
 
         result = execute_all(
             client=_get_bq_client(),
