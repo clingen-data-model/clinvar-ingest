@@ -6,6 +6,7 @@
 import logging
 import sys
 
+from google.api_core.exceptions import NotFound
 from google.cloud import bigquery
 
 from clinvar_ingest.cloud.bigquery import processing_history
@@ -167,19 +168,13 @@ for idx, row in enumerate(rows_to_ingest):
         send_slack_message(msg)
         raise e
 
-    # Incremental variation_identity export. This replicates
-    # clinvar-gkm's src/scripts/export-vi-table-to-gcs.sh (its default,
-    # incremental mode) so both producers of this object agree on its shape:
-    # export only the variations whose variation_identity row changed since the
-    # prior release (~0.3% of a weekly release) rather than the whole ~4.5M row
-    # snapshot. vrs-python then normalizes just the delta, and the unchanged
-    # variations' VRS results are carried forward when gkm_vrs is loaded.
-    #
-    # variation_vrs_changed is a canonical diff of the variation_identity row
-    # only, and needs nothing but the current and baseline variation_identity
-    # tables - it does NOT depend on the diff_* driver tables. When there is no
-    # usable baseline it writes ALL variation_ids, so a first release still
-    # exports the full table and this stays correct without special-casing.
+    # Incremental variation_identity export, replicating clinvar-gkm's
+    # src/scripts/export-vi-table-to-gcs.sh (its default, incremental mode) so
+    # both producers of this object agree on its shape: export only the
+    # variations whose variation_identity row changed since the prior release
+    # (~0.3% of a weekly release) rather than the whole ~4.5M row snapshot.
+    # vrs-python normalizes just the delta and the unchanged variations' VRS
+    # results are carried forward when gkm_vrs is loaded.
     #
     # These calls live here rather than in the stored_procedures list on
     # purpose: they are part of the export deliverable, so a failure is handled
@@ -188,21 +183,64 @@ for idx, row in enumerate(rows_to_ingest):
     vi_gs_url = f"gs://{env.clinvar_gks_bucket}/{release_date}/dev/vi.jsonl.gz"
     try:
         client = _get_bq_client()
-        # Fully qualify every table reference. client.query() resolves
-        # unqualified names against BQ_DEST_PROJECT (passed below) while
-        # client.get_table()/extract_table() resolve against the client's own
-        # default project, so an unqualified id would silently split across two
-        # projects if those ever differ.
+        # Fully qualify every table reference: client.query() resolves
+        # unqualified names against BQ_DEST_PROJECT while get_table() and
+        # extract_table() resolve against the client's own default project, so
+        # an unqualified id would silently split across two projects if those
+        # ever differ. For the same reason extract_table() is passed project=.
         qualified_dataset = f"{env.bq_dest_project}.{dataset_id}"
         vi_extract_table_id = f"{qualified_dataset}.vi_extract"
 
-        # 1. Compute the changed / removed variation sets vs the prior release.
+        # 1. Resolve the same current/baseline schemas that
+        # variation_vrs_changed itself resolves via clinvar_ingest.schema_on.
+        # The procedure takes only on_date and reports no status, so this is the
+        # only way to (a) confirm it will write into the dataset our CTAS below
+        # reads from and (b) tell a real delta from the no-baseline path, where
+        # it marks EVERY variation as changed.
+        schema_row = next(
+            iter(
+                client.query(
+                    f"""
+                    SELECT
+                      (SELECT schema_name FROM `clinvar_ingest.schema_on`(DATE '{release_date}')) AS cur_schema,
+                      (SELECT schema_name FROM `clinvar_ingest.schema_on`(
+                         (SELECT prev_release_date FROM `clinvar_ingest.schema_on`(DATE '{release_date}')))
+                      ) AS base_schema
+                    """,
+                    project=env.bq_dest_project,
+                ).result()
+            )
+        )
+        cur_schema = schema_row["cur_schema"]
+        base_schema = schema_row["base_schema"]
+
+        # schema_on is LIMIT 1, so same-date duplicate datasets resolve
+        # arbitrarily. If its answer differs from the dataset id threaded
+        # through processing_history, the procedure writes somewhere we are not
+        # reading and the export would be silently wrong.
+        if cur_schema != dataset_id:
+            raise ValueError(
+                f"clinvar_ingest.schema_on(DATE '{release_date}') resolved schema "
+                f"'{cur_schema}' but processing_history final_dataset_id is "
+                f"'{dataset_id}'. variation_vrs_changed writes into the schema it "
+                f"resolves itself, so this export would read the wrong dataset."
+            )
+
+        has_baseline = base_schema is not None
+        if has_baseline:
+            try:
+                client.get_table(f"{env.bq_dest_project}.{base_schema}.variation_identity")
+            except NotFound:
+                has_baseline = False
+        export_mode = "incremental" if has_baseline else "FULL - no usable baseline"
+
+        # 2. Compute the changed / removed variation sets vs the prior release.
         client.query(
             f"CALL `clinvar_ingest.variation_vrs_changed`(DATE '{release_date}');",
             project=env.bq_dest_project,
         ).result()
 
-        # 2. Materialize only the changed variations' variation_identity rows.
+        # 3. Materialize only the changed variations' variation_identity rows.
         client.query(
             f"""
             CREATE OR REPLACE TABLE `{vi_extract_table_id}` AS
@@ -213,24 +251,33 @@ for idx, row in enumerate(rows_to_ingest):
             project=env.bq_dest_project,
         ).result()
 
-        # variation_vrs_changed marks EVERY variation as changed whenever there
-        # is no usable baseline - a first release, but also a release whose
-        # predecessor's dataset has been pruned or lacks variation_identity. In
-        # that case this is a full snapshot, not a delta, so label it honestly
-        # rather than reporting ~4.5M "changed" rows as an incremental export.
         changed_count = client.get_table(vi_extract_table_id).num_rows
         total_count = client.get_table(f"{qualified_dataset}.variation_identity").num_rows
-        export_mode = "incremental" if changed_count < total_count else "FULL - no usable baseline"
         _logger.info(
-            f"variation_identity export for {release_date}: {changed_count} of {total_count} rows ({export_mode})"
+            f"variation_identity export for {release_date}: {changed_count} of {total_count} "
+            f"rows ({export_mode}, baseline schema={base_schema})"
         )
 
-        # 3. Extract the changed set as a single file. Deliberately not a
+        if changed_count == 0:
+            zero_msg = (
+                f"NOTE: ZERO variations changed for release dated {release_date} "
+                f"(0 of {total_count}). The export is still being written and is a "
+                f"valid no-op: clinvar-gkm's vrs-to-bq-table.sh treats an empty "
+                f"changed set as 'clone the baseline unchanged'. This normally means "
+                f"a re-ingest of a release identical to its predecessor - if that is "
+                f"not expected, investigate before relying on gkm_vrs for {release_date}."
+            )
+            _logger.warning(zero_msg)
+            send_slack_message(zero_msg)
+
+        # 4. Extract the changed set as a single file. Deliberately not a
         # wildcard URI: clinvar-gkm's vrsify.sh reads exactly this one object.
         job_config = bigquery.ExtractJobConfig(
             destination_format=bigquery.DestinationFormat.NEWLINE_DELIMITED_JSON, compression=bigquery.Compression.GZIP
         )
-        extract_job = client.extract_table(vi_extract_table_id, vi_gs_url, job_config=job_config)
+        extract_job = client.extract_table(
+            vi_extract_table_id, vi_gs_url, job_config=job_config, project=env.bq_dest_project
+        )
         extract_job.result(timeout=1800)  # Wait for the job to complete (30 minute timeout)
         msg = (
             f"Successfully exported {changed_count} of {total_count} variation_identity "
@@ -243,14 +290,13 @@ for idx, row in enumerate(rows_to_ingest):
         # variation_vrs_removed, vi_extract) all live in this release's own
         # dataset and are rebuilt with CREATE OR REPLACE, so a partial failure
         # is safe to retry and does not touch the cross-release temporal tables
-        # that make a failed stored procedure dangerous. Note it is not inert
-        # either: clinvar-gkm's vrs-to-bq-table.sh reads variation_vrs_changed
-        # and variation_vrs_removed to decide how to build gkm_vrs from the
-        # previous release's copy, so a stale set here can misdirect that step.
-        # Record the failure and continue processing later releases so one bad
-        # export does not block stored procedure execution for the rest of the
-        # batch. We exit non-zero after the loop so Cloud Run still marks the
-        # execution as Failed.
+        # that make a failed stored procedure dangerous. It is not inert either:
+        # clinvar-gkm's vrs-to-bq-table.sh reads variation_vrs_changed and
+        # variation_vrs_removed to decide how to build gkm_vrs from the previous
+        # release's copy, so a stale set here can misdirect that step. Record
+        # and continue so one bad export does not block SP execution for the
+        # rest of the batch; we exit non-zero after the loop so Cloud Run still
+        # marks the execution as Failed.
         vi_export_failures.append(vcv_xml_release_date.isoformat())
         error_msg = (
             f"variation_identity export failed for release dated "
@@ -261,8 +307,13 @@ for idx, row in enumerate(rows_to_ingest):
             f"deleted. The SP job is NOT paused and will continue processing "
             f"the remaining releases in this run. After investigating, re-run "
             f"the export manually from the clinvar-gkm repo with "
-            f"./src/scripts/export-vi-table-to-gcs.sh {release_date}, which "
-            f"writes the same {vi_gs_url}. Do NOT use its --full flag as a "
+            f"./src/scripts/export-vi-table-to-gcs.sh {release_date}. That "
+            f"script hardcodes its bucket and project, so it writes "
+            f"gs://clinvar-gkm/{release_date}/dev/vi.jsonl.gz - the same object "
+            f"as this export ({vi_gs_url}) only while CLINVAR_GKS_BUCKET="
+            f"clinvar-gkm and BQ_DEST_PROJECT=clingen-dev; if either is "
+            f"overridden for this deployment, copy the result to the URL above. "
+            f"Do NOT use its --full flag as a "
             f"substitute: that writes sharded vi-*.jsonl.gz objects instead, "
             f"and clinvar-gkm's vrsify.sh reads only vi.jsonl.gz. "
             f"Error: {e}"

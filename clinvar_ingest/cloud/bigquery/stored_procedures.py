@@ -27,25 +27,14 @@ from google.cloud.bigquery.table import RowIterator
 
 _logger = logging.getLogger("clinvar_ingest")
 
-# `dataset_diff_on` builds the {release}.diff_* driver tables that the incremental
-# procedures need. It MUST run before variation_identity_incremental: the incremental
-# guard in variation_identity_build checks that diff_variation,
-# diff_clinical_assertion and diff_clinical_assertion_variation exist, and silently
-# falls back to a full rebuild when they do not. Nothing else in the pipeline calls
-# it, so without this step "incremental" would be a no-op that always rebuilds fully.
-#
-# It is idempotent (CREATE OR REPLACE) and, on a first release with no baseline
-# snapshot, emits a warning and writes no diff tables - which correctly leaves the
-# incremental guards to fall back to a full rebuild.
-#
-# Running it here is necessary but not sufficient: dataset_diff_all isolates each
-# of its 19 table diffs in `EXCEPTION WHEN ERROR THEN SELECT 'SKIPPED ...'` and
-# still returns success, so an individual diff table can be missing (or left over
-# from a previous attempt) without failing this job. If one of the three tables the
-# guard checks is the one that got skipped, the build silently does a full rebuild
-# while everything here reports success. Observed in practice:
-# clinvar_2026_08_16_v2_5_0 has 18 of 19 (diff_variation_archive_classification was
-# skipped) - harmless there since it is not a guard table.
+# `dataset_diff_on` builds the {release}.diff_* driver tables and MUST run before
+# variation_identity_incremental: the guard in variation_identity_build only checks
+# that diff_variation, diff_clinical_assertion and diff_clinical_assertion_variation
+# *exist* and silently falls back to a full rebuild when they do not. It is
+# idempotent (CREATE OR REPLACE). Note dataset_diff_all isolates each of its 19
+# table diffs in `EXCEPTION WHEN ERROR THEN SELECT 'SKIPPED ...'` and still returns
+# success, so a missing diff table cannot fail this job - if a guard table is the
+# skipped one, the build silently rebuilds fully while everything reports success.
 #
 # Mirrors stages 0-1 of clinvar-gkm's src/scripts/run-release.sh.
 stored_procedures = [
