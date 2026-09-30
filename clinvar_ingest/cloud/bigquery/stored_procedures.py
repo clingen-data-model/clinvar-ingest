@@ -41,7 +41,7 @@ stored_procedures = [
     "CALL `clinvar_ingest.dataset_preparation`({dataset});",
     "CALL `clinvar_ingest.temporal_data_collection`({release_date});",
     "CALL `clinvar_ingest.temporal_data_summation`();",
-    "CALL `clinvar_ingest.tracker_report_update`();",
+    "CALL `clinvar_ingest.tracker_report_update`({dataset});",
     "CALL `clinvar_ingest.dataset_diff_on`({release_date});",
     "CALL `clinvar_ingest.variation_identity_incremental`({release_date}, false);",
 ]
