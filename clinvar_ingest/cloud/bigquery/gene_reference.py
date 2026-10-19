@@ -1,11 +1,12 @@
 """
 Refresh the gene reference tables that clinvar_ingest.single_gene_variation uses.
 
-Downloads two NCBI Gene files, keeps the human rows, loads them into the staging tables
-<dataset>.entrez_gene_stage and <dataset>.ncbi_gene_history_stage, then calls the stored
-procedure <dataset>.gene_reference_update from clinvar-ingest-bq-tools
+Downloads two NCBI Gene files (human rows only) and the summary file of every NCBI MANE release,
+loads them into the staging tables <dataset>.entrez_gene_stage, <dataset>.ncbi_gene_history_stage
+and <dataset>.mane_transcript_stage, then calls the stored procedure
+<dataset>.gene_reference_update from clinvar-ingest-bq-tools
 (scripts/general/gene-reference-update-proc.sql). That procedure applies add-only changes to
-entrez_gene and ncbi_gene_history and logs the run to gene_reference_refresh_log.
+entrez_gene, ncbi_gene_history and mane_transcript and logs the run to gene_reference_refresh_log.
 
 clinvar_ingest.validate_dataset fails a release when no refresh is logged on or after its
 release date, so the stored-procedures workflow runs this before claiming any release.
@@ -16,6 +17,7 @@ import datetime
 import gzip
 import io
 import logging
+import re
 import tempfile
 import time
 from collections.abc import Iterable, Iterator
@@ -29,7 +31,9 @@ _logger = logging.getLogger("clinvar_ingest")
 
 GENE_INFO_URL = "https://ftp.ncbi.nih.gov/gene/DATA/GENE_INFO/Mammalia/Homo_sapiens.gene_info.gz"
 GENE_HISTORY_URL = "https://ftp.ncbi.nih.gov/gene/DATA/gene_history.gz"
+MANE_URL = "https://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human"
 HUMAN_TAX_ID = "9606"
+MANE_STATUSES = ("MANE Select", "MANE Plus Clinical")
 
 ENTREZ_GENE_STAGE_SCHEMA = [
     bigquery.SchemaField("gene_id", "STRING"),
@@ -46,6 +50,16 @@ GENE_HISTORY_STAGE_SCHEMA = [
     bigquery.SchemaField("replaced_by_gene_id", "STRING"),
     bigquery.SchemaField("discontinued_symbol", "STRING"),
     bigquery.SchemaField("discontinue_date", "DATE"),
+]
+
+MANE_TRANSCRIPT_STAGE_SCHEMA = [
+    bigquery.SchemaField("mane_version", "STRING"),
+    bigquery.SchemaField("mane_release_date", "DATE"),
+    bigquery.SchemaField("gene_id", "STRING"),
+    bigquery.SchemaField("hgnc_id", "STRING"),
+    bigquery.SchemaField("symbol", "STRING"),
+    bigquery.SchemaField("transcript_id", "STRING"),
+    bigquery.SchemaField("mane_status", "STRING"),
 ]
 
 
@@ -84,6 +98,55 @@ def parse_gene_history(lines: Iterable[str]) -> Iterator[tuple[str, ...]]:
         replaced_by = "" if fields[1] == "-" else fields[1]
         yyyymmdd = fields[4]
         yield (fields[2], replaced_by, fields[3], f"{yyyymmdd[0:4]}-{yyyymmdd[4:6]}-{yyyymmdd[6:8]}")
+
+
+def parse_mane_index(html: str) -> list[tuple[str, str]]:
+    """(version, directory date) for every release_<version>/ directory in the MANE_human listing."""
+    return re.findall(r'href="release_([0-9.]+)/">[^<]*</a>\s*(\d{4}-\d{2}-\d{2})', html)
+
+
+def parse_mane_release_listing(html: str, version: str) -> tuple[str, str] | None:
+    """(summary file name, file date) from one release directory listing, or None if it has none."""
+    name = f"MANE.GRCh38.v{version}.summary.txt.gz"
+    match = re.search(rf"{re.escape(name)}</a>\s*(\d{{4}}-\d{{2}}-\d{{2}})", html)
+    return (name, match.group(1)) if match else None
+
+
+def parse_mane_summary(lines: Iterable[str], version: str, release_date: str) -> Iterator[tuple[str, ...]]:
+    """
+    Yield the MANE Select and MANE Plus Clinical rows of a MANE summary file as mane_transcript_stage rows:
+    (mane_version, mane_release_date, gene_id, hgnc_id, symbol, transcript_id, mane_status).
+    """
+    for line in lines:
+        fields = line.rstrip("\n").split("\t")
+        # also skips the "#NCBI_GeneID ..." header line
+        if len(fields) < 10 or fields[9] not in MANE_STATUSES:  # noqa: PLR2004
+            continue
+        yield (version, release_date, fields[0].removeprefix("GeneID:"), fields[2], fields[3], fields[5], fields[9])
+
+
+def fetch_mane_rows(tmp: Path) -> list[tuple[str, ...]]:
+    """
+    Download every NCBI MANE release's summary file and return its rows. A release's date is the earlier
+    of its directory date and its summary file date: most directories were copied in bulk long after
+    their release, and some summary files were regenerated after it.
+    """
+    rows: list[tuple[str, ...]] = []
+    index = requests.get(f"{MANE_URL}/", timeout=(10, 60))
+    index.raise_for_status()
+    for version, dir_date in parse_mane_index(index.text):
+        listing = requests.get(f"{MANE_URL}/release_{version}/", timeout=(10, 60))
+        listing.raise_for_status()
+        summary = parse_mane_release_listing(listing.text, version)
+        if summary is None:
+            _logger.info(f"MANE release {version} has no summary file; skipped")
+            continue
+        name, file_date = summary
+        path = tmp / name
+        download(f"{MANE_URL}/release_{version}/{name}", path)
+        with gzip.open(path, "rt", encoding="utf-8") as f:
+            rows.extend(parse_mane_summary(f, version, min(dir_date, file_date)))
+    return rows
 
 
 def download(url: str, dest: Path, attempts: int = 3, timeout: tuple[int, int] = (10, 300)) -> None:
@@ -138,10 +201,15 @@ def refresh_gene_reference(client: bigquery.Client, project: str, dataset: str, 
             gene_rows = list(parse_gene_info(f))
         with gzip.open(gene_history_path, "rt", encoding="utf-8") as f:
             history_rows = list(parse_gene_history(f))
+        mane_rows = fetch_mane_rows(Path(tmp))
 
-    _logger.info(f"Parsed {len(gene_rows)} human genes and {len(history_rows)} discontinued human gene ids")
+    _logger.info(
+        f"Parsed {len(gene_rows)} human genes, {len(history_rows)} discontinued human gene ids "
+        f"and {len(mane_rows)} MANE transcripts"
+    )
     load_stage(client, f"{project}.{dataset}.entrez_gene_stage", gene_rows, ENTREZ_GENE_STAGE_SCHEMA)
     load_stage(client, f"{project}.{dataset}.ncbi_gene_history_stage", history_rows, GENE_HISTORY_STAGE_SCHEMA)
+    load_stage(client, f"{project}.{dataset}.mane_transcript_stage", mane_rows, MANE_TRANSCRIPT_STAGE_SCHEMA)
 
     job = client.query(
         f"CALL `{project}.{dataset}.gene_reference_update`(TRUE, @triggered_by);",
