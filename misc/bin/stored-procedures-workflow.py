@@ -9,7 +9,7 @@ import sys
 from google.api_core.exceptions import NotFound
 from google.cloud import bigquery
 
-from clinvar_ingest.cloud.bigquery import processing_history
+from clinvar_ingest.cloud.bigquery import gene_reference, processing_history
 from clinvar_ingest.cloud.bigquery.stored_procedures import execute_all
 from clinvar_ingest.config import get_stored_procedures_env
 from clinvar_ingest.slack import send_slack_message
@@ -74,6 +74,41 @@ if not total_rows:
     sys.exit(0)
 
 send_slack_message(msg)
+
+# Refresh the gene reference tables (entrez_gene, ncbi_gene_history) from NCBI before any
+# release is claimed. clinvar_ingest.validate_dataset fails a release when no refresh is logged
+# on or after its release date. So if the refresh fails and the last logged refresh does not
+# cover every pending release, stop here: nothing has been claimed yet, so the next scheduled
+# run simply retries.
+try:
+    gene_refresh_result = gene_reference.refresh_gene_reference(
+        client=_get_bq_client(),
+        project=env.bq_dest_project,
+        dataset=env.bq_meta_dataset,
+        triggered_by=f"clinvar-ingest stored-procedures {env.release_tag}",
+    )
+    _logger.info(f"Refreshed the gene reference tables: {gene_refresh_result}")
+except Exception as e:
+    latest_pending_release = max(r.get("release_date") for r in rows_needing_sp_run)
+    last_gene_refresh = gene_reference.last_refresh(
+        client=_get_bq_client(), project=env.bq_dest_project, dataset=env.bq_meta_dataset
+    )
+    if not gene_reference.covers_release(last_gene_refresh, latest_pending_release):
+        msg = (
+            f"Failed to refresh the gene reference tables from NCBI, and the last refresh "
+            f"({last_gene_refresh or 'never'}) is older than release {latest_pending_release}, which "
+            f"validate_dataset would reject. Stopping before claiming any release; the next scheduled "
+            f"run will retry. Error: {e}"
+        )
+        _logger.error(msg)
+        send_slack_message(msg)
+        sys.exit(1)
+    msg = (
+        f"Failed to refresh the gene reference tables from NCBI; continuing with the last refresh "
+        f"({last_gene_refresh}), which covers the pending releases. Error: {e}"
+    )
+    _logger.warning(msg)
+    send_slack_message(msg)
 
 # update processing_history.bq_ingest_started for ALL processing_history_view
 rows_to_ingest = []
