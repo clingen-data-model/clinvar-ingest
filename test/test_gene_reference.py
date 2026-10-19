@@ -38,6 +38,72 @@ def test_parse_gene_history_keeps_human_rows_and_formats_dates():
     ]
 
 
+MANE_INDEX_HTML = """
+<a href="/refseq/MANE/">Parent Directory</a>                             -
+<a href="current/">current/</a>                2025-09-30 14:43    -
+<a href="release_1.0/">release_1.0/</a>            2025-05-21 08:12    -
+<a href="release_1.5/">release_1.5/</a>            2025-09-30 14:43    -
+"""
+
+MANE_RELEASE_HTML = """
+<a href="MANE.GRCh38.v1.5.ensembl_genomic.gff.gz">MANE.GRCh38.v1.5.ensembl_genomic.gff.gz</a> 2025-09-30 14:43  9.6M
+<a href="MANE.GRCh38.v1.5.summary.txt.gz">MANE.GRCh38.v1.5.summary.txt.gz</a>         2025-12-04 14:53  1.3M
+"""
+
+MANE_SUMMARY_LINES = [
+    "#NCBI_GeneID\tEnsembl_Gene\tHGNC_ID\tsymbol\tname\tRefSeq_nuc\tRefSeq_prot\tEnsembl_nuc\tEnsembl_prot\tMANE_status\tGRCh38_chr\tchr_start\tchr_end\tchr_strand\n",
+    "GeneID:3949\tENSG00000130164.15\tHGNC:6547\tLDLR\tlow density lipoprotein receptor\tNM_000527.5\tNP_000518.1\tENST00000558518.6\tENSP00000454071.1\tMANE Select\tNC_000019.10\t11089463\t11133820\t+\n",
+    "GeneID:7157\tENSG00000141510.18\tHGNC:11998\tTP53\ttumor protein p53\tNM_001126112.3\tNP_001119584.1\tENST00000445888.6\tENSP00000391478.2\tMANE Plus Clinical\tNC_000017.11\t7668421\t7687490\t-\n",
+]
+
+
+def test_parse_mane_index_lists_release_directories_with_dates():
+    assert gene_reference.parse_mane_index(MANE_INDEX_HTML) == [("1.0", "2025-05-21"), ("1.5", "2025-09-30")]
+
+
+def test_parse_mane_release_listing_finds_the_summary_file_and_its_date():
+    assert gene_reference.parse_mane_release_listing(MANE_RELEASE_HTML, "1.5") == (
+        "MANE.GRCh38.v1.5.summary.txt.gz",
+        "2025-12-04",
+    )
+    assert gene_reference.parse_mane_release_listing(MANE_RELEASE_HTML, "1.4") is None
+
+
+def test_parse_mane_summary_keeps_select_and_plus_clinical_rows():
+    rows = list(gene_reference.parse_mane_summary(MANE_SUMMARY_LINES, "1.5", "2025-09-30"))
+    assert rows == [
+        ("1.5", "2025-09-30", "3949", "HGNC:6547", "LDLR", "NM_000527.5", "MANE Select"),
+        ("1.5", "2025-09-30", "7157", "HGNC:11998", "TP53", "NM_001126112.3", "MANE Plus Clinical"),
+    ]
+
+
+def test_fetch_mane_rows_dates_each_release_by_the_earlier_of_its_dates(tmp_path):
+    pages = {
+        f"{gene_reference.MANE_URL}/": MANE_INDEX_HTML,
+        f"{gene_reference.MANE_URL}/release_1.0/": "",  # no summary file: skipped
+        f"{gene_reference.MANE_URL}/release_1.5/": MANE_RELEASE_HTML,
+    }
+
+    def fake_get(url, **_kwargs):
+        response = MagicMock()
+        response.text = pages[url]
+        return response
+
+    def fake_download(url, dest, **_kwargs):
+        assert url.endswith("release_1.5/MANE.GRCh38.v1.5.summary.txt.gz")
+        _write_gz(dest, MANE_SUMMARY_LINES)
+
+    with (
+        patch.object(gene_reference.requests, "get", side_effect=fake_get),
+        patch.object(gene_reference, "download", side_effect=fake_download),
+    ):
+        rows = gene_reference.fetch_mane_rows(tmp_path)
+
+    # directory 2025-09-30 is earlier than the regenerated summary file's 2025-12-04
+    assert {row[1] for row in rows} == {"2025-09-30"}
+    assert len(rows) == 2
+
+
 def test_load_stage_replaces_table_with_tab_separated_rows():
     client = MagicMock()
     client.load_table_from_file.return_value.output_rows = 2
@@ -71,11 +137,19 @@ def test_refresh_gene_reference_stages_both_files_and_calls_the_procedure():
     client = MagicMock()
     client.query.return_value.result.return_value = [{"applied": True, "entrez_genes_to_insert": 0}]
 
-    with patch.object(gene_reference, "download", side_effect=fake_download):
+    mane_rows = [("1.5", "2025-09-30", "3949", "HGNC:6547", "LDLR", "NM_000527.5", "MANE Select")]
+    with (
+        patch.object(gene_reference, "download", side_effect=fake_download),
+        patch.object(gene_reference, "fetch_mane_rows", return_value=mane_rows),
+    ):
         result = gene_reference.refresh_gene_reference(client, "proj", "ds", "test run")
 
     staged_tables = [call.args[1] for call in client.load_table_from_file.call_args_list]
-    assert staged_tables == ["proj.ds.entrez_gene_stage", "proj.ds.ncbi_gene_history_stage"]
+    assert staged_tables == [
+        "proj.ds.entrez_gene_stage",
+        "proj.ds.ncbi_gene_history_stage",
+        "proj.ds.mane_transcript_stage",
+    ]
 
     query = client.query.call_args.args[0]
     params = client.query.call_args.kwargs["job_config"].query_parameters
