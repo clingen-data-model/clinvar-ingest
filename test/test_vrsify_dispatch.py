@@ -148,6 +148,22 @@ def test_job_definition_uses_c4_with_hyperdisk(batch_settings):
     assert policy["bootDisk"]["type"] == "hyperdisk-balanced"
 
 
+@pytest.mark.parametrize(
+    ("machine_type", "expected"),
+    [
+        ("c4-standard-8", {"cpuMilli": 8000, "memoryMib": 27648}),  # of 30 GB
+        ("e2-standard-4", {"cpuMilli": 4000, "memoryMib": 13824}),  # of 16 GB
+        ("c4-highmem-4", {"cpuMilli": 4000, "memoryMib": 27648}),  # of 31 GB
+        ("e2-custom-4-8192", None),
+        ("e2-medium", None),
+    ],
+)
+def test_task_requests_the_vm(batch_settings, machine_type, expected):
+    batch_settings.machine_type = machine_type
+    task = batch.job_definition(batch_settings, [])["taskGroups"][0]["taskSpec"]
+    assert task.get("computeResource") == expected
+
+
 def test_job_definition_parses_as_a_batch_job(batch_settings):
     import json
 

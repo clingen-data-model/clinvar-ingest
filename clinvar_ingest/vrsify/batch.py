@@ -28,6 +28,29 @@ class BatchSettings:
     environment: dict[str, str] = field(default_factory=dict)
 
 
+# Memory per vCPU of each predefined machine type class, the least across the e2, n2 and
+# c4 families. The task requests 90% of the VM's memory, leaving room for the Batch agent.
+_MIB_PER_VCPU = {"standard": 3840, "highmem": 7680, "highcpu": 1024}
+_MEMORY_REQUEST_FRACTION = 0.9
+
+
+def compute_resource(machine_type: str) -> dict | None:
+    """
+    The task's resource request for a predefined machine type, e.g. c4-standard-8: all of
+    its vCPUs and most of its memory, so the task has the VM and the job shows what it
+    uses. Without a request, Batch assumes 2 vCPUs and 2000 MiB per task. None for machine
+    types not named <family>-<class>-<vCPUs>.
+    """
+    parts = machine_type.split("-")
+    if len(parts) != 3 or parts[1] not in _MIB_PER_VCPU or not parts[2].isdigit():  # noqa: PLR2004
+        return None
+    vcpus = int(parts[2])
+    return {
+        "cpuMilli": vcpus * 1000,
+        "memoryMib": int(vcpus * _MIB_PER_VCPU[parts[1]] * _MEMORY_REQUEST_FRACTION),
+    }
+
+
 def job_id(release_date: str, now: datetime.datetime | None = None) -> str:
     now = now or datetime.datetime.now(datetime.UTC)
     return f"vrsify-{release_date}-{now:%Y%m%d%H%M%S}"
@@ -44,26 +67,24 @@ def job_definition(settings: BatchSettings, vrsify_args: list[str], slack: bool 
         environment["secretVariables"] = {
             "CLINVAR_INGEST_SLACK_TOKEN": f"projects/{settings.project}/secrets/{SLACK_TOKEN_SECRET}/versions/latest"
         }
-    return {
-        "taskGroups": [
+    task_spec = {
+        "runnables": [
             {
-                "taskCount": 1,
-                "taskSpec": {
-                    "runnables": [
-                        {
-                            "container": {
-                                "imageUri": settings.image,
-                                "entrypoint": "clinvar-ingest",
-                                "commands": ["vrsify", *vrsify_args],
-                            }
-                        }
-                    ],
-                    "environment": environment,
-                    "maxRetryCount": 0,
-                    "maxRunDuration": f"{settings.max_run_duration_seconds}s",
-                },
+                "container": {
+                    "imageUri": settings.image,
+                    "entrypoint": "clinvar-ingest",
+                    "commands": ["vrsify", *vrsify_args],
+                }
             }
         ],
+        "environment": environment,
+        "maxRetryCount": 0,
+        "maxRunDuration": f"{settings.max_run_duration_seconds}s",
+    }
+    if resource := compute_resource(settings.machine_type):
+        task_spec["computeResource"] = resource
+    return {
+        "taskGroups": [{"taskCount": 1, "taskSpec": task_spec}],
         "allocationPolicy": {
             "location": {"allowedLocations": [f"regions/{settings.region}"]},
             "instances": [
