@@ -2,6 +2,7 @@ import hashlib
 import io
 import json
 import tarfile
+from pathlib import Path
 
 import pytest
 
@@ -30,6 +31,9 @@ class FakeResponse:
     def raise_for_status(self):
         pass
 
+    def json(self):
+        return json.loads(self.text)
+
     def __enter__(self):
         return self
 
@@ -55,7 +59,8 @@ def test_archive_is_extracted_and_verified(tmp_path, serve):
     work = tmp_path / "work"
     work.mkdir()
 
-    store_dir, provenance = store.prepare_store(URL, work)
+    location, provenance = store.prepare_store(URL, work)
+    store_dir = Path(location)
 
     assert store_dir.name == "genomic-test"
     assert (store_dir / "sequences" / "ab" / "abcd.seq").read_bytes() == b"\x00\x01"
@@ -98,8 +103,41 @@ def test_local_store_directory_is_used_in_place(tmp_path):
     root.mkdir()
     (root / "rgstore.json").write_text(json.dumps({"aliases_digest": "aliases"}))
 
-    store_dir, provenance = store.prepare_store(str(root), tmp_path)
+    location, provenance = store.prepare_store(str(root), tmp_path)
 
-    assert store_dir == root
+    assert location == str(root)
     assert provenance["source"] == str(root.resolve())
     assert provenance["rgstore"]["aliases_digest"] == "aliases"
+
+
+def test_remote_store_is_opened_by_url_without_downloading_it(tmp_path, monkeypatch):
+    remote = "https://example.org/refgetstore/genomic-test"
+    requested = []
+
+    def get(url, **_kwargs):
+        requested.append(url)
+        return FakeResponse(json.dumps({"sequences_digest": "seqs", "modified": "today"}).encode())
+
+    monkeypatch.setattr(store.requests, "get", get)
+
+    location, provenance = store.prepare_store(remote, tmp_path)
+
+    assert location == remote
+    assert requested == [f"{remote}/rgstore.json"]
+    assert provenance["source"] == remote
+    assert provenance["remote"] is True
+    assert provenance["rgstore"]["sequences_digest"] == "seqs"
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize(
+    ("location", "remote"),
+    [
+        ("https://example.org/refgetstore/genomic-2026-10-27", True),
+        ("https://example.org/refgetstore/genomic-2026-10-27.tar.gz", False),
+        ("gs://bucket/store.tar.gz", False),
+        ("/data/refgetstore", False),
+    ],
+)
+def test_is_remote_store(location, remote):
+    assert store.is_remote_store(location) is remote

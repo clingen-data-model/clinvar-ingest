@@ -95,6 +95,8 @@ def run_vrsify_submit(args: Namespace):
         settings.machine_type = args.machine_type
     if args.boot_disk_type:
         settings.boot_disk_type = args.boot_disk_type
+    if args.boot_disk_size:
+        settings.boot_disk_size_gb = args.boot_disk_size
     definition = batch.job_definition(settings, ["--release-date", args.release_date, *args.vrsify_args])
     name = batch.job_id(args.release_date)
     if args.dry_run:

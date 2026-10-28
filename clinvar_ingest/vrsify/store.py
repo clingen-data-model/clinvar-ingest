@@ -1,9 +1,10 @@
 """
-Obtain a RefgetStore on local disk.
+Obtain a RefgetStore.
 
-A store is either a local directory containing rgstore.json, or a .tar.gz archive of one
-(https:// or gs://) published next to a .sha256 file. Archives are extracted as they
-download, without writing the archive itself to disk, and the extracted store is
+A store is a local directory containing rgstore.json, a .tar.gz archive of one (https://
+or gs://) published next to a .sha256 file, or the URL of a remote store directory
+(https://), whose sequences are fetched as they are first read. Archives are extracted as
+they download, without writing the archive itself to disk, and the extracted store is
 discarded unless the archive matches that SHA-256.
 """
 
@@ -99,23 +100,35 @@ def _extract_archive(uri: str, work_dir: Path) -> tuple[Path, str]:
     return extract_dir / top_dirs.pop(), actual
 
 
-def prepare_store(store: str, work_dir: Path) -> tuple[Path, dict]:
+def is_remote_store(store: str) -> bool:
+    """Whether `store` names a remote store directory, as opposed to a local one or an archive."""
+    return store.startswith(("https://", "http://")) and not store.endswith(".tar.gz")
+
+
+def prepare_store(store: str, work_dir: Path) -> tuple[str, dict]:
     """
-    Return the local store directory for `store` and a provenance record describing it.
+    Return where translation workers open `store` (a local directory, or the remote store's
+    URL) and a provenance record describing it.
     """
     local = Path(store)
-    if local.is_dir():
-        store_dir = local
-        provenance = {"source": str(local.resolve())}
-    elif store.endswith(".tar.gz") and store.startswith(("https://", "http://", "gs://")):
-        _logger.info(f"Downloading and extracting RefgetStore archive {store}")
-        store_dir, sha256 = _extract_archive(store, work_dir)
-        provenance = {"source": store, "sha256": sha256}
+    if is_remote_store(store):
+        response = requests.get(f"{store.rstrip('/')}/rgstore.json", timeout=60)
+        response.raise_for_status()
+        location, metadata = store, response.json()
+        provenance = {"source": store, "remote": True}
     else:
-        raise ValueError(f"Not a store directory or a .tar.gz archive URL: {store}")
+        if local.is_dir():
+            store_dir = local
+            provenance = {"source": str(local.resolve())}
+        elif store.endswith(".tar.gz") and store.startswith(("https://", "http://", "gs://")):
+            _logger.info(f"Downloading and extracting RefgetStore archive {store}")
+            store_dir, sha256 = _extract_archive(store, work_dir)
+            provenance = {"source": store, "sha256": sha256}
+        else:
+            raise ValueError(f"Not a store directory, a .tar.gz archive URL or a remote store URL: {store}")
+        location, metadata = str(store_dir), json.loads((store_dir / "rgstore.json").read_text())
 
-    metadata = json.loads((store_dir / "rgstore.json").read_text())
     provenance["rgstore"] = {
         key: metadata.get(key) for key in ("sequences_digest", "collections_digest", "aliases_digest", "modified")
     }
-    return store_dir, provenance
+    return location, provenance

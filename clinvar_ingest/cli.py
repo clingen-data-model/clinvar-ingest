@@ -85,7 +85,10 @@ def parse_args(argv):
         "--refget-store",
         type=str,
         default=None,
-        help="RefgetStore directory or .tar.gz archive URL (default: CLINVAR_INGEST_REFGET_STORE, else the published genomic store)",
+        help=(
+            "RefgetStore directory, .tar.gz archive URL, or remote store URL whose sequences are fetched as read "
+            "(default: CLINVAR_INGEST_REFGET_STORE, else the published genomic store archive)"
+        ),
     )
     vrsify_sp.add_argument("--workers", type=int, default=None, help="Worker processes (default: CPU count)")
     vrsify_sp.add_argument("--batch-size", type=int, default=50, help="Records per worker task (default: 50)")
@@ -114,6 +117,7 @@ def parse_args(argv):
         default=None,
         help="Where the store is extracted (default: hyperdisk-balanced, which c4 requires)",
     )
+    submit_sp.add_argument("--boot-disk-size", type=int, default=None, help="Boot disk size in GB (default: 50)")
     submit_sp.add_argument("--dry-run", action="store_true", help="Print the job definition instead of submitting")
     submit_sp.epilog = "Arguments after -- are passed to `clinvar-ingest vrsify`, e.g. -- --overwrite"
 

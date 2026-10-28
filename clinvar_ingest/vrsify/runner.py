@@ -13,8 +13,10 @@ import importlib.metadata
 import json
 import logging
 import os
+import resource
 import signal
 import socket
+import sys
 import tempfile
 import time
 from collections import Counter
@@ -25,7 +27,7 @@ from typing import Any
 
 from clinvar_ingest.cloud.gcs import _get_gcs_client, parse_blob_uri
 from clinvar_ingest.config import env_or_dotenv_or
-from clinvar_ingest.vrsify.store import prepare_store
+from clinvar_ingest.vrsify.store import is_remote_store, prepare_store
 from clinvar_ingest.vrsify.translate import ASSEMBLY_NAMES, translate_record
 
 _logger = logging.getLogger("clinvar_ingest")
@@ -65,7 +67,13 @@ def _on_alarm(_signum, _frame):
     raise TimeoutError(f"record took longer than {_WORKER['record_timeout']} s")
 
 
-def _init_worker(store_dir: str, record_timeout: int) -> None:
+def _init_worker(store: str, record_timeout: int, cache_root: str | None = None) -> None:
+    """
+    Create this worker's translators over `store`, a local store directory or a remote
+    store's URL. A worker caches the sequences it fetches from a remote store in a
+    directory of its own under `cache_root`: gtars writes a fetched file in place rather
+    than renaming it into place, so a worker sharing the cache could read it half-written.
+    """
     from clinvar_ingest.vrsify.offline import disable_remote_services
 
     # Before any translator exists: hgvs binds its sequence fetcher at construction
@@ -74,7 +82,11 @@ def _init_worker(store_dir: str, record_timeout: int) -> None:
     from ga4gh.vrs.dataproxy import create_dataproxy
     from ga4gh.vrs.extras.translator import AlleleTranslator, CnvTranslator
 
-    data_proxy = create_dataproxy(f"refget+file://{store_dir}")
+    if is_remote_store(store):
+        os.environ["GA4GH_VRS_REFGET_CACHE_DIR"] = str(Path(cache_root) / f"worker-{os.getpid()}")
+        data_proxy = create_dataproxy(f"refget+{store}")
+    else:
+        data_proxy = create_dataproxy(f"refget+file://{store}")
     _WORKER["allele_translators"] = {
         version: AlleleTranslator(data_proxy=data_proxy, default_assembly_name=name)
         for version, name in ASSEMBLY_NAMES.items()
@@ -90,8 +102,17 @@ def _status(out: dict | None) -> str:
     return "error" if "errors" in out else out.get("type", "unknown")
 
 
-def _translate_batch(lines: list[str]) -> list[tuple[str, str, str, str, float]]:
-    """Return (output line, vrs_class, status, source, seconds) per input line."""
+def _peak_rss_bytes() -> int:
+    peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    # ru_maxrss is in bytes on macOS and KiB on Linux
+    return peak if sys.platform == "darwin" else peak * 1024
+
+
+def _translate_batch(lines: list[str]) -> tuple[list[tuple[str, str, str, str, float]], int, int]:
+    """
+    Return (output line, vrs_class, status, source, seconds) per input line, with the
+    worker's process id and its peak resident memory so far.
+    """
     results = []
     for line in lines:
         record = json.loads(line)
@@ -112,7 +133,7 @@ def _translate_batch(lines: list[str]) -> list[tuple[str, str, str, str, float]]
                 elapsed,
             )
         )
-    return results
+    return results, os.getpid(), _peak_rss_bytes()
 
 
 def _batches(paths: list[Path], batch_size: int) -> Iterator[list[str]]:
@@ -129,17 +150,27 @@ def _batches(paths: list[Path], batch_size: int) -> Iterator[list[str]]:
         yield batch
 
 
+def _directory_bytes(path: Path) -> int:
+    return sum(f.stat().st_size for f in path.rglob("*") if f.is_file())
+
+
 def translate_files(
     input_paths: list[Path],
     output_path: Path,
-    store_dir: Path,
+    store: str,
     workers: int,
     batch_size: int,
     record_timeout: int,
+    cache_root: Path | None = None,
 ) -> dict:
-    """Translate every record in `input_paths` into `output_path`, returning summary statistics."""
+    """
+    Translate every record in `input_paths` into `output_path`, returning summary
+    statistics. `store` is a local store directory, or a remote store's URL whose
+    sequences each worker caches under `cache_root`.
+    """
     counts: Counter = Counter()
     slowest: list[tuple[float, str]] = []
+    peak_rss: dict[int, int] = {}
     records = 0
     started = time.perf_counter()
     last_log = started
@@ -148,7 +179,9 @@ def translate_files(
     def write(done: set[Future], out) -> None:
         nonlocal records, last_log
         for future in done:
-            for line, vrs_class, status, source, elapsed in future.result():
+            results, pid, rss = future.result()
+            peak_rss[pid] = max(rss, peak_rss.get(pid, 0))
+            for line, vrs_class, status, source, elapsed in results:
                 out.write(line + "\n")
                 counts[f"{vrs_class}:{status}"] += 1
                 heapq.heappush(slowest, (elapsed, source))
@@ -162,7 +195,9 @@ def translate_files(
 
     with (
         gzip.open(output_path, "wt", compresslevel=6) as out,
-        ProcessPoolExecutor(workers, initializer=_init_worker, initargs=(str(store_dir), record_timeout)) as pool,
+        ProcessPoolExecutor(
+            workers, initializer=_init_worker, initargs=(store, record_timeout, str(cache_root) if cache_root else None)
+        ) as pool,
     ):
         pending: set[Future] = set()
         for batch in _batches(input_paths, batch_size):
@@ -174,12 +209,18 @@ def translate_files(
             done, pending = wait(pending, return_when=FIRST_COMPLETED)
             write(done, out)
 
-    return {
+    stats = {
         "records": records,
         "counts": dict(sorted(counts.items())),
         "seconds": round(time.perf_counter() - started, 1),
         "slowest_records": [{"seconds": round(s, 2), "source": src} for s, src in sorted(slowest, reverse=True)],
+        "worker_peak_rss_mib": sorted((round(b / 2**20) for b in peak_rss.values()), reverse=True),
     }
+    if cache_root is not None and cache_root.is_dir():
+        # What each worker fetched from the remote store and kept in its cache
+        cached = sorted((_directory_bytes(d) for d in cache_root.iterdir() if d.is_dir()), reverse=True)
+        stats["refget_cache"] = {"worker_bytes": cached, "total_bytes": sum(cached)}
+    return stats
 
 
 def _count_lines(paths: list[Path]) -> int:
@@ -286,12 +327,13 @@ def vrsify(  # noqa: PLR0913
                     raise FileExistsError(f"{uri} exists; pass --overwrite to replace it")
         work = Path(work_dir) if work_dir else Path(tempfile.mkdtemp(prefix="vrsify-"))
         work.mkdir(parents=True, exist_ok=True)
-        store_dir, store_provenance = prepare_store(refget_store, work)
+        store, store_provenance = prepare_store(refget_store, work)
         input_paths, input_records = _fetch_inputs(input_uri, work)
         expected = _count_lines(input_paths)
 
         output_path = work / OUTPUT_NAME
-        stats = translate_files(input_paths, output_path, store_dir, workers, batch_size, record_timeout)
+        cache_root = work / "refget-cache" if is_remote_store(store) else None
+        stats = translate_files(input_paths, output_path, store, workers, batch_size, record_timeout, cache_root)
         # The gkm_vrs load requires exactly one output row per input record
         if stats["records"] != expected:
             raise RuntimeError(f"Read {expected} records but wrote {stats['records']}")
