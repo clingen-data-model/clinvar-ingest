@@ -111,3 +111,24 @@ jobs:
       - name: build and deploy stored-procedures pipeline
         run: |
           bash misc/bin/deploy-job.sh
+
+      ## Deploy vrsify dispatcher (job clinvar-ingest-vrsify, dataset clinvar_ingest)
+      ## Its image, vrsify-<release tag>, has the vrsify dependencies; its Batch jobs run it too.
+      ## deploy-job.sh sets its file_format and command.
+      - name: set env vars for vrsify pipeline
+        run: |
+          export CLINVAR_INGEST_RELEASE_TAG=${{ github.ref_name }}
+          export CLINVAR_INGEST_BQ_META_DATASET=clinvar_ingest
+          export instance_name=clinvar-ingest-vrsify
+          # Earlier releases were translated outside this pipeline
+          export VRSIFY_MIN_RELEASE_DATE=2026-10-24
+          export VRSIFY_SLACK=true
+          echo "instance_name=$instance_name" >> $GITHUB_ENV
+          echo "CLINVAR_INGEST_RELEASE_TAG=$CLINVAR_INGEST_RELEASE_TAG" >> $GITHUB_ENV
+          echo "CLINVAR_INGEST_BQ_META_DATASET=$CLINVAR_INGEST_BQ_META_DATASET" >> $GITHUB_ENV
+          echo "VRSIFY_MIN_RELEASE_DATE=$VRSIFY_MIN_RELEASE_DATE" >> $GITHUB_ENV
+          echo "VRSIFY_SLACK=$VRSIFY_SLACK" >> $GITHUB_ENV
+
+      - name: build and deploy vrsify pipeline
+        run: |
+          bash misc/bin/deploy-job.sh
