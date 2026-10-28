@@ -6,11 +6,12 @@
 FROM python:3.11-slim-bookworm as build
 
 # Optional dependency groups to install, e.g. "[vrsify]". Empty by default, so images
-# built without it are unchanged. vrsify installs vrs-python and gtars from git, and
-# building gtars needs a Rust toolchain.
+# built without it are unchanged. vrsify installs vrs-python and gtars from git,
+# building gtars needs a Rust toolchain, and hgvs depends on psycopg2, which has no
+# Linux wheel and builds against libpq.
 ARG PIP_EXTRAS=""
 RUN if [ -n "$PIP_EXTRAS" ]; then \
-        apt-get update && apt-get install -y --no-install-recommends git build-essential curl ca-certificates \
+        apt-get update && apt-get install -y --no-install-recommends git build-essential curl ca-certificates libpq-dev \
         && rm -rf /var/lib/apt/lists/* \
         && curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal; \
     fi
@@ -27,7 +28,11 @@ RUN python -m pip install ".${PIP_EXTRAS}"
 
 # Runtime Image
 FROM python:3.11-slim-bookworm as runtime
-RUN apt update && apt install -y curl
+# Declared again: build arguments are visible only in stages that declare them.
+# psycopg2, built in the build stage when PIP_EXTRAS is set, loads libpq at run time.
+ARG PIP_EXTRAS=""
+RUN apt update && apt install -y curl \
+    && if [ -n "$PIP_EXTRAS" ]; then apt install -y --no-install-recommends libpq5; fi
 COPY --from=build /opt/venv /opt/venv
 COPY log_conf.json /app/log_conf.json
 COPY misc/bin/workflow.py /app/workflow.py
