@@ -7,9 +7,10 @@
 #
 # Options:
 #   --image IMAGE         Image with the vrsify dependencies (from build-vrsify-image.sh)
-#   --machine-type TYPE   Compute Engine machine type (default: e2-standard-4)
-#   --boot-disk-type TYPE Boot disk type, where the store is extracted (default: pd-ssd;
-#                         machine families such as c4 and n4 need hyperdisk-balanced)
+#   --machine-type TYPE   Compute Engine machine type (default: c4-standard-8)
+#   --boot-disk-type TYPE Boot disk type, where the store is extracted (default:
+#                         hyperdisk-balanced, which c4 requires; e2 and older families
+#                         take pd-ssd or pd-balanced)
 #   --boot-disk-size GB   Boot disk size in GB (default: 50)
 #   --max-run-duration S  Job time limit in seconds (default: 14400)
 #   --dry-run             Print the job definition instead of submitting it
@@ -23,7 +24,7 @@
 
 set -euo pipefail
 
-usage() { sed -n '3,23p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '3,24p' "$0" | sed 's/^# \{0,1\}//'; }
 
 if [ $# -lt 1 ] || [[ "$1" == -* ]]; then
     usage >&2
@@ -41,8 +42,10 @@ region="${region:-us-east1}"
 service_account="${service_account:-clinvar-ingest-pipeline@${project}.iam.gserviceaccount.com}"
 bucket="${CLINVAR_GKS_BUCKET:-clinvar-gkm}"
 image=""
-machine_type="e2-standard-4"
-boot_disk_type="pd-ssd"
+# A full release (~4.5M records) translates in ~3 minutes on c4-standard-8, against
+# ~12.5 on e2-standard-4
+machine_type="c4-standard-8"
+boot_disk_type="hyperdisk-balanced"
 boot_disk_size=50
 max_run_duration=14400
 dry_run=0
