@@ -124,8 +124,8 @@ def test_unknown_assembly_version_is_an_error(translators):
 
 
 def test_translation_failures_and_timeouts_become_errors():
-    alleles = {"38": FakeTranslator("Allele", error=TimeoutError("record took longer than 120 s"))}
+    alleles = {"38": FakeTranslator("Allele", error=TimeoutError("record took longer than 300 s"))}
     out = translate_record(
         {"vrs_class": "Allele", "fmt": "spdi", "source": "NC_1.1:1:A:T"}, alleles, FakeTranslator("CNV")
     )
-    assert out == {"errors": "TimeoutError: record took longer than 120 s"}
+    assert out == {"errors": "TimeoutError: record took longer than 300 s"}

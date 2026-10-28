@@ -90,7 +90,7 @@ def parse_args(argv):
     vrsify_sp.add_argument("--workers", type=int, default=None, help="Worker processes (default: CPU count)")
     vrsify_sp.add_argument("--batch-size", type=int, default=50, help="Records per worker task (default: 50)")
     vrsify_sp.add_argument(
-        "--record-timeout", type=int, default=120, help="Seconds before a record becomes an error (default: 120)"
+        "--record-timeout", type=int, default=300, help="Seconds before a record becomes an error (default: 300)"
     )
     vrsify_sp.add_argument("--overwrite", action="store_true", help="Replace existing output objects")
     vrsify_sp.add_argument("--work-dir", type=str, default=None, help="Local working directory (default: a temp dir)")

@@ -261,7 +261,7 @@ def vrsify(  # noqa: PLR0913
     refget_store: str,
     workers: int,
     batch_size: int = 50,
-    record_timeout: int = 120,
+    record_timeout: int = 300,
     overwrite: bool = False,
     work_dir: str | None = None,
     slack: bool = False,
