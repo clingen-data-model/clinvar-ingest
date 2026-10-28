@@ -483,6 +483,11 @@ def vrsify(  # noqa: PLR0913
         if seqrepo:
             location, store_provenance = prepare_seqrepo(seqrepo, work)
             source = SequenceSource("seqrepo", location)
+            # SeqRepo's default opens and closes a sequence file for every fetch, and
+            # normalization fetches base by base; keep each worker's files open instead.
+            # Read once at import, which happens in the workers, which inherit this.
+            os.environ.setdefault("SEQREPO_FD_CACHE_MAXSIZE", "none")
+            store_provenance["fd_cache_maxsize"] = os.environ["SEQREPO_FD_CACHE_MAXSIZE"]
         else:
             location, store_provenance = prepare_store(refget_store, work)
             cache_root = str(work / "refget-cache") if is_remote_store(location) else None
