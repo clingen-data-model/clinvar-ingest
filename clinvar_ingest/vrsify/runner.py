@@ -66,6 +66,11 @@ def _on_alarm(_signum, _frame):
 
 
 def _init_worker(store_dir: str, record_timeout: int) -> None:
+    from clinvar_ingest.vrsify.offline import disable_remote_services
+
+    # Before any translator exists: hgvs binds its sequence fetcher at construction
+    disable_remote_services()
+
     from ga4gh.vrs.dataproxy import create_dataproxy
     from ga4gh.vrs.extras.translator import AlleleTranslator, CnvTranslator
 
