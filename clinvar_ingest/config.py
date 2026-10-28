@@ -35,7 +35,7 @@ class BaseEnv(Env):
     location: str
     release_tag: str
     schema_version: str
-    file_format_mode: Literal["vcv", "rcv", "bq", "sp"]
+    file_format_mode: Literal["vcv", "rcv", "bq", "sp", "vrsify"]
 
 
 def _get_base_env() -> BaseEnv:
@@ -86,6 +86,22 @@ class StoredProceduresEnv(BaseEnv):
 def get_stored_procedures_env() -> StoredProceduresEnv:
     _base_env = _get_base_env()
     env = StoredProceduresEnv(
+        **_base_env.model_dump(),
+        clinvar_gks_bucket=env_or_dotenv_or("CLINVAR_GKS_BUCKET", throw=True),
+    )
+    _set_env(env)
+    return env
+
+
+class VrsifyEnv(BaseEnv):
+    clinvar_gks_bucket: Annotated[
+        str, Field(description="The GKS bucket holding the VI exports and the VRS output written beside them.")
+    ]
+
+
+def get_vrsify_env() -> VrsifyEnv:
+    _base_env = _get_base_env()
+    env = VrsifyEnv(
         **_base_env.model_dump(),
         clinvar_gks_bucket=env_or_dotenv_or("CLINVAR_GKS_BUCKET", throw=True),
     )

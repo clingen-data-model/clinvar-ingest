@@ -97,5 +97,54 @@ def parse_args(argv):
     vrsify_sp.add_argument(
         "--slack", action="store_true", help="Post start, finish and failure messages to Slack (off by default)"
     )
+    vrsify_sp.add_argument(
+        "--input-newer-than",
+        type=str,
+        default=None,
+        help="ISO 8601 timestamp; wait for a gs:// input written after it before starting",
+    )
+    vrsify_sp.add_argument(
+        "--input-wait",
+        type=int,
+        default=3600,
+        help="Seconds to wait for --input-newer-than before failing (default: 3600)",
+    )
+    vrsify_sp.add_argument(
+        "--history-bucket-dir",
+        type=str,
+        default=None,
+        help=(
+            "Mark this release's vrsify row in processing_history finished once the output is written. "
+            "The bucket_dir of the row, which the dispatcher wrote when it claimed the release."
+        ),
+    )
 
-    return parser.parse_args(argv)
+    # VRSIFY-SUBMIT
+    submit_sp = subparsers.add_parser("vrsify-submit", help="Submit a Cloud Batch job that runs vrsify for a release")
+    submit_sp.add_argument("release_date", type=str, help="YYYY-MM-DD")
+    submit_sp.add_argument("--image", type=str, required=True, help="Image with the vrsify dependencies")
+    submit_sp.add_argument("--project", type=str, default="clingen-dev")
+    submit_sp.add_argument("--region", type=str, default="us-east1")
+    submit_sp.add_argument(
+        "--service-account", type=str, default="clinvar-ingest-pipeline@clingen-dev.iam.gserviceaccount.com"
+    )
+    submit_sp.add_argument("--machine-type", type=str, default=None, help="(default: c4-standard-8)")
+    submit_sp.add_argument(
+        "--boot-disk-type",
+        type=str,
+        default=None,
+        help="Where the store is extracted (default: hyperdisk-balanced, which c4 requires)",
+    )
+    submit_sp.add_argument("--dry-run", action="store_true", help="Print the job definition instead of submitting")
+    submit_sp.epilog = "Arguments after -- are passed to `clinvar-ingest vrsify`, e.g. -- --overwrite"
+
+    # Split off vrsify-submit's pass-through arguments: argparse.REMAINDER after a
+    # positional would also take the options that follow it
+    vrsify_args = []
+    if argv[:1] == ["vrsify-submit"] and "--" in argv:
+        split = argv.index("--")
+        argv, vrsify_args = argv[:split], argv[split + 1 :]
+    args = parser.parse_args(argv)
+    if args.subcommand == "vrsify-submit":
+        args.vrsify_args = vrsify_args
+    return args

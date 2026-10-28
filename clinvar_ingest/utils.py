@@ -146,3 +146,4 @@ class ClinVarIngestFileFormat(StrEnum):
     RCV = "rcv"
     BQ = "bq"
     SP = "sp"
+    VRSIFY = "vrsify"

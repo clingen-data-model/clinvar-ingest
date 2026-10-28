@@ -1,3 +1,4 @@
+import datetime
 import logging
 import os
 import sys
@@ -57,6 +58,25 @@ def run_vrsify(args: Namespace):
         output_uri = output_uri or default_output
     if not input_uri or not output_uri:
         raise ValueError("vrsify needs --release-date, or both --input-uri and --output-uri")
+
+    after_upload = None
+    if args.slack or args.history_bucket_dir:
+        # Slack messages and processing_history writes take their settings from the environment
+        from clinvar_ingest.config import get_vrsify_env
+
+        env = get_vrsify_env()
+    if args.history_bucket_dir:
+        if not args.release_date:
+            raise ValueError("--history-bucket-dir needs --release-date")
+        from google.cloud import bigquery
+
+        from clinvar_ingest.vrsify import history
+
+        def after_upload():
+            client = bigquery.Client(project=env.bq_dest_project)
+            table = client.get_table(f"{env.bq_dest_project}.{env.bq_meta_dataset}.processing_history")
+            history.finish(table, args.release_date, env.release_tag, args.history_bucket_dir, client)
+
     return vrsify(
         input_uri=input_uri,
         output_uri=output_uri,
@@ -67,6 +87,38 @@ def run_vrsify(args: Namespace):
         overwrite=args.overwrite,
         work_dir=args.work_dir,
         slack=args.slack,
+        input_newer_than=datetime.datetime.fromisoformat(args.input_newer_than) if args.input_newer_than else None,
+        input_wait_seconds=args.input_wait,
+        after_upload=after_upload,
+    )
+
+
+def run_vrsify_submit(args: Namespace):
+    import json
+
+    from clinvar_ingest.config import env_or_dotenv_or
+    from clinvar_ingest.vrsify import batch
+
+    settings = batch.BatchSettings(
+        project=args.project,
+        region=args.region,
+        service_account=args.service_account,
+        image=args.image,
+        environment={"CLINVAR_GKS_BUCKET": env_or_dotenv_or("CLINVAR_GKS_BUCKET", default="clinvar-gkm")},
+    )
+    if args.machine_type:
+        settings.machine_type = args.machine_type
+    if args.boot_disk_type:
+        settings.boot_disk_type = args.boot_disk_type
+    definition = batch.job_definition(settings, ["--release-date", args.release_date, *args.vrsify_args])
+    name = batch.job_id(args.release_date)
+    if args.dry_run:
+        print(f"# job {name} in {settings.project}/{settings.region}")
+        print(json.dumps(definition, indent=2))
+        return
+    batch.submit(settings, name, definition)
+    print(
+        f"Follow it with: gcloud batch jobs describe {name} --project {settings.project} --location {settings.region}"
     )
 
 
@@ -85,6 +137,9 @@ def run_cli(argv: list[str]):
         return {entity_type: table.full_table_id for entity_type, table in resp.items()}
     if args.subcommand == "vrsify":
         run_vrsify(args)
+        return None
+    if args.subcommand == "vrsify-submit":
+        run_vrsify_submit(args)
         return None
     raise ValueError(f"Unknown subcommand: {args.subcommand}")
 

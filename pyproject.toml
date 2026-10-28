@@ -42,6 +42,8 @@ dev = [
 vrsify = [
     "ga4gh.vrs[extras,refget] @ git+https://github.com/theferrit32/vrs-python@8ce6d702e3b976441f9c0b93e486a653aab79a4c",
     "gtars @ git+https://github.com/theferrit32/gtars@7831e09f596042e3983c7a123c3f6c019ca6c05f#subdirectory=gtars-python",
+    # The vrsify Cloud Run job submits the Batch jobs that run vrsify
+    "google-cloud-batch~=0.22.4",
 ]
 
 [project.scripts]

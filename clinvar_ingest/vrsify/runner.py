@@ -18,7 +18,7 @@ import socket
 import tempfile
 import time
 from collections import Counter
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from concurrent.futures import FIRST_COMPLETED, Future, ProcessPoolExecutor, wait
 from pathlib import Path
 from typing import Any
@@ -41,10 +41,8 @@ _WORKER: dict[str, Any] = {}
 
 def notify(message: str, slack: bool) -> None:
     """
-    Log `message` and, when `slack` is set, post it to Slack.
-
-    Slack messaging is off until this step is productionized; enabling it also needs a
-    config.Env for vrsify that carries the Slack token and channel.
+    Log `message` and, when `slack` is set, post it to Slack with the token and channel of
+    the configured environment (config.get_vrsify_env).
     """
     _logger.info(message)
     if slack:
@@ -238,6 +236,30 @@ def _exists(uri: str) -> bool:
     return parse_blob_uri(uri).exists() if uri.startswith("gs://") else Path(uri).exists()
 
 
+def wait_for_input(uri: str, newer_than: datetime.datetime, timeout: int, poll_seconds: int = 60) -> None:
+    """
+    Wait up to `timeout` seconds for the gs:// object `uri` to have been written after
+    `newer_than`. The stored-procedures job marks its row finished before it exports
+    vi.jsonl.gz, so a release can be claimed before its export exists, and a re-run whose
+    export failed leaves the previous run's export in place.
+    """
+    deadline = time.monotonic() + timeout
+    while True:
+        blob = parse_blob_uri(uri)
+        if blob.exists():
+            blob.reload()
+            if blob.updated > newer_than:
+                _logger.info(f"{uri} was written at {blob.updated.isoformat()}")
+                return
+            state = f"last written at {blob.updated.isoformat()}"
+        else:
+            state = "does not exist"
+        if time.monotonic() >= deadline:
+            raise TimeoutError(f"{uri} {state}; waited {timeout} s for one written after {newer_than.isoformat()}")
+        _logger.info(f"{uri} {state}; waiting for one written after {newer_than.isoformat()}")
+        time.sleep(poll_seconds)
+
+
 def _library_versions() -> dict:
     versions = {}
     for dist in ("clinvar_ingest", "ga4gh.vrs", "gtars", "hgvs"):
@@ -265,8 +287,18 @@ def vrsify(  # noqa: PLR0913
     overwrite: bool = False,
     work_dir: str | None = None,
     slack: bool = False,
+    input_newer_than: datetime.datetime | None = None,
+    input_wait_seconds: int = 0,
+    after_upload: Callable[[], None] | None = None,
 ) -> dict:
-    """Translate the records at `input_uri` and write the results and a provenance record."""
+    """
+    Translate the records at `input_uri` and write the results and a provenance record.
+
+    With `input_newer_than`, first wait up to `input_wait_seconds` for `input_uri` (a single
+    gs:// object) to have been written after that time. `after_upload` runs once both
+    objects are written, before the finished message; if it raises, the run is reported
+    as failed.
+    """
     prov_uri = provenance_uri(output_uri)
     if not overwrite:
         for uri in (output_uri, prov_uri):
@@ -276,6 +308,8 @@ def vrsify(  # noqa: PLR0913
     started_at = datetime.datetime.now(datetime.UTC)
     notify(f"vrsify started: {input_uri} -> {output_uri}", slack)
     try:
+        if input_newer_than is not None:
+            wait_for_input(input_uri, input_newer_than, input_wait_seconds)
         work = Path(work_dir) if work_dir else Path(tempfile.mkdtemp(prefix="vrsify-"))
         work.mkdir(parents=True, exist_ok=True)
         store_dir, store_provenance = prepare_store(refget_store, work)
@@ -308,6 +342,8 @@ def vrsify(  # noqa: PLR0913
         provenance_path.write_text(json.dumps(provenance, indent=2) + "\n")
         _put(output_path, output_uri, overwrite)
         _put(provenance_path, prov_uri, overwrite)
+        if after_upload is not None:
+            after_upload()
     except Exception as e:
         notify(f"vrsify failed: {input_uri} -> {output_uri}: {type(e).__name__}: {e}", slack)
         raise
