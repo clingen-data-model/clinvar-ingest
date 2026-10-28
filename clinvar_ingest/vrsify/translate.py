@@ -52,16 +52,18 @@ def _translate_copy_number(record: dict, cnv_translator: Any) -> Any:
 def translate_record(record: dict, allele_translators: dict[str, Any], cnv_translator: Any) -> dict | None:
     """
     Return the `out` value for a variation_identity record: the VRS object as a dict
-    without its location's sequence, an `{"errors": ...}` dict, or None for classes with
-    no expression to translate.
+    without its location's sequence, an `{"errors": ...}` dict, or None for classes that
+    are not translated (Unknown, Not Available, Haplotype).
 
     `allele_translators` maps assembly_version ("38", "37", "36") to an AlleleTranslator
     whose default assembly is that version.
     """
     vrs_class = record.get("vrs_class")
     source = record.get("source")
-    if vrs_class not in TRANSLATED_CLASSES or not source:
+    if vrs_class not in TRANSLATED_CLASSES:
         return None
+    if not source:
+        return {"errors": f"not translated: {vrs_class} record has no source expression"}
     if not is_genomic(record.get("fmt"), source):
         return {"errors": f"not translated: non-genomic expression: {source}"}
 

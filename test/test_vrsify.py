@@ -94,15 +94,24 @@ def test_copy_number_count_passes_absolute_copies(translators):
 
 
 @pytest.mark.parametrize(
-    ("record", "expected"),
+    "record",
     [
-        ({"vrs_class": "Unknown"}, None),
-        ({"vrs_class": "Not Available", "issue": "haplotype and genotype variations are not supported."}, None),
-        ({"vrs_class": "Allele", "fmt": "hgvs"}, None),
+        {"vrs_class": "Unknown"},
+        {"vrs_class": "Not Available", "issue": "haplotype and genotype variations are not supported."},
+        {"vrs_class": "Haplotype", "source": "NM_000551.3:c.[1A>T;5C>G]"},
     ],
 )
-def test_records_without_an_expression_are_null(translators, record, expected):
-    assert translate_record(record, *translators) is expected
+def test_untranslated_classes_are_null(translators, record):
+    assert translate_record(record, *translators) is None
+
+
+@pytest.mark.parametrize("vrs_class", ["Allele", "CopyNumberChange", "CopyNumberCount"])
+def test_translated_classes_without_a_source_are_errors(translators, vrs_class):
+    alleles, cnv = translators
+    out = translate_record({"vrs_class": vrs_class, "fmt": "hgvs"}, alleles, cnv)
+    assert out == {"errors": f"not translated: {vrs_class} record has no source expression"}
+    assert not cnv.calls
+    assert not any(t.calls for t in alleles.values())
 
 
 def test_non_genomic_expressions_are_errors_without_translating(translators):
