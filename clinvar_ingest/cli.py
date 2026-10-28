@@ -68,4 +68,34 @@ def parse_args(argv):
     create_table_sp.add_argument("--destination-dataset", type=str, required=True)
     create_table_sp.add_argument("--source-table-paths", type=json.loads, required=True)
 
+    # VRSIFY
+    vrsify_sp = subparsers.add_parser(
+        "vrsify", help="Translate a variation_identity export's genomic expressions to VRS objects"
+    )
+    vrsify_sp.add_argument(
+        "--release-date",
+        type=str,
+        help="YYYY-MM-DD; sets the default --input-uri and --output-uri under the CLINVAR_GKS_BUCKET bucket",
+    )
+    vrsify_sp.add_argument(
+        "--input-uri", type=str, help="gs:// URI or local path of vi.jsonl.gz input, glob characters allowed"
+    )
+    vrsify_sp.add_argument("--output-uri", type=str, help="gs:// URI or local path of the .jsonl.gz output")
+    vrsify_sp.add_argument(
+        "--refget-store",
+        type=str,
+        default=None,
+        help="RefgetStore directory or .tar.gz archive URL (default: CLINVAR_INGEST_REFGET_STORE, else the published genomic store)",
+    )
+    vrsify_sp.add_argument("--workers", type=int, default=None, help="Worker processes (default: CPU count)")
+    vrsify_sp.add_argument("--batch-size", type=int, default=50, help="Records per worker task (default: 50)")
+    vrsify_sp.add_argument(
+        "--record-timeout", type=int, default=120, help="Seconds before a record becomes an error (default: 120)"
+    )
+    vrsify_sp.add_argument("--overwrite", action="store_true", help="Replace existing output objects")
+    vrsify_sp.add_argument("--work-dir", type=str, default=None, help="Local working directory (default: a temp dir)")
+    vrsify_sp.add_argument(
+        "--slack", action="store_true", help="Post start, finish and failure messages to Slack (off by default)"
+    )
+
     return parser.parse_args(argv)

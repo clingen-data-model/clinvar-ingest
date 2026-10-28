@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 from argparse import Namespace
 
@@ -44,6 +45,31 @@ def run_upload(args: Namespace):
         copy_file_to_bucket(s, d)
 
 
+def run_vrsify(args: Namespace):
+    # Imported here: vrsify needs the optional `vrsify` dependencies
+    from clinvar_ingest.config import env_or_dotenv_or
+    from clinvar_ingest.vrsify.runner import DEFAULT_REFGET_STORE, default_uris, vrsify
+
+    input_uri, output_uri = args.input_uri, args.output_uri
+    if args.release_date:
+        default_input, default_output = default_uris(args.release_date)
+        input_uri = input_uri or default_input
+        output_uri = output_uri or default_output
+    if not input_uri or not output_uri:
+        raise ValueError("vrsify needs --release-date, or both --input-uri and --output-uri")
+    return vrsify(
+        input_uri=input_uri,
+        output_uri=output_uri,
+        refget_store=args.refget_store or env_or_dotenv_or("CLINVAR_INGEST_REFGET_STORE", default=DEFAULT_REFGET_STORE),
+        workers=args.workers or os.cpu_count(),
+        batch_size=args.batch_size,
+        record_timeout=args.record_timeout,
+        overwrite=args.overwrite,
+        work_dir=args.work_dir,
+        slack=args.slack,
+    )
+
+
 def run_cli(argv: list[str]):
     """
     Primary entrypoint function for CLI args. Takes argv vector excluding program name.
@@ -57,6 +83,9 @@ def run_cli(argv: list[str]):
         req = CreateExternalTablesRequest(**vars(args))
         resp = run_create_external_tables(req)
         return {entity_type: table.full_table_id for entity_type, table in resp.items()}
+    if args.subcommand == "vrsify":
+        run_vrsify(args)
+        return None
     raise ValueError(f"Unknown subcommand: {args.subcommand}")
 
 

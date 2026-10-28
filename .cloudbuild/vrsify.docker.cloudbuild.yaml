@@ -1,0 +1,13 @@
+# Builds the workflow image with the vrsify dependencies (see misc/bin/build-vrsify-image.sh).
+# Tagged separately from the images the Cloud Run jobs are deployed with.
+steps:
+- name: 'gcr.io/kaniko-project/executor:v1.3.0'
+  args:
+  - --destination=gcr.io/clingen-dev/clinvar-ingest:vrsify-${COMMIT_SHA}
+  - --dockerfile=Dockerfile-workflow-py
+  - --build-arg=PIP_EXTRAS=[vrsify]
+  - --cache=true
+  - --cache-ttl=168h
+
+# Compiling gtars from source makes the first build slow
+timeout: 3600s

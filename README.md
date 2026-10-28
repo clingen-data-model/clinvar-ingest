@@ -45,3 +45,22 @@ $ clinvar-ingest create-tables \
     --bucket clinvar-ingest \
     --path outputs/2023-10-07
 ```
+
+# Translating variation_identity expressions to VRS (vrsify)
+
+`vrsify` reads a `variation_identity` export (`gs://clinvar-gkm/YYYY-MM-DD/dev/vi.jsonl.gz`) and writes one line per input record, `{"in": <record>, "out": <VRS object>}`, translating genomic expressions (SPDI, gnomAD, and HGVS `g.`/`m.`) with [vrs-python](https://github.com/ga4gh/vrs-python) against a [RefgetStore](https://static.ferriter.dev/refgetstore/) of genomic sequences. Transcript and protein expressions get an `errors` row, and records with no expression get a null `out`. A `.provenance.json` file is written beside the output.
+
+It needs the `vrsify` optional dependencies, which build [gtars](https://github.com/databio/gtars) from source and so need a Rust toolchain: `pip install '.[vrsify]'`.
+
+```
+clinvar-ingest vrsify --release-date 2026-10-24
+```
+
+writes `gs://clinvar-gkm/2026-10-24/dev/vi-vrs-python.jsonl.gz`. By default the RefgetStore is the published genomic store archive, downloaded and checked against its SHA-256; `--refget-store` takes a local store directory instead. Existing outputs are not replaced without `--overwrite`.
+
+To run it on Cloud Batch, build an image with the `vrsify` dependencies, then submit a job with it:
+
+```
+misc/bin/build-vrsify-image.sh
+misc/bin/submit-vrsify-batch.sh 2026-10-24 --image gcr.io/clingen-dev/clinvar-ingest:vrsify-<commit>
+```

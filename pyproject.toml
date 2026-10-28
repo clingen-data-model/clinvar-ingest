@@ -35,6 +35,14 @@ dev = [
     # "pylint~=3.2.6",
     "httpx~=0.25.2",
 ]
+# The vrsify step. Both are pinned to unreleased commits: vrs-python's RefgetStore data
+# proxy (ga4gh/vrs-python#626, targeting v3), and the gtars fork with databio/gtars#273,
+# which RefgetStores built with that gtars need. gtars is pinned here because pip ignores
+# vrs-python's own [tool.uv.sources] pin. Building gtars needs a Rust toolchain.
+vrsify = [
+    "ga4gh.vrs[extras,refget] @ git+https://github.com/theferrit32/vrs-python@8ce6d702e3b976441f9c0b93e486a653aab79a4c",
+    "gtars @ git+https://github.com/theferrit32/gtars@7831e09f596042e3983c7a123c3f6c019ca6c05f#subdirectory=gtars-python",
+]
 
 [project.scripts]
 clinvar-ingest = "clinvar_ingest.main:main"

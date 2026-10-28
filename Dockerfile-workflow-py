@@ -5,6 +5,17 @@
 # Build Image
 FROM python:3.11-slim-bookworm as build
 
+# Optional dependency groups to install, e.g. "[vrsify]". Empty by default, so images
+# built without it are unchanged. vrsify installs vrs-python and gtars from git, and
+# building gtars needs a Rust toolchain.
+ARG PIP_EXTRAS=""
+RUN if [ -n "$PIP_EXTRAS" ]; then \
+        apt-get update && apt-get install -y --no-install-recommends git build-essential curl ca-certificates \
+        && rm -rf /var/lib/apt/lists/* \
+        && curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal; \
+    fi
+ENV PATH="/root/.cargo/bin:$PATH"
+
 ENV VIRTUAL_ENV=/opt/venv
 RUN python3 -m venv $VIRTUAL_ENV
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
@@ -12,7 +23,7 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 WORKDIR /app
 COPY ./clinvar_ingest ./clinvar_ingest
 COPY pyproject.toml .
-RUN python -m pip install .
+RUN python -m pip install ".${PIP_EXTRAS}"
 
 # Runtime Image
 FROM python:3.11-slim-bookworm as runtime
