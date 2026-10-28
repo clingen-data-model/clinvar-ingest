@@ -74,6 +74,7 @@ def run_vrsify(args: Namespace):
         overwrite=args.overwrite,
         work_dir=args.work_dir,
         slack=args.slack,
+        release_date=args.release_date,
     )
 
 

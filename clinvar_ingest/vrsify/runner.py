@@ -268,11 +268,17 @@ def vrsify(  # noqa: PLR0913
     overwrite: bool = False,
     work_dir: str | None = None,
     slack: bool = False,
+    release_date: str | None = None,
 ) -> dict:
-    """Translate the records at `input_uri` and write the results and a provenance record."""
+    """
+    Translate the records at `input_uri` and write the results and a provenance record.
+
+    Messages name the release by `release_date`, or by the output when it is not given.
+    """
     prov_uri = provenance_uri(output_uri)
     started_at = datetime.datetime.now(datetime.UTC)
-    notify(f"vrsify starting: {input_uri} -> {output_uri}", slack)
+    subject = f"for release dated {release_date}" if release_date else output_uri
+    notify(f"vrsify starting {subject}: {input_uri}", slack)
     try:
         if not overwrite:
             for uri in (output_uri, prov_uri):
@@ -311,7 +317,7 @@ def vrsify(  # noqa: PLR0913
         _put(output_path, output_uri, overwrite)
         _put(provenance_path, prov_uri, overwrite)
     except Exception as e:
-        notify(f"vrsify failed: {input_uri} -> {output_uri}: {type(e).__name__}: {e}", slack)
+        notify(f"vrsify failed {subject}: {type(e).__name__}: {e}", slack)
         raise
-    notify(f"vrsify output written: {stats['records']} records in {stats['seconds']} s -> {output_uri}", slack)
+    notify(f"vrsify output written {subject}: {stats['records']} records in {stats['seconds']} s", slack)
     return provenance

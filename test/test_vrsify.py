@@ -138,3 +138,32 @@ def test_translation_failures_and_timeouts_become_errors():
         {"vrs_class": "Allele", "fmt": "spdi", "source": "NC_1.1:1:A:T"}, alleles, FakeTranslator("CNV")
     )
     assert out == {"errors": "TimeoutError: record took longer than 300 s"}
+
+
+@pytest.mark.parametrize(
+    ("release_date", "starting", "failed"),
+    [
+        (
+            "2026-10-24",
+            "vrsify starting for release dated 2026-10-24: {input}",
+            "vrsify failed for release dated 2026-10-24: RuntimeError: no store",
+        ),
+        (None, "vrsify starting {output}: {input}", "vrsify failed {output}: RuntimeError: no store"),
+    ],
+)
+def test_messages_name_the_release(tmp_path, monkeypatch, release_date, starting, failed):
+    from clinvar_ingest.vrsify import runner
+
+    def no_store(*_):
+        raise RuntimeError("no store")
+
+    messages = []
+    monkeypatch.setattr(runner, "notify", lambda message, _slack: messages.append(message))
+    monkeypatch.setattr(runner, "prepare_store", no_store)
+    input_uri, output_uri = str(tmp_path / "vi.jsonl.gz"), str(tmp_path / "vi-vrs-python.jsonl.gz")
+    with pytest.raises(RuntimeError, match="no store"):
+        runner.vrsify(input_uri, output_uri, "store", workers=1, release_date=release_date)
+    assert messages == [
+        starting.format(input=input_uri, output=output_uri),
+        failed.format(output=output_uri),
+    ]

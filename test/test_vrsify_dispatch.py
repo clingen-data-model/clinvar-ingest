@@ -158,7 +158,7 @@ def test_takes_a_release_from_claim_to_finished(dispatcher, fake_history, cloud,
     assert finished.parsed_files == {"batch_job": job}
     assert (finished.pipeline_version, finished.bucket_dir) == ("v2_6_1", "clinvar_vcv_2026_10_24_v2_6_1")
     assert messages == [
-        f"vrsify scheduled for release dated {DAY}: Batch job {name} -> {OUTPUT}",
+        f"vrsify scheduled for release dated {DAY}: Batch job {name}",
         f"vrsify completed for release dated {DAY}: 1634 records -> {OUTPUT}",
     ]
     # The job was polled while it was queued and running

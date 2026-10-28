@@ -129,7 +129,7 @@ class Dispatcher:
         args = ["--release-date", release_date] + (["--slack"] if self.settings.slack else [])
         definition = batch.job_definition(self.batch_settings, args, slack=self.settings.slack)
         job = self.cloud.submit(self.batch_settings, name, definition)
-        self.notify(f"vrsify scheduled for release dated {release_date}: Batch job {name} -> {output_uri}")
+        self.notify(f"vrsify scheduled for release dated {release_date}: Batch job {name}")
 
         state = self._wait_for_job(job)
         if state is None:
