@@ -8,6 +8,9 @@
 # Options:
 #   --image IMAGE         Image with the vrsify dependencies (from build-vrsify-image.sh)
 #   --machine-type TYPE   Compute Engine machine type (default: e2-standard-4)
+#   --boot-disk-type TYPE Boot disk type, where the store is extracted (default: pd-ssd;
+#                         machine families such as c4 and n4 need hyperdisk-balanced)
+#   --boot-disk-size GB   Boot disk size in GB (default: 50)
 #   --max-run-duration S  Job time limit in seconds (default: 14400)
 #   --dry-run             Print the job definition instead of submitting it
 #
@@ -20,7 +23,7 @@
 
 set -euo pipefail
 
-usage() { sed -n '3,20p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '3,23p' "$0" | sed 's/^# \{0,1\}//'; }
 
 if [ $# -lt 1 ] || [[ "$1" == -* ]]; then
     usage >&2
@@ -39,6 +42,8 @@ service_account="${service_account:-clinvar-ingest-pipeline@${project}.iam.gserv
 bucket="${CLINVAR_GKS_BUCKET:-clinvar-gkm}"
 image=""
 machine_type="e2-standard-4"
+boot_disk_type="pd-ssd"
+boot_disk_size=50
 max_run_duration=14400
 dry_run=0
 vrsify_args=()
@@ -47,6 +52,8 @@ while [ $# -gt 0 ]; do
     case "$1" in
         --image) image="$2"; shift 2 ;;
         --machine-type) machine_type="$2"; shift 2 ;;
+        --boot-disk-type) boot_disk_type="$2"; shift 2 ;;
+        --boot-disk-size) boot_disk_size="$2"; shift 2 ;;
         --max-run-duration) max_run_duration="$2"; shift 2 ;;
         --dry-run) dry_run=1; shift ;;
         --) shift; vrsify_args=("$@"); break ;;
@@ -82,7 +89,7 @@ job = {
         "instances": [{"policy": {
             "machineType": "${machine_type}",
             "provisioningModel": "STANDARD",
-            "bootDisk": {"sizeGb": 50},
+            "bootDisk": {"type": "${boot_disk_type}", "sizeGb": ${boot_disk_size}},
         }}],
         "serviceAccount": {"email": "${service_account}"},
     },
