@@ -22,9 +22,13 @@ RUN python3 -m venv $VIRTUAL_ENV
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 WORKDIR /app
+# Dependencies first, in a layer that only pyproject.toml and PIP_EXTRAS invalidate, so
+# a source change does not rebuild them (gtars and psycopg2 compile from source)
+COPY pyproject.toml misc/bin/pyproject-requirements.py ./
+RUN python pyproject-requirements.py "${PIP_EXTRAS}" > requirements.txt \
+    && python -m pip install -r requirements.txt
 COPY ./clinvar_ingest ./clinvar_ingest
-COPY pyproject.toml .
-RUN python -m pip install ".${PIP_EXTRAS}"
+RUN python -m pip install --no-deps .
 
 # Runtime Image
 FROM python:3.11-slim-bookworm as runtime
