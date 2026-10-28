@@ -1,11 +1,12 @@
 """
-Obtain a RefgetStore.
+Obtain a RefgetStore, or a SeqRepo.
 
 A store is a local directory containing rgstore.json, a .tar.gz archive of one (https://
 or gs://) published next to a .sha256 file, or the URL of a remote store directory
-(https://), whose sequences are fetched as they are first read. Archives are extracted as
-they download, without writing the archive itself to disk, and the extracted store is
-discarded unless the archive matches that SHA-256.
+(https://), whose sequences are fetched as they are first read. A SeqRepo is a local
+instance directory or a .tar.gz archive of one, likewise published next to a .sha256
+file. Archives are extracted as they download, without writing the archive itself to
+disk, and the extracted directory is discarded unless the archive matches that SHA-256.
 """
 
 import hashlib
@@ -80,7 +81,7 @@ def _extract_archive(uri: str, work_dir: Path) -> tuple[Path, str]:
     """Extract the archive at `uri` under `work_dir` as it downloads, verifying its SHA-256."""
     # "<sha256>  <file name>", as written by shasum
     expected = _read_text(uri + ".sha256").split()[0]
-    extract_dir = Path(tempfile.mkdtemp(prefix="refgetstore-", dir=work_dir))
+    extract_dir = Path(tempfile.mkdtemp(prefix="store-", dir=work_dir))
     top_dirs: set[str] = set()
     try:
         with _open_stream(uri) as raw:
@@ -98,6 +99,34 @@ def _extract_archive(uri: str, work_dir: Path) -> tuple[Path, str]:
         shutil.rmtree(extract_dir, ignore_errors=True)
         raise
     return extract_dir / top_dirs.pop(), actual
+
+
+def _seqrepo_instance(root: Path) -> Path:
+    """The SeqRepo instance directory (holding aliases.sqlite3) at or just under `root`."""
+    for candidate in (root, *sorted(p for p in root.iterdir() if p.is_dir())):
+        if (candidate / "aliases.sqlite3").is_file():
+            return candidate
+    raise ValueError(f"No SeqRepo instance (aliases.sqlite3) at or under {root}")
+
+
+def prepare_seqrepo(seqrepo: str, work_dir: Path) -> tuple[str, dict]:
+    """
+    Return the SeqRepo instance directory for `seqrepo`, a local instance directory or a
+    .tar.gz archive of one, and a provenance record describing it.
+    """
+    local = Path(seqrepo)
+    if local.is_dir():
+        provenance = {"source": str(local.resolve())}
+        root = local
+    elif seqrepo.endswith(".tar.gz") and seqrepo.startswith(("https://", "http://", "gs://")):
+        _logger.info(f"Downloading and extracting SeqRepo archive {seqrepo}")
+        root, sha256 = _extract_archive(seqrepo, work_dir)
+        provenance = {"source": seqrepo, "sha256": sha256}
+    else:
+        raise ValueError(f"Not a SeqRepo directory or a .tar.gz archive URL: {seqrepo}")
+    instance = _seqrepo_instance(root)
+    provenance["instance"] = instance.name
+    return str(instance), provenance
 
 
 def is_remote_store(store: str) -> bool:

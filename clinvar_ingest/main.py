@@ -58,6 +58,9 @@ def run_vrsify(args: Namespace):
     if not input_uri or not output_uri:
         raise ValueError("vrsify needs --release-date, or both --input-uri and --output-uri")
 
+    if args.seqrepo and args.refget_store:
+        raise ValueError("Pass --seqrepo or --refget-store, not both")
+
     if args.slack:
         # Slack messages take their token and channel from the environment
         from clinvar_ingest.config import get_vrsify_env
@@ -75,6 +78,8 @@ def run_vrsify(args: Namespace):
         work_dir=args.work_dir,
         slack=args.slack,
         release_date=args.release_date,
+        seqrepo=args.seqrepo,
+        refget_reads=args.refget_reads,
     )
 
 

@@ -141,3 +141,20 @@ def test_remote_store_is_opened_by_url_without_downloading_it(tmp_path, monkeypa
 )
 def test_is_remote_store(location, remote):
     assert store.is_remote_store(location) is remote
+
+
+@pytest.mark.parametrize("depth", ["root", "child"])
+def test_seqrepo_instance_is_found_at_or_under_the_directory(tmp_path, depth):
+    instance = tmp_path / "seqrepo" if depth == "root" else tmp_path / "seqrepo" / "2024-12-20"
+    instance.mkdir(parents=True)
+    (instance / "aliases.sqlite3").write_bytes(b"")
+
+    location, provenance = store.prepare_seqrepo(str(tmp_path / "seqrepo"), tmp_path)
+
+    assert location == str(instance)
+    assert provenance["instance"] == instance.name
+
+
+def test_directory_without_a_seqrepo_instance_is_refused(tmp_path):
+    with pytest.raises(ValueError, match="No SeqRepo instance"):
+        store.prepare_seqrepo(str(tmp_path), tmp_path)

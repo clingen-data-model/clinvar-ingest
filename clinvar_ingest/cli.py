@@ -90,6 +90,22 @@ def parse_args(argv):
             "(default: CLINVAR_INGEST_REFGET_STORE, else the published genomic store archive)"
         ),
     )
+    vrsify_sp.add_argument(
+        "--refget-reads",
+        choices=["whole", "ranges"],
+        default="whole",
+        help=(
+            "whole: each worker loads every sequence it reads into memory. ranges: sequences stay on local disk "
+            "and each read takes just the bases it covers, which the workers' shared file cache serves "
+            "(default: whole)"
+        ),
+    )
+    vrsify_sp.add_argument(
+        "--seqrepo",
+        type=str,
+        default=None,
+        help="Read sequences from this SeqRepo instance directory or .tar.gz archive URL instead of a RefgetStore",
+    )
     vrsify_sp.add_argument("--workers", type=int, default=None, help="Worker processes (default: CPU count)")
     vrsify_sp.add_argument("--batch-size", type=int, default=50, help="Records per worker task (default: 50)")
     vrsify_sp.add_argument(

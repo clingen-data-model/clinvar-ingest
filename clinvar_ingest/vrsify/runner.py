@@ -23,12 +23,13 @@ import time
 from collections import Counter
 from collections.abc import Iterator
 from concurrent.futures import FIRST_COMPLETED, Future, ProcessPoolExecutor, wait
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from clinvar_ingest.cloud.gcs import _get_gcs_client, parse_blob_uri
 from clinvar_ingest.config import env_or_dotenv_or
-from clinvar_ingest.vrsify.store import is_remote_store, prepare_store
+from clinvar_ingest.vrsify.store import is_remote_store, prepare_seqrepo, prepare_store
 from clinvar_ingest.vrsify.translate import ASSEMBLY_NAMES, translate_record
 
 _logger = logging.getLogger("clinvar_ingest")
@@ -68,26 +69,61 @@ def _on_alarm(_signum, _frame):
     raise TimeoutError(f"record took longer than {_WORKER['record_timeout']} s")
 
 
-def _init_worker(store: str, record_timeout: int, cache_root: str | None = None) -> None:
+REFGET_READS = ("whole", "ranges")
+
+
+@dataclass(frozen=True)
+class SequenceSource:
     """
-    Create this worker's translators over `store`, a local store directory or a remote
-    store's URL. A worker caches the sequences it fetches from a remote store in a
-    directory of its own under `cache_root`: gtars writes a fetched file in place rather
-    than renaming it into place, so a worker sharing the cache could read it half-written.
+    Where translation workers read sequences.
+
+    `kind` is "refget" or "seqrepo"; `location` is a local store directory or, for a
+    RefgetStore, a remote store's URL. A worker caches the sequences it fetches from a
+    remote store in a directory of its own under `cache_root`: gtars writes a fetched file
+    in place rather than renaming it into place, so a worker sharing the cache could read
+    it half-written.
+
+    `reads` sets how a RefgetStore serves reads: "whole" loads each sequence a worker
+    reads into that worker's memory (vrs-python's behavior); "ranges" leaves sequences
+    on disk, where gtars reads just the bases each read covers, so workers share the
+    operating system's file cache instead of each holding the sequences.
     """
+
+    kind: str
+    location: str
+    cache_root: str | None = None
+    reads: str = "whole"
+
+
+def _data_proxy(source: SequenceSource) -> Any:
+    from ga4gh.vrs.dataproxy import create_dataproxy
+
+    if source.kind == "seqrepo":
+        return create_dataproxy(f"seqrepo+file://{source.location}")
+    if source.reads == "ranges":
+        from ga4gh.vrs.dataproxy_refget import RefgetSequenceDataProxy
+
+        # vrs-python loads each sequence before its first read; skipped, gtars serves
+        # get_substring from the local .seq file
+        RefgetSequenceDataProxy._ensure_sequence_loaded = lambda _self, _digest: None
+    if is_remote_store(source.location):
+        os.environ["GA4GH_VRS_REFGET_CACHE_DIR"] = str(Path(source.cache_root) / f"worker-{os.getpid()}")
+        return create_dataproxy(f"refget+{source.location}")
+    return create_dataproxy(f"refget+file://{source.location}")
+
+
+def _init_worker(source: SequenceSource, record_timeout: int) -> None:
+    """Create this worker's translators over `source`."""
+    # The interpreter's start and imports came before this; the worker's lifetime starts here
+    _WORKER["started"], _WORKER["cpu_at_start"] = time.time(), _usage()["cpu_seconds"]
     from clinvar_ingest.vrsify.offline import disable_remote_services
 
     # Before any translator exists: hgvs binds its sequence fetcher at construction
     disable_remote_services()
 
-    from ga4gh.vrs.dataproxy import create_dataproxy
     from ga4gh.vrs.extras.translator import AlleleTranslator, CnvTranslator
 
-    if is_remote_store(store):
-        os.environ["GA4GH_VRS_REFGET_CACHE_DIR"] = str(Path(cache_root) / f"worker-{os.getpid()}")
-        data_proxy = create_dataproxy(f"refget+{store}")
-    else:
-        data_proxy = create_dataproxy(f"refget+file://{store}")
+    data_proxy = _data_proxy(source)
     _WORKER["allele_translators"] = {
         version: AlleleTranslator(data_proxy=data_proxy, default_assembly_name=name)
         for version, name in ASSEMBLY_NAMES.items()
@@ -103,17 +139,31 @@ def _status(out: dict | None) -> str:
     return "error" if "errors" in out else out.get("type", "unknown")
 
 
-def _peak_rss_bytes() -> int:
-    peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-    # ru_maxrss is in bytes on macOS and KiB on Linux
-    return peak if sys.platform == "darwin" else peak * 1024
+def _usage() -> dict:
+    """This process's resource counters since it started."""
+    usage = resource.getrusage(resource.RUSAGE_SELF)
+    return {
+        "cpu_seconds": usage.ru_utime + usage.ru_stime,
+        "user_seconds": usage.ru_utime,
+        "system_seconds": usage.ru_stime,
+        # Blocked waiting (I/O, a lock, an empty queue), and preempted by the scheduler
+        "voluntary_context_switches": usage.ru_nvcsw,
+        "involuntary_context_switches": usage.ru_nivcsw,
+        # Reads the page cache did not serve
+        "major_page_faults": usage.ru_majflt,
+        "block_reads": usage.ru_inblock,
+        # ru_maxrss is in bytes on macOS and KiB on Linux
+        "peak_rss_bytes": usage.ru_maxrss if sys.platform == "darwin" else usage.ru_maxrss * 1024,
+    }
 
 
-def _translate_batch(lines: list[str]) -> tuple[list[tuple[str, str, str, str, float]], int, int]:
+def _translate_batch(lines: list[str]) -> tuple[list[tuple[str, str, str, str, float]], dict]:
     """
-    Return (output line, vrs_class, status, source, seconds) per input line, with the
-    worker's process id and its peak resident memory so far.
+    Return (output line, vrs_class, status, source, seconds) per input line, and the
+    worker's resource counters: its process id, when it started, when this batch ran,
+    the CPU time the batch took, and the worker's totals so far (_usage).
     """
+    batch_start, cpu_start = time.time(), _usage()["cpu_seconds"]
     results = []
     for line in lines:
         record = json.loads(line)
@@ -134,7 +184,17 @@ def _translate_batch(lines: list[str]) -> tuple[list[tuple[str, str, str, str, f
                 elapsed,
             )
         )
-    return results, os.getpid(), _peak_rss_bytes()
+    usage = _usage()
+    worker = {
+        "pid": os.getpid(),
+        "started": _WORKER["started"],
+        "cpu_at_start": _WORKER["cpu_at_start"],
+        "batch_start": batch_start,
+        "batch_end": time.time(),
+        "batch_cpu_seconds": usage["cpu_seconds"] - cpu_start,
+        **usage,
+    }
+    return results, worker
 
 
 def _batches(paths: list[Path], batch_size: int) -> Iterator[list[str]]:
@@ -155,37 +215,97 @@ def _directory_bytes(path: Path) -> int:
     return sum(f.stat().st_size for f in path.rglob("*") if f.is_file())
 
 
+TIMELINE_SECONDS = 10
+
+
+class _WorkerStats:
+    """Each worker's resource use over its lifetime, from the counters its batches report."""
+
+    def __init__(self, run_start: float):
+        self.run_start = run_start
+        self.workers: dict[int, dict] = {}
+
+    def add(self, report: dict) -> None:
+        stats = self.workers.setdefault(
+            report["pid"], {"busy_seconds": 0.0, "busy_cpu_seconds": 0.0, "timeline": Counter(), "latest": report}
+        )
+        wall = report["batch_end"] - report["batch_start"]
+        stats["busy_seconds"] += wall
+        stats["busy_cpu_seconds"] += report["batch_cpu_seconds"]
+        if report["batch_end"] >= stats["latest"]["batch_end"]:
+            stats["latest"] = report
+        # Spread the batch's CPU time over the windows it ran in
+        start, end = report["batch_start"] - self.run_start, report["batch_end"] - self.run_start
+        for window in range(int(start // TIMELINE_SECONDS), int(end // TIMELINE_SECONDS) + 1):
+            if wall <= 0:
+                stats["timeline"][window] += report["batch_cpu_seconds"]
+                break
+            overlap = min(end, (window + 1) * TIMELINE_SECONDS) - max(start, window * TIMELINE_SECONDS)
+            stats["timeline"][window] += report["batch_cpu_seconds"] * max(overlap, 0) / wall
+
+    def summary(self) -> list[dict]:
+        """
+        Per worker: its lifetime (initialization to last batch), the time it spent in
+        batches, CPU time over its lifetime and before it (interpreter start and imports),
+        CPU utilization while in batches and over its lifetime, its counters, and its CPU
+        seconds per TIMELINE_SECONDS window of the run.
+        """
+        summaries = []
+        for stats in sorted(self.workers.values(), key=lambda s: s["latest"]["started"]):
+            latest = stats["latest"]
+            lifetime = latest["batch_end"] - latest["started"]
+            lifetime_cpu = latest["cpu_seconds"] - latest["cpu_at_start"]
+            windows = max(stats["timeline"], default=-1) + 1
+            summaries.append(
+                {
+                    "lifetime_seconds": round(lifetime, 1),
+                    "busy_seconds": round(stats["busy_seconds"], 1),
+                    "cpu_seconds": round(lifetime_cpu, 1),
+                    "startup_cpu_seconds": round(latest["cpu_at_start"], 1),
+                    "user_seconds": round(latest["user_seconds"], 1),
+                    "system_seconds": round(latest["system_seconds"], 1),
+                    "cpu_utilization_busy": round(stats["busy_cpu_seconds"] / stats["busy_seconds"], 3)
+                    if stats["busy_seconds"]
+                    else None,
+                    "cpu_utilization_lifetime": round(lifetime_cpu / lifetime, 3) if lifetime else None,
+                    "voluntary_context_switches": latest["voluntary_context_switches"],
+                    "involuntary_context_switches": latest["involuntary_context_switches"],
+                    "major_page_faults": latest["major_page_faults"],
+                    "block_reads": latest["block_reads"],
+                    "peak_rss_mib": round(latest["peak_rss_bytes"] / 2**20),
+                    "cpu_seconds_per_window": [round(stats["timeline"][w], 2) for w in range(windows)],
+                }
+            )
+        return summaries
+
+
 def translate_files(
     input_paths: list[Path],
     output_path: Path,
-    store: str,
+    source: SequenceSource,
     workers: int,
     batch_size: int,
     record_timeout: int,
-    cache_root: Path | None = None,
 ) -> dict:
-    """
-    Translate every record in `input_paths` into `output_path`, returning summary
-    statistics. `store` is a local store directory, or a remote store's URL whose
-    sequences each worker caches under `cache_root`.
-    """
+    """Translate every record in `input_paths` into `output_path`, returning summary statistics."""
     counts: Counter = Counter()
     slowest: list[tuple[float, str]] = []
-    peak_rss: dict[int, int] = {}
     records = 0
     started = time.perf_counter()
+    worker_stats = _WorkerStats(time.time())
+    parent_cpu_start = _usage()["cpu_seconds"]
     last_log = started
     max_pending = workers * 4
 
     def write(done: set[Future], out) -> None:
         nonlocal records, last_log
         for future in done:
-            results, pid, rss = future.result()
-            peak_rss[pid] = max(rss, peak_rss.get(pid, 0))
-            for line, vrs_class, status, source, elapsed in results:
+            results, report = future.result()
+            worker_stats.add(report)
+            for line, vrs_class, status, expression, elapsed in results:
                 out.write(line + "\n")
                 counts[f"{vrs_class}:{status}"] += 1
-                heapq.heappush(slowest, (elapsed, source))
+                heapq.heappush(slowest, (elapsed, expression))
                 if len(slowest) > SLOWEST_RECORDS_KEPT:
                     heapq.heappop(slowest)
                 records += 1
@@ -196,9 +316,7 @@ def translate_files(
 
     with (
         gzip.open(output_path, "wt", compresslevel=6) as out,
-        ProcessPoolExecutor(
-            workers, initializer=_init_worker, initargs=(store, record_timeout, str(cache_root) if cache_root else None)
-        ) as pool,
+        ProcessPoolExecutor(workers, initializer=_init_worker, initargs=(source, record_timeout)) as pool,
     ):
         pending: set[Future] = set()
         for batch in _batches(input_paths, batch_size):
@@ -210,17 +328,30 @@ def translate_files(
             done, pending = wait(pending, return_when=FIRST_COMPLETED)
             write(done, out)
 
+    seconds = time.perf_counter() - started
+    workers_summary = worker_stats.summary()
     stats = {
         "records": records,
         "counts": dict(sorted(counts.items())),
-        "seconds": round(time.perf_counter() - started, 1),
+        "seconds": round(seconds, 1),
         "slowest_records": [{"seconds": round(s, 2), "source": src} for s, src in sorted(slowest, reverse=True)],
-        "worker_peak_rss_mib": sorted((round(b / 2**20) for b in peak_rss.values()), reverse=True),
+        "worker_peak_rss_mib": sorted((w["peak_rss_mib"] for w in workers_summary), reverse=True),
+        "worker_resources": workers_summary,
+        "timeline_window_seconds": TIMELINE_SECONDS,
+        # The parent reads input and compresses output; a saturated parent starves the workers
+        "parent_cpu_utilization": round((_usage()["cpu_seconds"] - parent_cpu_start) / seconds, 3),
     }
-    if cache_root is not None and cache_root.is_dir():
+    if source.cache_root is not None and Path(source.cache_root).is_dir():
         # What each worker fetched from the remote store and kept in its cache
-        cached = sorted((_directory_bytes(d) for d in cache_root.iterdir() if d.is_dir()), reverse=True)
+        cached = sorted((_directory_bytes(d) for d in Path(source.cache_root).iterdir() if d.is_dir()), reverse=True)
         stats["refget_cache"] = {"worker_bytes": cached, "total_bytes": sum(cached)}
+    busy = [w["cpu_utilization_busy"] for w in workers_summary if w["cpu_utilization_busy"] is not None]
+    if busy:
+        _logger.info(
+            f"Worker CPU utilization while translating: {min(busy):.0%}-{max(busy):.0%}; "
+            f"peak memory {sum(stats['worker_peak_rss_mib'])} MiB in total; "
+            f"parent CPU utilization {stats['parent_cpu_utilization']:.0%}"
+        )
     return stats
 
 
@@ -297,7 +428,7 @@ def _exists(uri: str) -> bool:
 
 def _library_versions() -> dict:
     versions = {}
-    for dist in ("clinvar_ingest", "ga4gh.vrs", "gtars", "hgvs"):
+    for dist in ("clinvar_ingest", "ga4gh.vrs", "gtars", "hgvs", "biocommons.seqrepo", "pysam"):
         try:
             meta = importlib.metadata.distribution(dist)
         except importlib.metadata.PackageNotFoundError:
@@ -323,12 +454,20 @@ def vrsify(  # noqa: PLR0913
     work_dir: str | None = None,
     slack: bool = False,
     release_date: str | None = None,
+    seqrepo: str | None = None,
+    refget_reads: str = "whole",
 ) -> dict:
     """
     Translate the records at `input_uri` and write the results and a provenance record.
 
-    Messages name the release by `release_date`, or by the output when it is not given.
+    Sequences come from `refget_store`, or from the SeqRepo `seqrepo` (a directory or a
+    .tar.gz archive) when it is given. `refget_reads` is SequenceSource.reads. Messages
+    name the release by `release_date`, or by the output when it is not given.
     """
+    if refget_reads not in REFGET_READS:
+        raise ValueError(f"refget_reads must be one of {REFGET_READS}: {refget_reads}")
+    if seqrepo and refget_reads != "whole":
+        raise ValueError("refget_reads applies to a RefgetStore, not a SeqRepo")
     prov_uri = provenance_uri(output_uri)
     started_at = datetime.datetime.now(datetime.UTC)
     subject = f"for release dated {release_date}" if release_date else output_uri
@@ -340,13 +479,20 @@ def vrsify(  # noqa: PLR0913
                     raise FileExistsError(f"{uri} exists; pass --overwrite to replace it")
         work = Path(work_dir) if work_dir else Path(tempfile.mkdtemp(prefix="vrsify-"))
         work.mkdir(parents=True, exist_ok=True)
-        store, store_provenance = prepare_store(refget_store, work)
+        setup_started = time.perf_counter()
+        if seqrepo:
+            location, store_provenance = prepare_seqrepo(seqrepo, work)
+            source = SequenceSource("seqrepo", location)
+        else:
+            location, store_provenance = prepare_store(refget_store, work)
+            cache_root = str(work / "refget-cache") if is_remote_store(location) else None
+            source = SequenceSource("refget", location, cache_root, refget_reads)
+        store_provenance["setup_seconds"] = round(time.perf_counter() - setup_started, 1)
         input_paths, input_records = _fetch_inputs(input_uri, work)
         expected = _count_lines(input_paths)
 
         output_path = work / OUTPUT_NAME
-        cache_root = work / "refget-cache" if is_remote_store(store) else None
-        stats = translate_files(input_paths, output_path, store, workers, batch_size, record_timeout, cache_root)
+        stats = translate_files(input_paths, output_path, source, workers, batch_size, record_timeout)
         # The gkm_vrs load requires exactly one output row per input record
         if stats["records"] != expected:
             raise RuntimeError(f"Read {expected} records but wrote {stats['records']}")
@@ -356,7 +502,8 @@ def vrsify(  # noqa: PLR0913
             "finished_at": datetime.datetime.now(datetime.UTC).isoformat(),
             "inputs": input_records,
             "output": output_uri,
-            "refget_store": store_provenance,
+            "seqrepo" if seqrepo else "refget_store": store_provenance,
+            "sequence_reads": None if seqrepo else refget_reads,
             "libraries": _library_versions(),
             "workers": workers,
             "record_timeout_seconds": record_timeout,
