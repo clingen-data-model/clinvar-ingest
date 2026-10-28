@@ -97,27 +97,6 @@ def parse_args(argv):
     vrsify_sp.add_argument(
         "--slack", action="store_true", help="Post start, finish and failure messages to Slack (off by default)"
     )
-    vrsify_sp.add_argument(
-        "--input-newer-than",
-        type=str,
-        default=None,
-        help="ISO 8601 timestamp; wait for a gs:// input written after it before starting",
-    )
-    vrsify_sp.add_argument(
-        "--input-wait",
-        type=int,
-        default=3600,
-        help="Seconds to wait for --input-newer-than before failing (default: 3600)",
-    )
-    vrsify_sp.add_argument(
-        "--history-bucket-dir",
-        type=str,
-        default=None,
-        help=(
-            "Mark this release's vrsify row in processing_history finished once the output is written. "
-            "The bucket_dir of the row, which the dispatcher wrote when it claimed the release."
-        ),
-    )
 
     # VRSIFY-SUBMIT
     submit_sp = subparsers.add_parser("vrsify-submit", help="Submit a Cloud Batch job that runs vrsify for a release")

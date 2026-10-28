@@ -1,27 +1,24 @@
 """
-processing_history bookkeeping for the vrsify step.
+processing_history bookkeeping for the vrsify step, which the dispatcher owns.
 
 A release is ready for vrsify once its stored-procedures (`sp`) row is finished and it has
-no `vrsify` row. Claiming a release writes its `vrsify` started row, so later dispatcher
-runs skip it; the Batch job writes the finished row once its output is uploaded. A failed
-job leaves the started row in place, which keeps the release from being claimed again
-until that row is deleted.
+no `vrsify` row. Claiming a release writes its `vrsify` started row; the dispatcher
+execution that claimed it writes the finished row, recording the Batch job in
+`parsed_files`, once the job's output checks out. A failed release keeps its started row,
+which keeps it from being claimed again until a person deletes it.
 
-Only rows with file_type `vrsify` are ever written or deleted here. The queries read the
+Only rows with file_type `vrsify` are ever written here. The queries read the
 processing_history table directly rather than processing_history_view, whose definition
 the other workflow jobs own.
 """
 
 import datetime
-import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from google.cloud import bigquery
 
 from clinvar_ingest.cloud.bigquery import processing_history
 from clinvar_ingest.utils import ClinVarIngestFileFormat
-
-_logger = logging.getLogger("clinvar_ingest")
 
 VRSIFY = ClinVarIngestFileFormat.VRSIFY
 
@@ -31,6 +28,17 @@ class ReadyRelease:
     release_date: datetime.date
     bucket_dir: str
     sp_processing_finished: datetime.datetime
+
+
+@dataclass(frozen=True)
+class VrsifyRow:
+    """A claimed release's vrsify row: its key, and what to record when it finishes."""
+
+    release_date: datetime.date
+    pipeline_version: str
+    bucket_dir: str
+    sp_processing_finished: datetime.datetime
+    parsed_files: dict = field(default_factory=dict)
 
 
 def ready_releases_sql(processing_history_table: str) -> str:
@@ -67,28 +75,13 @@ def ready_releases(
     return [ReadyRelease(r.release_date, r.bucket_dir, r.sp_processing_finished) for r in rows]
 
 
-def unfinished_sql(processing_history_table: str) -> str:
-    return f"""
-    SELECT release_date, pipeline_version, bucket_dir, processing_started
-    FROM `{processing_history_table}`
-    WHERE file_type = '{VRSIFY}'
-    AND processing_finished IS NULL
-    ORDER BY release_date
-    """  # noqa: S608
-
-
-def unfinished(processing_history_table: bigquery.Table, client: bigquery.Client) -> list:
-    """vrsify rows that were started and never finished: running, failed, or lost jobs."""
-    return list(client.query(unfinished_sql(str(processing_history_table))).result())
-
-
 def claim(
     processing_history_table: bigquery.Table,
     release: ReadyRelease,
     release_tag: str,
     schema_version: str,
     client: bigquery.Client,
-) -> None:
+) -> VrsifyRow:
     """Write the vrsify started row for `release`; raises if a matching row already exists."""
     processing_history.write_started(
         processing_history_table=processing_history_table,
@@ -103,41 +96,28 @@ def claim(
         # deletes the match first
         error_if_exists=True,
     )
+    return VrsifyRow(release.release_date, release_tag, release.bucket_dir, release.sp_processing_finished)
 
 
-def release_claim(
-    processing_history_table: bigquery.Table,
-    release_date: datetime.date,
-    release_tag: str,
-    client: bigquery.Client,
-) -> int:
-    """Delete the vrsify row of one release, e.g. a claim whose Batch job was never submitted."""
-    deleted = processing_history.delete(
-        processing_history_table=processing_history_table,
-        release_tag=release_tag,
-        file_type=VRSIFY,
-        xml_release_date=str(release_date),
-        client=client,
-    )
-    if deleted != 1:
-        _logger.warning(f"Expected to delete 1 vrsify row for {release_date}, deleted {deleted}")
-    return deleted
-
-
-def finish(
-    processing_history_table: bigquery.Table,
-    release_date: str,
-    release_tag: str,
-    bucket_dir: str,
-    client: bigquery.Client,
-) -> None:
-    """Mark the vrsify row of `release_date` finished; raises unless exactly one row matches."""
+def finish(processing_history_table: bigquery.Table, row: VrsifyRow, client: bigquery.Client) -> None:
+    """Mark the vrsify row finished; raises unless exactly one row matches."""
     processing_history.write_finished(
         processing_history_table=processing_history_table,
-        release_date=release_date,
-        release_tag=release_tag,
+        release_date=str(row.release_date),
+        release_tag=row.pipeline_version,
         file_type=VRSIFY,
-        bucket_dir=bucket_dir,
-        parsed_files={},
+        bucket_dir=row.bucket_dir,
+        parsed_files=row.parsed_files,
         client=client,
+    )
+
+
+def delete_sql(processing_history_table: str, row: VrsifyRow) -> str:
+    """The statement a person runs to let a failed release be claimed again. Not executed here."""
+    return (
+        f"DELETE FROM `{processing_history_table}` "  # noqa: S608
+        f"WHERE file_type = '{VRSIFY}' "
+        f"AND release_date = '{row.release_date}' "
+        f"AND pipeline_version = '{row.pipeline_version}' "
+        f"AND processing_finished IS NULL;"
     )

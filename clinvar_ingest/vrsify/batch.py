@@ -115,3 +115,19 @@ def submit(settings: BatchSettings, name: str, definition: dict) -> str:
     )
     _logger.info(f"Submitted Batch job {job.name}")
     return job.name
+
+
+# Batch job states in which the job may still run to completion
+ACTIVE_STATES = ("STATE_UNSPECIFIED", "QUEUED", "SCHEDULED", "RUNNING")
+
+
+def job_state(name: str) -> str | None:
+    """The state of Batch job `name` (its full resource name), e.g. RUNNING, or None if it does not exist."""
+    from google.api_core.exceptions import NotFound
+    from google.cloud import batch_v1
+
+    try:
+        job = batch_v1.BatchServiceClient().get_job(name=name)
+    except NotFound:
+        return None
+    return job.status.state.name

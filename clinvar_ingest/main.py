@@ -1,4 +1,3 @@
-import datetime
 import logging
 import os
 import sys
@@ -59,23 +58,11 @@ def run_vrsify(args: Namespace):
     if not input_uri or not output_uri:
         raise ValueError("vrsify needs --release-date, or both --input-uri and --output-uri")
 
-    after_upload = None
-    if args.slack or args.history_bucket_dir:
-        # Slack messages and processing_history writes take their settings from the environment
+    if args.slack:
+        # Slack messages take their token and channel from the environment
         from clinvar_ingest.config import get_vrsify_env
 
-        env = get_vrsify_env()
-    if args.history_bucket_dir:
-        if not args.release_date:
-            raise ValueError("--history-bucket-dir needs --release-date")
-        from google.cloud import bigquery
-
-        from clinvar_ingest.vrsify import history
-
-        def after_upload():
-            client = bigquery.Client(project=env.bq_dest_project)
-            table = client.get_table(f"{env.bq_dest_project}.{env.bq_meta_dataset}.processing_history")
-            history.finish(table, args.release_date, env.release_tag, args.history_bucket_dir, client)
+        get_vrsify_env()
 
     return vrsify(
         input_uri=input_uri,
@@ -87,9 +74,6 @@ def run_vrsify(args: Namespace):
         overwrite=args.overwrite,
         work_dir=args.work_dir,
         slack=args.slack,
-        input_newer_than=datetime.datetime.fromisoformat(args.input_newer_than) if args.input_newer_than else None,
-        input_wait_seconds=args.input_wait,
-        after_upload=after_upload,
     )
 
 

@@ -23,6 +23,14 @@
 #
 # release_tag=local_dev instance_name=clinvar-ingest-local-dev CLINVAR_INGEST_SLACK_CHANNEL='' bash deploy-job.sh
 #
+# An instance_name containing 'vrsify' deploys the vrsify dispatcher
+# (misc/bin/vrsify-workflow.py) with an image that has the vrsify dependencies, tagged
+# vrsify-${CLINVAR_INGEST_RELEASE_TAG}, which its Batch jobs also run. It also needs
+# VRSIFY_MIN_RELEASE_DATE (YYYY-MM-DD), the earliest release it claims, and takes
+# VRSIFY_SLACK (default false). Its Cloud Scheduler job is created paused:
+#
+# CLINVAR_INGEST_RELEASE_TAG=v2_6_1 instance_name=clinvar-ingest-vrsify VRSIFY_MIN_RELEASE_DATE=2026-10-24 bash deploy-job.sh
+#
 ####
 
 set -xeo pipefail
@@ -64,6 +72,17 @@ else
     file_format=""
 fi
 
+vrsify=false
+if [[ "$instance_name" == *vrsify* ]]; then
+    vrsify=true
+    if [[ ! "${VRSIFY_MIN_RELEASE_DATE:-}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+        echo "A vrsify instance needs VRSIFY_MIN_RELEASE_DATE=YYYY-MM-DD, the earliest release it claims"
+        exit 1
+    fi
+    file_format="${file_format:-vrsify}"
+    clinvar_ingest_cmd="${clinvar_ingest_cmd:-python,/app/vrsify-workflow.py}"
+fi
+
 
 # Disallow unset variables after they've been validated
 set -u
@@ -73,13 +92,17 @@ clinvar_ingest_bucket="clinvar-ingest-dev"
 region="us-east1"
 project=$(gcloud config get project)
 image_tag=workflow-py-${CLINVAR_INGEST_RELEASE_TAG}
+cloudbuild=.cloudbuild/workflow-py.docker.cloudbuild.yaml
+if $vrsify; then
+    image_tag=vrsify-${CLINVAR_INGEST_RELEASE_TAG}
+    cloudbuild=.cloudbuild/vrsify.docker.cloudbuild.yaml
+fi
 image=gcr.io/clingen-dev/clinvar-ingest:$image_tag
 pipeline_service_account=clinvar-ingest-pipeline@clingen-dev.iam.gserviceaccount.com
 # deployment_service_account=clinvar-ingest-deployment@clingen-dev.iam.gserviceaccount.com
 
 ################################################################
 # Build the image
-cloudbuild=.cloudbuild/workflow-py.docker.cloudbuild.yaml
 
 tar --no-xattrs -c \
     clinvar_ingest \
@@ -94,7 +117,7 @@ tar --no-xattrs -c \
 
 gcloud builds submit \
     --substitutions="COMMIT_SHA=${image_tag}" \
-    --config .cloudbuild/workflow-py.docker.cloudbuild.yaml \
+    --config "$cloudbuild" \
     --gcs-log-dir=gs://${clinvar_ingest_bucket}/build/logs \
     archive.tar.gz
 
@@ -139,6 +162,20 @@ if [[ $instance_name =~ ^.*stored-procedures.*$ ]]; then
     env_vars="$env_vars,CLINVAR_GKS_BUCKET=${CLINVAR_GKS_BUCKET}"
 fi
 
+if $vrsify; then
+    # Resetting env_vars here - not inheriting previous
+    env_vars="file_format=${file_format}"
+    env_vars="$env_vars,BQ_DEST_PROJECT=${BQ_DEST_PROJECT}"
+    env_vars="$env_vars,CLINVAR_INGEST_BQ_META_DATASET=${CLINVAR_INGEST_BQ_META_DATASET}"
+    env_vars="$env_vars,CLINVAR_INGEST_RELEASE_TAG=${CLINVAR_INGEST_RELEASE_TAG}"
+    env_vars="$env_vars,CLINVAR_INGEST_LOCATION=${region}"
+    env_vars="$env_vars,CLINVAR_GKS_BUCKET=${CLINVAR_GKS_BUCKET:-clinvar-gkm}"
+    # The Batch jobs run the image the dispatcher runs
+    env_vars="$env_vars,VRSIFY_IMAGE=${image}"
+    env_vars="$env_vars,VRSIFY_MIN_RELEASE_DATE=${VRSIFY_MIN_RELEASE_DATE}"
+    env_vars="$env_vars,VRSIFY_SLACK=${VRSIFY_SLACK:-false}"
+fi
+
 ####
 # gcloud project level labels must exist before use
 ####
@@ -157,6 +194,11 @@ fi
 # mutations to cross-release temporal tables.
 extra_args=()
 if [[ "$instance_name" == *stored-procedures* ]]; then
+    extra_args+=(--max-retries=0)
+fi
+# Nor the vrsify dispatcher: a release it failed keeps its started row for a person to
+# resolve, and a failure before any claim is retried by the next scheduled run
+if $vrsify; then
     extra_args+=(--max-retries=0)
 fi
 
@@ -182,4 +224,24 @@ if [[ $instance_name =~ ^.*bq-ingest.*$|^.*stored-procedures.*$ ]]; then
       --http-method POST \
       --oauth-service-account-email=$pipeline_service_account \
       --schedule='*/15 * * * *'
+fi
+
+if $vrsify; then
+    # Created paused, and left paused or running on later deploys; resume it with
+    # gcloud scheduler jobs resume $instance_name --location $region
+    set -f
+    if gcloud scheduler jobs describe "$instance_name" --location "$region" > /dev/null 2>&1; then
+        scheduler_command="update"
+    else
+        scheduler_command="create"
+    fi
+    gcloud scheduler jobs ${scheduler_command} http ${instance_name} \
+      --location ${region} \
+      --uri=https://${region}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${project}/jobs/${instance_name}:run \
+      --http-method POST \
+      --oauth-service-account-email=$pipeline_service_account \
+      --schedule='*/15 * * * *'
+    if [ "$scheduler_command" = "create" ]; then
+        gcloud scheduler jobs pause "$instance_name" --location "$region"
+    fi
 fi

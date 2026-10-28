@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 ################################################################
-# Entrypoint of the vrsify Cloud Run job: claims releases whose stored procedures
-# have finished and submits a Cloud Batch job that runs `clinvar-ingest vrsify` on each.
+# Entrypoint of the vrsify Cloud Run job, the dispatcher: claims releases whose stored
+# procedures have finished, runs `clinvar-ingest vrsify` on each in a Cloud Batch job,
+# and records each release's progress in processing_history (clinvar_ingest/vrsify/dispatch.py).
 #
 # Besides the base clinvar-ingest environment (file_format=vrsify), it reads:
 #   VRSIFY_IMAGE             image for the Batch job (required)
 #   VRSIFY_MIN_RELEASE_DATE  earliest release to claim, YYYY-MM-DD (required)
 #   VRSIFY_MAX_RELEASES      releases claimed per run (default: 1)
 #   VRSIFY_SLACK             "true" to post to Slack, here and in the Batch job (default: false)
-#   VRSIFY_DRY_RUN           "true" to log what would be claimed without writing anything
+#   VRSIFY_DRY_RUN           "true" to log what would be done without writing or submitting anything
 #   VRSIFY_SERVICE_ACCOUNT   service account of the Batch job
 #                            (default: clinvar-ingest-pipeline@<project>.iam.gserviceaccount.com)
 #   VRSIFY_MACHINE_TYPE, VRSIFY_BOOT_DISK_TYPE  Batch VM overrides
@@ -66,10 +67,16 @@ _logger.info(f"vrsify dispatch settings: {settings}, release_tag={env.release_ta
 def notify(message: str) -> None:
     _logger.info(message)
     if settings.slack:
-        send_slack_message(message)
+        # A message that cannot be sent must not fail a release
+        try:
+            send_slack_message(message)
+        except Exception:
+            _logger.exception("Could not send the Slack message")
 
 
 client = bigquery.Client(project=project)
 # Read directly: this job never creates or replaces processing_history or its view
 processing_history_table = client.get_table(f"{project}.{env.bq_meta_dataset}.processing_history")
-dispatch.run(env, settings, batch_settings, processing_history_table, client, notify)
+# A failure after a claim is reported before the execution fails; one before any claim
+# only fails the execution, and the next run retries
+dispatch.Dispatcher(env, settings, batch_settings, processing_history_table, client, notify).run()

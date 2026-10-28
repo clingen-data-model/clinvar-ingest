@@ -58,25 +58,19 @@ clinvar-ingest vrsify --release-date 2026-10-24
 
 writes `gs://clinvar-gkm/2026-10-24/dev/vi-vrs-python.jsonl.gz`. By default the RefgetStore is the published genomic store archive, downloaded and checked against its SHA-256; `--refget-store` takes a local store directory instead. Existing outputs are not replaced without `--overwrite`.
 
-To run it on Cloud Batch, build an image with the `vrsify` dependencies, then submit a job with it (`--dry-run` prints the job definition):
-
-```
-misc/bin/build-vrsify-image.sh
-clinvar-ingest vrsify-submit 2026-10-24 --image gcr.io/clingen-dev/clinvar-ingest:vrsify-<commit>
-```
-
-Jobs run on a c4-standard-8 VM with a `hyperdisk-balanced` boot disk, where a full release translates in about 3 minutes.
+`clinvar-ingest vrsify-submit 2026-10-24 --image gcr.io/clingen-dev/clinvar-ingest:vrsify-<release tag>` runs it on Cloud Batch, outside the pipeline and without touching `processing_history` (`--dry-run` prints the job definition). Jobs run on a c4-standard-8 VM with a `hyperdisk-balanced` boot disk, where a full release translates in about 3 minutes.
 
 ## In the pipeline
 
-The `vrsify` step follows the stored procedures step. Its Cloud Run job, `misc/bin/vrsify-workflow.py`, finds releases whose `sp` row in `processing_history` is finished and that have no `vrsify` row, on or after `VRSIFY_MIN_RELEASE_DATE` and at most `VRSIFY_MAX_RELEASES` per run. For each, it writes the release's `vrsify` started row, which keeps later runs from claiming it, then submits a Batch job. The Batch job:
+The `vrsify` step follows the stored procedures step. Its Cloud Run job, the dispatcher (`misc/bin/vrsify-workflow.py`), runs every 15 minutes. It claims the next release whose `sp` row in `processing_history` is finished and that has no `vrsify` row, on or after `VRSIFY_MIN_RELEASE_DATE`, and takes it through to the end in the same execution:
 
-1. waits for a `vi.jsonl.gz` written after the `sp` row finished, since the stored procedures job exports it after marking its row finished, and fails if none appears within an hour;
-2. translates it and writes `vi-vrs-python.jsonl.gz` and its provenance;
-3. marks the `vrsify` row finished.
+1. writes the release's `vrsify` started row;
+2. waits up to an hour for the release's `vi.jsonl.gz` to have been written after its `sp` row finished. The stored procedures job exports `vi.jsonl.gz` after marking its row finished, and an export from an earlier run of the release may still be in place;
+3. submits a Batch job that runs `clinvar-ingest vrsify --release-date ...`, and waits for it;
+4. once the job has succeeded and its provenance names that job and the release's export, writes the finished row, with the Batch job's name in `parsed_files`.
 
-A failed job leaves its row started but not finished; each dispatcher run reports such rows. Deleting the row lets the release be claimed again. The job only writes and deletes `processing_history` rows whose `file_type` is `vrsify`, and reads the table directly rather than through `processing_history_view`.
+A failure after the claim is reported once, with the statement that deletes the started row, and the row stays started: later executions only claim ready releases, so the release waits for a person, as a failed stored procedures release does. Once the row is deleted, the next execution claims the release again. A failure before any claim fails that execution without a Slack message: no row is left started, and the next execution retries. The dispatcher only writes `processing_history` rows whose `file_type` is `vrsify`, and reads the table directly rather than through `processing_history_view`.
 
-`misc/bin/deploy-vrsify-job.sh IMAGE` creates or updates the Cloud Run job, `clinvar-ingest-vrsify`, with no schedule. `VRSIFY_MIN_RELEASE_DATE` is a fixed cutoff chosen at deployment: releases before it were translated outside this pipeline.
+`deploy-job.sh` deploys it like the other jobs, with an `instance_name` containing `vrsify` (see the script). It builds the image with the `vrsify` dependencies as `vrsify-<release tag>`, next to the other jobs' `workflow-py-<release tag>`, and the Batch jobs run that same image. `VRSIFY_MIN_RELEASE_DATE` is a fixed cutoff chosen at deployment: releases before it were translated outside this pipeline. Its Cloud Scheduler job is created paused.
 
-With `VRSIFY_SLACK=true`, the dispatcher and the Batch job post to the `CLINVAR_INGEST_SLACK_CHANNEL` channel. The Batch job reads the token from the `clinvar-ingest-slack-token` secret at run time, so its value is not part of the job definition.
+With `VRSIFY_SLACK=true`, posts go to the `CLINVAR_INGEST_SLACK_CHANNEL` channel: the dispatcher reports a release scheduled, completed, or not retried, and the Batch job reports starting, writing its output, and its own errors. The Batch job reads the token from the `clinvar-ingest-slack-token` secret at run time, so its value is not part of the job definition.
