@@ -167,3 +167,14 @@ def test_messages_name_the_release(tmp_path, monkeypatch, release_date, starting
         starting.format(input=input_uri, output=output_uri),
         failed.format(output=output_uri),
     ]
+
+
+def test_input_pattern_matching_a_vrsify_output_is_refused(tmp_path):
+    from clinvar_ingest.vrsify import runner
+
+    for name in ("vi-000000000000.jsonl.gz", "vi-vrs-python.jsonl.gz", "vi-vrs-python.provenance.json"):
+        (tmp_path / name).write_bytes(b"")
+    with pytest.raises(ValueError, match="matches vrsify output"):
+        runner._fetch_inputs(str(tmp_path / "vi-*"), tmp_path)
+    paths, _ = runner._fetch_inputs(str(tmp_path / "vi-0*.jsonl.gz"), tmp_path)
+    assert [p.name for p in paths] == ["vi-000000000000.jsonl.gz"]

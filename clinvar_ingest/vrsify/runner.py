@@ -7,6 +7,7 @@ Output lines are written as batches complete, so their order is not the input or
 
 import datetime
 import fnmatch
+import glob
 import gzip
 import heapq
 import importlib.metadata
@@ -231,12 +232,23 @@ def _count_lines(paths: list[Path]) -> int:
     return total
 
 
+def _refuse_vrsify_outputs(input_uri: str, names: list[str]) -> None:
+    """A pattern such as vi-*.jsonl.gz also matches a vrsify output written beside the export."""
+    outputs = [n for n in names if n.rsplit("/", 1)[-1].startswith(OUTPUT_NAME.removesuffix(".jsonl.gz"))]
+    if outputs:
+        raise ValueError(f"{input_uri} matches vrsify output, not a variation_identity export: {outputs}")
+
+
 def _fetch_inputs(input_uri: str, work_dir: Path) -> tuple[list[Path], list[dict]]:
     """Resolve `input_uri` (a gs:// URI or local path, optionally with glob characters) to local files."""
     if not input_uri.startswith("gs://"):
-        paths = sorted(Path().glob(input_uri)) if any(c in input_uri for c in "*?[") else [Path(input_uri)]
+        if any(c in input_uri for c in "*?["):
+            paths = sorted(Path(p) for p in glob.glob(input_uri))
+        else:
+            paths = [Path(input_uri)]
         if not paths or not all(p.is_file() for p in paths):
             raise FileNotFoundError(f"No input files match {input_uri}")
+        _refuse_vrsify_outputs(input_uri, [p.name for p in paths])
         return paths, [{"uri": str(p.resolve()), "size": p.stat().st_size} for p in paths]
 
     bucket_name, _, pattern = input_uri.removeprefix("gs://").partition("/")
@@ -251,6 +263,7 @@ def _fetch_inputs(input_uri: str, work_dir: Path) -> tuple[list[Path], list[dict
         blobs = [blob]
     if not blobs:
         raise FileNotFoundError(f"No input objects match {input_uri}")
+    _refuse_vrsify_outputs(input_uri, [b.name for b in blobs])
 
     paths, records = [], []
     for index, blob in enumerate(sorted(blobs, key=lambda b: b.name)):
