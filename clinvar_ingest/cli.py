@@ -134,6 +134,13 @@ def parse_args(argv):
         help="Where the store is extracted (default: hyperdisk-balanced, which c4 requires)",
     )
     submit_sp.add_argument("--boot-disk-size", type=int, default=None, help="Boot disk size in GB (default: 50)")
+    submit_sp.add_argument(
+        "--label",
+        action="append",
+        default=[],
+        metavar="KEY=VALUE",
+        help="An extra GCP label for the job and its VM and disk, e.g. experiment=store-comparison; repeatable",
+    )
     submit_sp.add_argument("--dry-run", action="store_true", help="Print the job definition instead of submitting")
     submit_sp.epilog = "Arguments after -- are passed to `clinvar-ingest vrsify`, e.g. -- --overwrite"
 

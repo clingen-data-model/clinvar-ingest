@@ -127,7 +127,12 @@ class Dispatcher:
 
         name = batch.job_id(release_date)
         args = ["--release-date", release_date] + (["--slack"] if self.settings.slack else [])
-        definition = batch.job_definition(self.batch_settings, args, slack=self.settings.slack)
+        definition = batch.job_definition(
+            self.batch_settings,
+            args,
+            slack=self.settings.slack,
+            labels={"release-date": release_date, "trigger": "dispatcher"},
+        )
         job = self.cloud.submit(self.batch_settings, name, definition)
         self.notify(f"vrsify scheduled for release dated {release_date}: Batch job {name}")
 

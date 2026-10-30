@@ -5,12 +5,33 @@ Cloud Batch job definitions for running `clinvar-ingest vrsify` on one release.
 import datetime
 import json
 import logging
+import re
 from dataclasses import dataclass, field
 
 _logger = logging.getLogger("clinvar_ingest")
 
 # The Secret Manager secret the other clinvar-ingest jobs read the Slack token from
 SLACK_TOKEN_SECRET = "clinvar-ingest-slack-token"  # noqa: S105
+
+# Labels on every vrsify job and on the VMs and disks Batch creates for it, so billing can
+# group all vrsify runs (app=clinvar-ingest-vrsify) whatever submitted them
+DEFAULT_LABELS = {"service": "clinvar-ingest", "component": "vrsify", "app": "clinvar-ingest-vrsify"}
+
+# GCP label keys start with a lowercase letter; keys and values are at most 63 lowercase
+# letters, digits, hyphens and underscores
+_LABEL_KEY = re.compile(r"^[a-z][a-z0-9_-]{0,62}$")
+_LABEL_VALUE = re.compile(r"^[a-z0-9_-]{0,63}$")
+
+
+def job_labels(extra: dict[str, str] | None = None) -> dict[str, str]:
+    """DEFAULT_LABELS plus `extra`, which may not replace a default."""
+    extra = extra or {}
+    if replaced := sorted(DEFAULT_LABELS.keys() & extra.keys()):
+        raise ValueError(f"labels may not replace the default labels: {replaced}")
+    for key, value in extra.items():
+        if not _LABEL_KEY.match(key) or not _LABEL_VALUE.match(value):
+            raise ValueError(f"invalid GCP label {key}={value}")
+    return {**DEFAULT_LABELS, **extra}
 
 
 @dataclass
@@ -56,12 +77,16 @@ def job_id(release_date: str, now: datetime.datetime | None = None) -> str:
     return f"vrsify-{release_date}-{now:%Y%m%d%H%M%S}"
 
 
-def job_definition(settings: BatchSettings, vrsify_args: list[str], slack: bool = False) -> dict:
+def job_definition(
+    settings: BatchSettings, vrsify_args: list[str], slack: bool = False, labels: dict[str, str] | None = None
+) -> dict:
     """
     The Batch job for `clinvar-ingest vrsify VRSIFY_ARGS...`. With `slack`, the job reads
     the Slack token from Secret Manager at run time, so its value never appears in the
-    job definition.
+    job definition. The job, and the VMs and disks it creates, carry DEFAULT_LABELS and
+    `labels`.
     """
+    all_labels = job_labels(labels)
     environment: dict = {"variables": dict(settings.environment)}
     if slack:
         environment["secretVariables"] = {
@@ -97,8 +122,10 @@ def job_definition(settings: BatchSettings, vrsify_args: list[str], slack: bool 
                 }
             ],
             "serviceAccount": {"email": settings.service_account},
+            # Job labels stay on the job; these reach the VMs and disks billing charges for
+            "labels": all_labels,
         },
-        "labels": {"service": "clinvar-ingest", "component": "vrsify"},
+        "labels": all_labels,
         "logsPolicy": {"destination": "CLOUD_LOGGING"},
     }
 

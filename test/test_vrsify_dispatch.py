@@ -343,9 +343,50 @@ def test_task_requests_the_vm(batch_settings, machine_type, expected):
 
 def test_job_definition_parses_as_a_batch_job(batch_settings):
     batch_v1 = pytest.importorskip("google.cloud.batch_v1")
-    job = batch_v1.Job.from_json(json.dumps(batch.job_definition(batch_settings, ["--release-date", "x"], slack=True)))
+    definition = batch.job_definition(batch_settings, ["--release-date", "x"], slack=True, labels={"arm": "a"})
+    job = batch_v1.Job.from_json(json.dumps(definition))
     assert job.task_groups[0].task_spec.environment.secret_variables["CLINVAR_INGEST_SLACK_TOKEN"].endswith("latest")
     assert job.allocation_policy.instances[0].policy.boot_disk.type_ == "hyperdisk-balanced"
+    assert job.allocation_policy.labels["app"] == "clinvar-ingest-vrsify"
+    assert job.allocation_policy.labels["arm"] == "a"
+
+
+def test_job_and_its_resources_carry_the_vrsify_labels(batch_settings):
+    definition = batch.job_definition(batch_settings, [], labels={"release-date": "2026-10-24", "arm": "cg"})
+    expected = {
+        "service": "clinvar-ingest",
+        "component": "vrsify",
+        "app": "clinvar-ingest-vrsify",
+        "release-date": "2026-10-24",
+        "arm": "cg",
+    }
+    # Job labels stay on the job; the allocation policy's reach the VM and disk billing charges for
+    assert definition["labels"] == expected
+    assert definition["allocationPolicy"]["labels"] == expected
+
+
+@pytest.mark.parametrize(
+    "labels",
+    [
+        {"app": "something-else"},  # replaces a default
+        {"Arm": "a"},  # uppercase key
+        {"arm": "A"},  # uppercase value
+        {"1arm": "a"},  # key must start with a letter
+        {"arm": "a" * 64},  # value too long
+    ],
+)
+def test_invalid_labels_are_refused(batch_settings, labels):
+    with pytest.raises(ValueError, match="label"):
+        batch.job_definition(batch_settings, [], labels=labels)
+
+
+def test_dispatcher_jobs_are_labeled_with_their_release(dispatcher, cloud):
+    dispatcher.run()
+    ((_, definition),) = cloud.submitted
+    labels = definition["allocationPolicy"]["labels"]
+    assert labels["app"] == "clinvar-ingest-vrsify"
+    assert labels["trigger"] == "dispatcher"
+    assert labels["release-date"] == str(DAY)
 
 
 def test_ready_releases_reads_only_the_table():

@@ -102,7 +102,13 @@ def run_vrsify_submit(args: Namespace):
         settings.boot_disk_type = args.boot_disk_type
     if args.boot_disk_size:
         settings.boot_disk_size_gb = args.boot_disk_size
-    definition = batch.job_definition(settings, ["--release-date", args.release_date, *args.vrsify_args])
+    labels = {"release-date": args.release_date, "trigger": "manual"}
+    for label in args.label:
+        key, sep, value = label.partition("=")
+        if not sep:
+            raise ValueError(f"--label takes KEY=VALUE: {label}")
+        labels[key] = value
+    definition = batch.job_definition(settings, ["--release-date", args.release_date, *args.vrsify_args], labels=labels)
     name = batch.job_id(args.release_date)
     if args.dry_run:
         print(f"# job {name} in {settings.project}/{settings.region}")
