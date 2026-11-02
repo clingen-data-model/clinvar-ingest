@@ -206,6 +206,7 @@ def test_worker_stats_summarize_utilization():
         "pid": 7,
         "started": 1000.0,
         "cpu_at_start": 2,
+        "proxy_seconds": 0.5,
         "user_seconds": 0,
         "system_seconds": 0,
         "peak_rss_bytes": 2**20,

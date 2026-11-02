@@ -30,7 +30,13 @@ from typing import Any
 from clinvar_ingest.cloud.gcs import _get_gcs_client, parse_blob_uri
 from clinvar_ingest.config import env_or_dotenv_or
 from clinvar_ingest.vrsify.store import is_remote_store, prepare_seqrepo, prepare_store
-from clinvar_ingest.vrsify.translate import ASSEMBLY_NAMES, translate_record
+from clinvar_ingest.vrsify.translate import (
+    ASSEMBLY_NAMES,
+    DEFAULT_ASSEMBLY_VERSION,
+    TRANSLATED_CLASSES,
+    is_genomic,
+    translate_record,
+)
 
 _logger = logging.getLogger("clinvar_ingest")
 
@@ -70,6 +76,7 @@ def _on_alarm(_signum, _frame):
 
 
 REFGET_READS = ("whole", "ranges")
+REFGET_CACHES = ("worker", "shared")
 
 
 @dataclass(frozen=True)
@@ -78,21 +85,23 @@ class SequenceSource:
     Where translation workers read sequences.
 
     `kind` is "refget" or "seqrepo"; `location` is a local store directory or, for a
-    RefgetStore, a remote store's URL. A worker caches the sequences it fetches from a
-    remote store in a directory of its own under `cache_root`: gtars writes a fetched file
-    in place rather than renaming it into place, so a worker sharing the cache could read
-    it half-written.
+    RefgetStore, a remote store's URL. Workers cache the files they fetch from a remote
+    store under `cache_root`: with `cache` "shared", all in one directory, where gtars
+    publishes each fetched file by rename and serializes opens, so each file is fetched
+    about once; with "worker", in a directory of each worker's own.
 
     `reads` sets how a RefgetStore serves reads: "whole" loads each sequence a worker
     reads into that worker's memory (vrs-python's behavior); "ranges" leaves sequences
     on disk, where gtars reads just the bases each read covers, so workers share the
-    operating system's file cache instead of each holding the sequences.
+    operating system's file cache instead of each holding the sequences. A remote
+    store's first range read of a sequence caches its whole file.
     """
 
     kind: str
     location: str
     cache_root: str | None = None
     reads: str = "whole"
+    cache: str = "worker"
 
 
 def _data_proxy(source: SequenceSource) -> Any:
@@ -107,8 +116,13 @@ def _data_proxy(source: SequenceSource) -> Any:
         # get_substring from the local .seq file
         RefgetSequenceDataProxy._ensure_sequence_loaded = lambda _self, _digest: None
     if is_remote_store(source.location):
-        os.environ["GA4GH_VRS_REFGET_CACHE_DIR"] = str(Path(source.cache_root) / f"worker-{os.getpid()}")
-        return create_dataproxy(f"refget+{source.location}")
+        cache_dir = "shared" if source.cache == "shared" else f"worker-{os.getpid()}"
+        os.environ["GA4GH_VRS_REFGET_CACHE_DIR"] = str(Path(source.cache_root) / cache_dir)
+        proxy = create_dataproxy(f"refget+{source.location}")
+        if source.reads == "ranges":
+            # Without this, each read of an uncached sequence is an HTTP range request
+            proxy._sequence_proxy.store.set_cache_whole_sequences(True)
+        return proxy
     return create_dataproxy(f"refget+file://{source.location}")
 
 
@@ -123,7 +137,10 @@ def _init_worker(source: SequenceSource, record_timeout: int) -> None:
 
     from ga4gh.vrs.extras.translator import AlleleTranslator, CnvTranslator
 
+    proxy_started = time.perf_counter()
     data_proxy = _data_proxy(source)
+    # A remote store's open waits for any other worker opening the same cache
+    _WORKER["proxy_seconds"] = time.perf_counter() - proxy_started
     _WORKER["allele_translators"] = {
         version: AlleleTranslator(data_proxy=data_proxy, default_assembly_name=name)
         for version, name in ASSEMBLY_NAMES.items()
@@ -189,6 +206,7 @@ def _translate_batch(lines: list[str]) -> tuple[list[tuple[str, str, str, str, f
         "pid": os.getpid(),
         "started": _WORKER["started"],
         "cpu_at_start": _WORKER["cpu_at_start"],
+        "proxy_seconds": _WORKER["proxy_seconds"],
         "batch_start": batch_start,
         "batch_end": time.time(),
         "batch_cpu_seconds": usage["cpu_seconds"] - cpu_start,
@@ -262,6 +280,7 @@ class _WorkerStats:
                     "busy_seconds": round(stats["busy_seconds"], 1),
                     "cpu_seconds": round(lifetime_cpu, 1),
                     "startup_cpu_seconds": round(latest["cpu_at_start"], 1),
+                    "proxy_seconds": round(latest["proxy_seconds"], 2),
                     "user_seconds": round(latest["user_seconds"], 1),
                     "system_seconds": round(latest["system_seconds"], 1),
                     "cpu_utilization_busy": round(stats["busy_cpu_seconds"] / stats["busy_seconds"], 3)
@@ -277,6 +296,80 @@ class _WorkerStats:
                 }
             )
         return summaries
+
+
+def _sequence_identifier(record: dict) -> str | None:
+    """
+    The identifier translating `record` resolves its sequence by: the accession of an
+    HGVS or SPDI expression, or assembly:chromosome for a gnomAD one, as the translators
+    form them. None for a record translate_record does not translate.
+    """
+    from ga4gh.vrs.extras.translator import AlleleTranslator
+
+    source = record.get("source")
+    if record.get("vrs_class") not in TRANSLATED_CLASSES or not source:
+        return None
+    fmt = record.get("fmt")
+    if not is_genomic(fmt, source):
+        return None
+    if fmt == "gnomad":
+        match = AlleleTranslator.gnomad_re.fullmatch(source)
+        if match is None:
+            return None
+        assembly = ASSEMBLY_NAMES.get(record.get("assembly_version") or DEFAULT_ASSEMBLY_VERSION)
+        return f"{assembly}:{match['chr']}" if assembly else None
+    return source.split(":", 1)[0]
+
+
+def prefetch_sequences(input_paths: list[Path], source: SequenceSource, threads: int) -> dict:
+    """
+    Fetch every sequence the records at `input_paths` will read from the remote store in
+    `source` into the workers' shared cache, `threads` at a time, before any worker
+    starts, so no worker waits on a download. Returns what it fetched and how long each
+    step took.
+    """
+    started = time.perf_counter()
+    identifiers: set[str] = set()
+    for path in input_paths:
+        with gzip.open(path, "rt") as fh:
+            for line in fh:
+                identifier = _sequence_identifier(json.loads(line))
+                if identifier:
+                    identifiers.add(identifier)
+    scanned = time.perf_counter()
+
+    # The workers' data proxy, so identifiers resolve exactly as translation resolves them
+    proxy = _data_proxy(source)
+    digests, unresolved = set(), 0
+    for identifier in identifiers:
+        try:
+            digest = proxy.derive_refget_accession(identifier)
+        except Exception:  # noqa: BLE001 - such a record fails in translation, not here
+            digest = None
+        if digest:
+            digests.add(digest)
+        else:
+            unresolved += 1
+    resolved = time.perf_counter()
+
+    report = proxy._sequence_proxy.store.cache_sequences(sorted(digests), threads)
+    fetched = time.perf_counter()
+    report["failed_count"] = len(report["failed"])
+    report["failed"] = report["failed"][:20]
+    _logger.info(
+        f"Prefetched {report['cached']} sequence files ({report['cached_bytes']} bytes) for "
+        f"{len(identifiers)} identifiers in {fetched - started:.0f} s; {report['already_cached']} were cached, "
+        f"{report['failed_count']} failed, {unresolved} identifiers did not resolve"
+    )
+    return {
+        "identifiers": len(identifiers),
+        "unresolved_identifiers": unresolved,
+        "threads": threads,
+        **report,
+        "scan_seconds": round(scanned - started, 1),
+        "resolve_seconds": round(resolved - scanned, 1),
+        "fetch_seconds": round(fetched - resolved, 1),
+    }
 
 
 def translate_files(
@@ -342,9 +435,17 @@ def translate_files(
         "parent_cpu_utilization": round((_usage()["cpu_seconds"] - parent_cpu_start) / seconds, 3),
     }
     if source.cache_root is not None and Path(source.cache_root).is_dir():
-        # What each worker fetched from the remote store and kept in its cache
+        # What the workers fetched from the remote store and kept: one directory per
+        # worker, or one shared directory
         cached = sorted((_directory_bytes(d) for d in Path(source.cache_root).iterdir() if d.is_dir()), reverse=True)
-        stats["refget_cache"] = {"worker_bytes": cached, "total_bytes": sum(cached)}
+        # Temp files of fetches that never completed; gtars ignores them
+        unfinished = sum(1 for _ in Path(source.cache_root).rglob(".rgstore.tmp.*"))
+        stats["refget_cache"] = {
+            "cache": source.cache,
+            "directory_bytes": cached,
+            "total_bytes": sum(cached),
+            "unfinished_fetches": unfinished,
+        }
     busy = [w["cpu_utilization_busy"] for w in workers_summary if w["cpu_utilization_busy"] is not None]
     if busy:
         _logger.info(
@@ -443,6 +544,19 @@ def _library_versions() -> dict:
     return versions
 
 
+def _check_sequence_options(
+    seqrepo: str | None, refget_reads: str, refget_cache: str, refget_prefetch_threads: int
+) -> None:
+    if refget_reads not in REFGET_READS:
+        raise ValueError(f"refget_reads must be one of {REFGET_READS}: {refget_reads}")
+    if refget_cache not in REFGET_CACHES:
+        raise ValueError(f"refget_cache must be one of {REFGET_CACHES}: {refget_cache}")
+    if refget_prefetch_threads and (seqrepo or refget_cache != "shared"):
+        raise ValueError("prefetching needs a remote RefgetStore with the shared cache")
+    if seqrepo and refget_reads != "whole":
+        raise ValueError("refget_reads applies to a RefgetStore, not a SeqRepo")
+
+
 def vrsify(  # noqa: PLR0913
     input_uri: str,
     output_uri: str,
@@ -456,18 +570,20 @@ def vrsify(  # noqa: PLR0913
     release_date: str | None = None,
     seqrepo: str | None = None,
     refget_reads: str = "whole",
+    refget_cache: str = "worker",
+    refget_prefetch_threads: int = 0,
 ) -> dict:
     """
     Translate the records at `input_uri` and write the results and a provenance record.
 
     Sequences come from `refget_store`, or from the SeqRepo `seqrepo` (a directory or a
-    .tar.gz archive) when it is given. `refget_reads` is SequenceSource.reads. Messages
-    name the release by `release_date`, or by the output when it is not given.
+    .tar.gz archive) when it is given. `refget_reads` and `refget_cache` are
+    SequenceSource.reads and .cache. With `refget_prefetch_threads`, the sequences the
+    records read from a remote store are fetched into the shared cache, that many at a
+    time, before translation starts. Messages name the release by `release_date`, or by
+    the output when it is not given.
     """
-    if refget_reads not in REFGET_READS:
-        raise ValueError(f"refget_reads must be one of {REFGET_READS}: {refget_reads}")
-    if seqrepo and refget_reads != "whole":
-        raise ValueError("refget_reads applies to a RefgetStore, not a SeqRepo")
+    _check_sequence_options(seqrepo, refget_reads, refget_cache, refget_prefetch_threads)
     prov_uri = provenance_uri(output_uri)
     started_at = datetime.datetime.now(datetime.UTC)
     subject = f"for release dated {release_date}" if release_date else output_uri
@@ -491,10 +607,15 @@ def vrsify(  # noqa: PLR0913
         else:
             location, store_provenance = prepare_store(refget_store, work)
             cache_root = str(work / "refget-cache") if is_remote_store(location) else None
-            source = SequenceSource("refget", location, cache_root, refget_reads)
+            source = SequenceSource("refget", location, cache_root, refget_reads, refget_cache)
         store_provenance["setup_seconds"] = round(time.perf_counter() - setup_started, 1)
         input_paths, input_records = _fetch_inputs(input_uri, work)
         expected = _count_lines(input_paths)
+        prefetch = None
+        if refget_prefetch_threads:
+            if not is_remote_store(source.location):
+                raise ValueError("prefetching needs a remote RefgetStore with the shared cache")
+            prefetch = prefetch_sequences(input_paths, source, refget_prefetch_threads)
 
         output_path = work / OUTPUT_NAME
         stats = translate_files(input_paths, output_path, source, workers, batch_size, record_timeout)
@@ -509,6 +630,7 @@ def vrsify(  # noqa: PLR0913
             "output": output_uri,
             "seqrepo" if seqrepo else "refget_store": store_provenance,
             "sequence_reads": None if seqrepo else refget_reads,
+            "refget_prefetch": prefetch,
             "libraries": _library_versions(),
             "workers": workers,
             "record_timeout_seconds": record_timeout,
