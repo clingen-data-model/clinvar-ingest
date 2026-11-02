@@ -42,7 +42,7 @@ dev = [
 # [tool.uv.sources] pin. Building gtars needs a Rust toolchain.
 vrsify = [
     "ga4gh.vrs[extras,refget] @ git+https://github.com/theferrit32/vrs-python@8ce6d702e3b976441f9c0b93e486a653aab79a4c",
-    "gtars @ git+https://github.com/theferrit32/gtars@d7f89d05fec08e711ce36c93a754b373105ad89b#subdirectory=gtars-python",
+    "gtars @ git+https://github.com/theferrit32/gtars@2193d53653b48ef31e9757d1f39987b6ea082560#subdirectory=gtars-python",
     # The vrsify Cloud Run job submits the Batch jobs that run vrsify
     "google-cloud-batch~=0.22.4",
 ]
