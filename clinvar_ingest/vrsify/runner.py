@@ -29,7 +29,7 @@ from typing import Any
 
 from clinvar_ingest.cloud.gcs import _get_gcs_client, parse_blob_uri
 from clinvar_ingest.config import env_or_dotenv_or
-from clinvar_ingest.vrsify.measure import Phases, container_peak_mib, parent_peak_rss_mib
+from clinvar_ingest.vrsify.measure import MemorySampler, Phases, container_peak_mib, parent_peak_rss_mib
 from clinvar_ingest.vrsify.store import is_remote_store, prepare_seqrepo, prepare_store
 from clinvar_ingest.vrsify.translate import (
     ASSEMBLY_NAMES,
@@ -596,7 +596,9 @@ def vrsify(  # noqa: PLR0913
                     raise FileExistsError(f"{uri} exists; pass --overwrite to replace it")
         work = Path(work_dir) if work_dir else Path(tempfile.mkdtemp(prefix="vrsify-"))
         work.mkdir(parents=True, exist_ok=True)
-        phases = Phases()
+        sampler = MemorySampler()
+        sampler.start()
+        phases = Phases(sampler)
         setup_started = time.perf_counter()
         with phases.phase("setup"):
             if seqrepo:
@@ -632,6 +634,7 @@ def vrsify(  # noqa: PLR0913
         # say how long that took; a run whose provenance is missing did not finish
         with phases.phase("upload"):
             _put(output_path, output_uri, overwrite)
+        container_memory = sampler.stop()
 
         provenance = {
             "started_at": started_at.isoformat(),
@@ -641,7 +644,12 @@ def vrsify(  # noqa: PLR0913
                 "input_bytes": sum(r["size"] or 0 for r in input_records),
                 "output_bytes": output_path.stat().st_size,
             },
-            "memory": {"parent_peak_rss_mib": parent_peak_rss_mib(), "container_peak_mib": container_peak_mib()},
+            "memory": {
+                "parent_peak_rss_mib": parent_peak_rss_mib(),
+                "container_peak_mib": container_peak_mib(),
+                # Sampled peaks of process memory (anon) and page cache (file), per phase
+                "container_sampled": container_memory,
+            },
             "inputs": input_records,
             "output": output_uri,
             "seqrepo" if seqrepo else "refget_store": store_provenance,
