@@ -64,9 +64,13 @@ def test_archive_is_extracted_and_verified(tmp_path, serve):
 
     assert store_dir.name == "genomic-test"
     assert (store_dir / "sequences" / "ab" / "abcd.seq").read_bytes() == b"\x00\x01"
+    download = provenance["download"]
+    assert download["bytes"] == len(archive)
+    assert 0 <= download["read_seconds"] <= download["seconds"]
     assert provenance == {
         "source": URL,
         "sha256": hashlib.sha256(archive).hexdigest(),
+        "download": download,
         "rgstore": {
             "sequences_digest": "seqs",
             "collections_digest": None,

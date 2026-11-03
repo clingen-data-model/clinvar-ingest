@@ -29,6 +29,7 @@ from typing import Any
 
 from clinvar_ingest.cloud.gcs import _get_gcs_client, parse_blob_uri
 from clinvar_ingest.config import env_or_dotenv_or
+from clinvar_ingest.vrsify.measure import Phases, container_peak_mib, parent_peak_rss_mib
 from clinvar_ingest.vrsify.store import is_remote_store, prepare_seqrepo, prepare_store
 from clinvar_ingest.vrsify.translate import (
     ASSEMBLY_NAMES,
@@ -595,37 +596,52 @@ def vrsify(  # noqa: PLR0913
                     raise FileExistsError(f"{uri} exists; pass --overwrite to replace it")
         work = Path(work_dir) if work_dir else Path(tempfile.mkdtemp(prefix="vrsify-"))
         work.mkdir(parents=True, exist_ok=True)
+        phases = Phases()
         setup_started = time.perf_counter()
-        if seqrepo:
-            location, store_provenance = prepare_seqrepo(seqrepo, work)
-            source = SequenceSource("seqrepo", location)
-            # SeqRepo's default opens and closes a sequence file for every fetch, and
-            # normalization fetches base by base; keep each worker's files open instead.
-            # Read once at import, which happens in the workers, which inherit this.
-            os.environ.setdefault("SEQREPO_FD_CACHE_MAXSIZE", "none")
-            store_provenance["fd_cache_maxsize"] = os.environ["SEQREPO_FD_CACHE_MAXSIZE"]
-        else:
-            location, store_provenance = prepare_store(refget_store, work)
-            cache_root = str(work / "refget-cache") if is_remote_store(location) else None
-            source = SequenceSource("refget", location, cache_root, refget_reads, refget_cache)
+        with phases.phase("setup"):
+            if seqrepo:
+                location, store_provenance = prepare_seqrepo(seqrepo, work)
+                source = SequenceSource("seqrepo", location)
+                # SeqRepo's default opens and closes a sequence file for every fetch, and
+                # normalization fetches base by base; keep each worker's files open instead.
+                # Read once at import, which happens in the workers, which inherit this.
+                os.environ.setdefault("SEQREPO_FD_CACHE_MAXSIZE", "none")
+                store_provenance["fd_cache_maxsize"] = os.environ["SEQREPO_FD_CACHE_MAXSIZE"]
+            else:
+                location, store_provenance = prepare_store(refget_store, work)
+                cache_root = str(work / "refget-cache") if is_remote_store(location) else None
+                source = SequenceSource("refget", location, cache_root, refget_reads, refget_cache)
         store_provenance["setup_seconds"] = round(time.perf_counter() - setup_started, 1)
-        input_paths, input_records = _fetch_inputs(input_uri, work)
+        with phases.phase("input"):
+            input_paths, input_records = _fetch_inputs(input_uri, work)
         expected = _count_lines(input_paths)
         prefetch = None
         if refget_prefetch_threads:
             if not is_remote_store(source.location):
                 raise ValueError("prefetching needs a remote RefgetStore with the shared cache")
-            prefetch = prefetch_sequences(input_paths, source, refget_prefetch_threads)
+            with phases.phase("prefetch"):
+                prefetch = prefetch_sequences(input_paths, source, refget_prefetch_threads)
 
         output_path = work / OUTPUT_NAME
-        stats = translate_files(input_paths, output_path, source, workers, batch_size, record_timeout)
+        with phases.phase("translate"):
+            stats = translate_files(input_paths, output_path, source, workers, batch_size, record_timeout)
         # The gkm_vrs load requires exactly one output row per input record
         if stats["records"] != expected:
             raise RuntimeError(f"Read {expected} records but wrote {stats['records']}")
+        # The output goes up before the provenance record is written, so the record can
+        # say how long that took; a run whose provenance is missing did not finish
+        with phases.phase("upload"):
+            _put(output_path, output_uri, overwrite)
 
         provenance = {
             "started_at": started_at.isoformat(),
             "finished_at": datetime.datetime.now(datetime.UTC).isoformat(),
+            "phases": phases.record,
+            "transfers": {
+                "input_bytes": sum(r["size"] or 0 for r in input_records),
+                "output_bytes": output_path.stat().st_size,
+            },
+            "memory": {"parent_peak_rss_mib": parent_peak_rss_mib(), "container_peak_mib": container_peak_mib()},
             "inputs": input_records,
             "output": output_uri,
             "seqrepo" if seqrepo else "refget_store": store_provenance,
@@ -643,7 +659,6 @@ def vrsify(  # noqa: PLR0913
         }
         provenance_path = work / "provenance.json"
         provenance_path.write_text(json.dumps(provenance, indent=2) + "\n")
-        _put(output_path, output_uri, overwrite)
         _put(provenance_path, prov_uri, overwrite)
     except Exception as e:
         notify(f"vrsify failed {subject}: {type(e).__name__}: {e}", slack)

@@ -15,6 +15,7 @@ import logging
 import shutil
 import tarfile
 import tempfile
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -30,14 +31,22 @@ _CHUNK_SIZE = 8 * 1024 * 1024
 
 
 class _HashingReader:
-    """Read-through wrapper that computes the SHA-256 of everything read."""
+    """
+    Read-through wrapper that computes the SHA-256 of everything read, and counts the
+    bytes and the seconds spent waiting for them.
+    """
 
     def __init__(self, raw: BinaryIO):
         self.raw = raw
         self.sha256 = hashlib.sha256()
+        self.bytes = 0
+        self.read_seconds = 0.0
 
     def read(self, size: int = -1) -> bytes:
+        started = time.perf_counter()
         data = self.raw.read(size)
+        self.read_seconds += time.perf_counter() - started
+        self.bytes += len(data)
         self.sha256.update(data)
         return data
 
@@ -77,12 +86,17 @@ def _single_top_dir(tar: tarfile.TarFile, top_dirs: set[str]) -> Iterator[tarfil
         yield member
 
 
-def _extract_archive(uri: str, work_dir: Path) -> tuple[Path, str]:
-    """Extract the archive at `uri` under `work_dir` as it downloads, verifying its SHA-256."""
+def _extract_archive(uri: str, work_dir: Path) -> tuple[Path, str, dict]:
+    """
+    Extract the archive at `uri` under `work_dir` as it downloads, verifying its SHA-256.
+    Also returns the download's bytes and seconds. Extraction overlaps the download, so
+    `read_seconds`, the time spent waiting on the stream, is the download's share of them.
+    """
     # "<sha256>  <file name>", as written by shasum
     expected = _read_text(uri + ".sha256").split()[0]
     extract_dir = Path(tempfile.mkdtemp(prefix="store-", dir=work_dir))
     top_dirs: set[str] = set()
+    started = time.perf_counter()
     try:
         with _open_stream(uri) as raw:
             reader = _HashingReader(raw)
@@ -98,7 +112,12 @@ def _extract_archive(uri: str, work_dir: Path) -> tuple[Path, str]:
     except BaseException:
         shutil.rmtree(extract_dir, ignore_errors=True)
         raise
-    return extract_dir / top_dirs.pop(), actual
+    download = {
+        "bytes": reader.bytes,
+        "seconds": round(time.perf_counter() - started, 1),
+        "read_seconds": round(reader.read_seconds, 1),
+    }
+    return extract_dir / top_dirs.pop(), actual, download
 
 
 def _seqrepo_instance(root: Path) -> Path:
@@ -120,8 +139,8 @@ def prepare_seqrepo(seqrepo: str, work_dir: Path) -> tuple[str, dict]:
         root = local
     elif seqrepo.endswith(".tar.gz") and seqrepo.startswith(("https://", "http://", "gs://")):
         _logger.info(f"Downloading and extracting SeqRepo archive {seqrepo}")
-        root, sha256 = _extract_archive(seqrepo, work_dir)
-        provenance = {"source": seqrepo, "sha256": sha256}
+        root, sha256, download = _extract_archive(seqrepo, work_dir)
+        provenance = {"source": seqrepo, "sha256": sha256, "download": download}
     else:
         raise ValueError(f"Not a SeqRepo directory or a .tar.gz archive URL: {seqrepo}")
     instance = _seqrepo_instance(root)
@@ -151,8 +170,8 @@ def prepare_store(store: str, work_dir: Path) -> tuple[str, dict]:
             provenance = {"source": str(local.resolve())}
         elif store.endswith(".tar.gz") and store.startswith(("https://", "http://", "gs://")):
             _logger.info(f"Downloading and extracting RefgetStore archive {store}")
-            store_dir, sha256 = _extract_archive(store, work_dir)
-            provenance = {"source": store, "sha256": sha256}
+            store_dir, sha256, download = _extract_archive(store, work_dir)
+            provenance = {"source": store, "sha256": sha256, "download": download}
         else:
             raise ValueError(f"Not a store directory, a .tar.gz archive URL or a remote store URL: {store}")
         location, metadata = str(store_dir), json.loads((store_dir / "rgstore.json").read_text())
