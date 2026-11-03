@@ -29,7 +29,13 @@ from typing import Any
 
 from clinvar_ingest.cloud.gcs import _get_gcs_client, parse_blob_uri
 from clinvar_ingest.config import env_or_dotenv_or
-from clinvar_ingest.vrsify.measure import MemorySampler, Phases, container_peak_mib, parent_peak_rss_mib
+from clinvar_ingest.vrsify.measure import (
+    MemorySampler,
+    Phases,
+    container_peak_mib,
+    cpu_model,
+    parent_peak_rss_mib,
+)
 from clinvar_ingest.vrsify.store import is_remote_store, prepare_seqrepo, prepare_store
 from clinvar_ingest.vrsify.translate import (
     ASSEMBLY_NAMES,
@@ -661,6 +667,7 @@ def vrsify(  # noqa: PLR0913
             "host": {
                 "hostname": socket.gethostname(),
                 "cpu_count": os.cpu_count(),
+                "cpu_model": cpu_model(),
                 "batch": {k: v for k, v in os.environ.items() if k.startswith("BATCH_")},
             },
             **stats,

@@ -39,6 +39,15 @@ def test_a_missing_or_unreadable_cgroup_peak_is_none(tmp_path, content):
     assert measure.container_peak_mib(tmp_path) is None
 
 
+def test_cpu_model_is_read_from_cpuinfo(tmp_path):
+    cpuinfo = tmp_path / "cpuinfo"
+    cpuinfo.write_text("processor\t: 0\nvendor_id\t: GenuineIntel\nmodel name\t: Intel(R) Xeon(R) Platinum 8581C\n")
+    assert measure.cpu_model(cpuinfo) == "Intel(R) Xeon(R) Platinum 8581C"
+    assert measure.cpu_model(tmp_path / "absent") is None
+    cpuinfo.write_text("processor\t: 0\n")
+    assert measure.cpu_model(cpuinfo) is None
+
+
 def test_parent_peak_rss_is_positive():
     assert measure.parent_peak_rss_mib() > 0
 

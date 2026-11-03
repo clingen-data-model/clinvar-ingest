@@ -123,6 +123,18 @@ def parent_peak_rss_mib() -> int:
     return round((peak if sys.platform == "darwin" else peak * 1024) / 2**20)
 
 
+def cpu_model(cpuinfo: Path = Path("/proc/cpuinfo")) -> str | None:
+    """The processor's model name, so runs on different hardware can be told apart."""
+    try:
+        for line in cpuinfo.read_text().splitlines():
+            key, _, value = line.partition(":")
+            if key.strip() == "model name":
+                return value.strip()
+    except OSError:
+        pass
+    return None
+
+
 def container_peak_mib(cgroup: Path = CGROUP) -> int | None:
     """The container's peak memory, page cache included; None outside a cgroup v2 container."""
     try:
