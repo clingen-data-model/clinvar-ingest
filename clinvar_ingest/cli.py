@@ -105,8 +105,9 @@ def parse_args(argv):
         choices=["worker", "shared"],
         default="worker",
         help=(
-            "For a remote store, where workers cache the files they fetch. worker: a directory per worker. "
-            "shared: one directory for all workers, so each file is fetched about once (default: worker)"
+            "For a remote store, where its files are cached. worker: a directory per worker, into which each "
+            "worker fetches the files it reads. shared: one directory, into which every file the input reads is "
+            "prefetched before the workers start, which needs --refget-prefetch-threads (default: worker)"
         ),
     )
     vrsify_sp.add_argument(
@@ -114,8 +115,8 @@ def parse_args(argv):
         type=int,
         default=0,
         help=(
-            "For a remote store with --refget-cache shared: before translating, fetch every sequence the input "
-            "reads into the cache, this many at a time (default: 0, fetch each as a worker first reads it)"
+            "With --refget-cache shared: before translating, fetch every sequence the input reads into the "
+            "shared cache, this many at a time (default: 0, no prefetch)"
         ),
     )
     vrsify_sp.add_argument(

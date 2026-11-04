@@ -23,7 +23,7 @@ import time
 from collections import Counter
 from collections.abc import Iterator
 from concurrent.futures import FIRST_COMPLETED, Future, ProcessPoolExecutor, wait
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -36,6 +36,7 @@ from clinvar_ingest.vrsify.measure import (
     cpu_model,
     parent_peak_rss_mib,
 )
+from clinvar_ingest.vrsify.refget_cache import cache_sequence_files
 from clinvar_ingest.vrsify.store import is_remote_store, prepare_seqrepo, prepare_store
 from clinvar_ingest.vrsify.translate import (
     ASSEMBLY_NAMES,
@@ -92,16 +93,19 @@ class SequenceSource:
     Where translation workers read sequences.
 
     `kind` is "refget" or "seqrepo"; `location` is a local store directory or, for a
-    RefgetStore, a remote store's URL. Workers cache the files they fetch from a remote
-    store under `cache_root`: with `cache` "shared", all in one directory, where gtars
-    publishes each fetched file by rename and serializes opens, so each file is fetched
-    about once; with "worker", in a directory of each worker's own.
+    RefgetStore, a remote store's URL. A remote store's files are cached under
+    `cache_root`. With `cache` "worker", each worker opens the remote store over a cache
+    directory of its own and fetches each file it reads on first read. With "shared",
+    the parent fetches every file the workers will read into one cache directory before
+    they start (prefetch_sequences, which sets `prefetched`), and the workers open that
+    directory as a local store: gtars does not coordinate processes fetching into one
+    directory, so workers sharing it must not fetch.
 
     `reads` sets how a RefgetStore serves reads: "whole" loads each sequence a worker
     reads into that worker's memory (vrs-python's behavior); "ranges" leaves sequences
     on disk, where gtars reads just the bases each read covers, so workers share the
     operating system's file cache instead of each holding the sequences. A remote
-    store's first range read of a sequence caches its whole file.
+    store's range read of an uncached sequence is an HTTP range request.
     """
 
     kind: str
@@ -109,6 +113,20 @@ class SequenceSource:
     cache_root: str | None = None
     reads: str = "whole"
     cache: str = "worker"
+    prefetched: bool = False
+
+
+def _remote_cache_dir(source: SequenceSource) -> Path:
+    """
+    The directory gtars caches `source`'s remote store in, as vrs-python's data proxy
+    places it: under the cache root it reads from GA4GH_VRS_REFGET_CACHE_DIR, which this
+    sets to the shared directory or this process's own.
+    """
+    from ga4gh.vrs.dataproxy_refget import _resolve_remote_cache_dir
+
+    cache_dir = "shared" if source.cache == "shared" else f"worker-{os.getpid()}"
+    os.environ["GA4GH_VRS_REFGET_CACHE_DIR"] = str(Path(source.cache_root) / cache_dir)
+    return _resolve_remote_cache_dir(source.location)
 
 
 def _data_proxy(source: SequenceSource) -> Any:
@@ -123,13 +141,12 @@ def _data_proxy(source: SequenceSource) -> Any:
         # get_substring from the local .seq file
         RefgetSequenceDataProxy._ensure_sequence_loaded = lambda _self, _digest: None
     if is_remote_store(source.location):
-        cache_dir = "shared" if source.cache == "shared" else f"worker-{os.getpid()}"
-        os.environ["GA4GH_VRS_REFGET_CACHE_DIR"] = str(Path(source.cache_root) / cache_dir)
-        proxy = create_dataproxy(f"refget+{source.location}")
-        if source.reads == "ranges":
-            # Without this, each read of an uncached sequence is an HTTP range request
-            proxy._sequence_proxy.store.set_cache_whole_sequences(True)
-        return proxy
+        cache_dir = _remote_cache_dir(source)
+        if source.prefetched:
+            # Every file these workers read is in the cache; read it as a local store, so
+            # no worker fetches or writes anything there
+            return create_dataproxy(f"refget+file://{cache_dir}")
+        return create_dataproxy(f"refget+{source.location}")
     return create_dataproxy(f"refget+file://{source.location}")
 
 
@@ -332,8 +349,10 @@ def prefetch_sequences(input_paths: list[Path], source: SequenceSource, threads:
     """
     Fetch every sequence the records at `input_paths` will read from the remote store in
     `source` into the workers' shared cache, `threads` at a time, before any worker
-    starts, so no worker waits on a download. Returns what it fetched and how long each
-    step took.
+    starts, so no worker waits on a download or fetches into the shared directory.
+    Returns what it fetched and how long each step took. Raises if any sequence a record
+    resolves to could not be fetched: the workers read the cache as a local store, so a
+    missing file would fail every record that reads it.
     """
     started = time.perf_counter()
     identifiers: set[str] = set()
@@ -345,7 +364,9 @@ def prefetch_sequences(input_paths: list[Path], source: SequenceSource, threads:
                     identifiers.add(identifier)
     scanned = time.perf_counter()
 
-    # The workers' data proxy, so identifiers resolve exactly as translation resolves them
+    # Opens the remote store over the shared cache, caching its manifest, indexes and
+    # aliases, which the workers' local store reads; and resolves identifiers exactly as
+    # translation resolves them
     proxy = _data_proxy(source)
     digests, unresolved = set(), 0
     for identifier in identifiers:
@@ -359,10 +380,14 @@ def prefetch_sequences(input_paths: list[Path], source: SequenceSource, threads:
             unresolved += 1
     resolved = time.perf_counter()
 
-    report = proxy._sequence_proxy.store.cache_sequences(sorted(digests), threads)
+    report = cache_sequence_files(
+        proxy._sequence_proxy.store, source.location, _remote_cache_dir(source), sorted(digests), threads
+    )
     fetched = time.perf_counter()
-    report["failed_count"] = len(report["failed"])
-    report["failed"] = report["failed"][:20]
+    if report["failed_count"]:
+        raise RuntimeError(
+            f"Could not prefetch {report['failed_count']} of {report['distinct']} sequences: {report['failed']}"
+        )
     _logger.info(
         f"Prefetched {report['cached']} sequence files ({report['cached_bytes']} bytes) for "
         f"{len(identifiers)} identifiers in {fetched - started:.0f} s; {report['already_cached']} were cached, "
@@ -560,6 +585,8 @@ def _check_sequence_options(
         raise ValueError(f"refget_cache must be one of {REFGET_CACHES}: {refget_cache}")
     if refget_prefetch_threads and (seqrepo or refget_cache != "shared"):
         raise ValueError("prefetching needs a remote RefgetStore with the shared cache")
+    if refget_cache == "shared" and not refget_prefetch_threads:
+        raise ValueError("the shared cache needs prefetching: workers sharing a cache must not fetch into it")
     if seqrepo and refget_reads != "whole":
         raise ValueError("refget_reads applies to a RefgetStore, not a SeqRepo")
 
@@ -629,6 +656,7 @@ def vrsify(  # noqa: PLR0913
                 raise ValueError("prefetching needs a remote RefgetStore with the shared cache")
             with phases.phase("prefetch"):
                 prefetch = prefetch_sequences(input_paths, source, refget_prefetch_threads)
+            source = replace(source, prefetched=True)
 
         output_path = work / OUTPUT_NAME
         with phases.phase("translate"):
