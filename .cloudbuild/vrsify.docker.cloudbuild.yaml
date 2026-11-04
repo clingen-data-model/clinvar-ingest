@@ -9,8 +9,8 @@ steps:
   - --cache=true
   - --cache-ttl=168h
 
-# Compiling gtars (Rust) and psycopg2 from source dominates a build whose dependency layer
-# is not cached; cargo compiles crates in parallel, so a build gains from more cores
+# Compiling psycopg2 from source and installing the dependencies dominate a build whose
+# dependency layer is not cached
 options:
   machineType: E2_HIGHCPU_8
 timeout: 3600s
