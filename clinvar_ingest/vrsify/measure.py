@@ -116,11 +116,18 @@ class Phases:
             }
 
 
+def peak_rss_bytes(usage: resource.struct_rusage) -> int:
+    """
+    The peak resident memory recorded in `usage`, a resource.getrusage() result, in bytes.
+    Its ru_maxrss field is in bytes on macOS but KiB on Linux, so it is converted here once
+    for every caller.
+    """
+    return usage.ru_maxrss if sys.platform == "darwin" else usage.ru_maxrss * 1024
+
+
 def parent_peak_rss_mib() -> int:
     """This process's peak resident memory; the workers are separate processes."""
-    peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-    # ru_maxrss is in bytes on macOS and KiB on Linux
-    return round((peak if sys.platform == "darwin" else peak * 1024) / 2**20)
+    return round(peak_rss_bytes(resource.getrusage(resource.RUSAGE_SELF)) / 2**20)
 
 
 def cpu_model(cpuinfo: Path = Path("/proc/cpuinfo")) -> str | None:

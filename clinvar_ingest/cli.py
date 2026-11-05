@@ -1,6 +1,8 @@
 import argparse
 import json
 
+from clinvar_ingest.vrsify import defaults as vrsify_defaults
+
 
 def parse_args(argv):
     parser = argparse.ArgumentParser()
@@ -93,19 +95,22 @@ def parse_args(argv):
     )
     vrsify_sp.add_argument(
         "--refget-reads",
-        choices=["whole", "ranges"],
-        default="whole",
+        choices=vrsify_defaults.REFGET_READS,
+        default=vrsify_defaults.REFGET_READS_DEFAULT,
         help=(
             "whole: each worker loads every sequence it reads into memory. ranges: sequences stay on local disk "
             "and each read takes just the bases it covers, which the workers' shared file cache serves "
-            "(default: whole)"
+            "(default: %(default)s)"
         ),
     )
     vrsify_sp.add_argument(
         "--refget-prefetch-threads",
         type=int,
-        default=64,
-        help="For a remote store: how many sequence files to fetch at a time before translating (default: 64)",
+        default=vrsify_defaults.PREFETCH_THREADS,
+        help=(
+            "For a remote store: how many sequence files to fetch at a time before translating "
+            "(default: %(default)s)"
+        ),
     )
     vrsify_sp.add_argument(
         "--seqrepo",
@@ -114,9 +119,17 @@ def parse_args(argv):
         help="Read sequences from this SeqRepo instance directory or .tar.gz archive URL instead of a RefgetStore",
     )
     vrsify_sp.add_argument("--workers", type=int, default=None, help="Worker processes (default: CPU count)")
-    vrsify_sp.add_argument("--batch-size", type=int, default=50, help="Records per worker task (default: 50)")
     vrsify_sp.add_argument(
-        "--record-timeout", type=int, default=300, help="Seconds before a record becomes an error (default: 300)"
+        "--batch-size",
+        type=int,
+        default=vrsify_defaults.BATCH_SIZE,
+        help="Records per worker task (default: %(default)s)",
+    )
+    vrsify_sp.add_argument(
+        "--record-timeout",
+        type=int,
+        default=vrsify_defaults.RECORD_TIMEOUT_SECONDS,
+        help="Seconds before a record becomes an error (default: %(default)s)",
     )
     vrsify_sp.add_argument("--overwrite", action="store_true", help="Replace existing output objects")
     vrsify_sp.add_argument("--work-dir", type=str, default=None, help="Local working directory (default: a temp dir)")

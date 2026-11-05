@@ -17,7 +17,6 @@ import os
 import resource
 import signal
 import socket
-import sys
 import tempfile
 import time
 from collections import Counter
@@ -29,12 +28,20 @@ from typing import Any
 
 from clinvar_ingest.cloud.gcs import _get_gcs_client, parse_blob_uri
 from clinvar_ingest.config import env_or_dotenv_or
+from clinvar_ingest.vrsify.defaults import (
+    BATCH_SIZE,
+    PREFETCH_THREADS,
+    RECORD_TIMEOUT_SECONDS,
+    REFGET_READS,
+    REFGET_READS_DEFAULT,
+)
 from clinvar_ingest.vrsify.measure import (
     MemorySampler,
     Phases,
     container_peak_mib,
     cpu_model,
     parent_peak_rss_mib,
+    peak_rss_bytes,
 )
 from clinvar_ingest.vrsify.refget_cache import TEMP_PREFIX, cache_sequence_files
 from clinvar_ingest.vrsify.store import is_remote_store, prepare_seqrepo, prepare_store
@@ -86,10 +93,6 @@ def provenance_uri(output_uri: str) -> str:
 
 def _on_alarm(_signum, _frame):
     raise TimeoutError(f"record took longer than {_WORKER['record_timeout']} s")
-
-
-REFGET_READS = ("whole", "ranges")
-PREFETCH_THREADS = 64
 
 
 @dataclass(frozen=True)
@@ -185,8 +188,7 @@ def _usage() -> dict:
         # Reads the page cache did not serve
         "major_page_faults": usage.ru_majflt,
         "block_reads": usage.ru_inblock,
-        # ru_maxrss is in bytes on macOS and KiB on Linux
-        "peak_rss_bytes": usage.ru_maxrss if sys.platform == "darwin" else usage.ru_maxrss * 1024,
+        "peak_rss_bytes": peak_rss_bytes(usage),
     }
 
 
@@ -566,14 +568,14 @@ def vrsify(  # noqa: PLR0913
     output_uri: str,
     refget_store: str,
     workers: int,
-    batch_size: int = 50,
-    record_timeout: int = 300,
+    batch_size: int = BATCH_SIZE,
+    record_timeout: int = RECORD_TIMEOUT_SECONDS,
     overwrite: bool = False,
     work_dir: str | None = None,
     slack: bool = False,
     release_date: str | None = None,
     seqrepo: str | None = None,
-    refget_reads: str = "whole",
+    refget_reads: str = REFGET_READS_DEFAULT,
     refget_prefetch_threads: int = PREFETCH_THREADS,
 ) -> dict:
     """
