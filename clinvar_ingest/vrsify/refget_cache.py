@@ -30,8 +30,8 @@ READ_TIMEOUT_SECONDS = 60
 DOWNLOAD_ATTEMPTS = 4
 # Pause before the second attempt, doubling after
 RETRY_PAUSE_SECONDS = 0.5
-# Named as gtars names its own temporary files, so a run's count of unfinished fetches
-# (runner.translate_files) includes these
+# Named as gtars names its own temporary files, so one count of unfinished downloads
+# (runner.vrsify's provenance) covers both
 TEMP_PREFIX = ".rgstore.tmp."
 FAILED_KEPT = 20
 

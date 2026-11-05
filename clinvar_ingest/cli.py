@@ -86,7 +86,8 @@ def parse_args(argv):
         type=str,
         default=None,
         help=(
-            "RefgetStore directory, .tar.gz archive URL, or remote store URL whose sequences are fetched as read "
+            "RefgetStore directory, .tar.gz archive URL, or remote store URL, from which the sequences the input "
+            "reads are fetched into a local cache before translating "
             "(default: CLINVAR_INGEST_REFGET_STORE, else the published genomic store archive)"
         ),
     )
@@ -101,23 +102,10 @@ def parse_args(argv):
         ),
     )
     vrsify_sp.add_argument(
-        "--refget-cache",
-        choices=["worker", "shared"],
-        default="worker",
-        help=(
-            "For a remote store, where its files are cached. worker: a directory per worker, into which each "
-            "worker fetches the files it reads. shared: one directory, into which every file the input reads is "
-            "prefetched before the workers start, which needs --refget-prefetch-threads (default: worker)"
-        ),
-    )
-    vrsify_sp.add_argument(
         "--refget-prefetch-threads",
         type=int,
-        default=0,
-        help=(
-            "With --refget-cache shared: before translating, fetch every sequence the input reads into the "
-            "shared cache, this many at a time (default: 0, no prefetch)"
-        ),
+        default=64,
+        help="For a remote store: how many sequence files to fetch at a time before translating (default: 64)",
     )
     vrsify_sp.add_argument(
         "--seqrepo",

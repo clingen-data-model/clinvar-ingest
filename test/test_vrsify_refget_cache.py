@@ -7,7 +7,6 @@ import gzip
 import json
 import multiprocessing
 import random
-from dataclasses import replace
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -215,22 +214,25 @@ def translate_all(source):
     ]
 
 
+def write_input(path):
+    with gzip.open(path, "wt") as fh:
+        fh.writelines(json.dumps(r) + "\n" for r in RECORDS)
+    return path
+
+
 @pytest.mark.parametrize("reads", ["whole", "ranges"])
 def test_workers_translate_from_the_prefetched_cache_as_from_the_store(
     store_dir, server, tmp_path, restore_patches, reads
 ):
     url, _, gets = server
-    input_path = tmp_path / "vi.jsonl.gz"
-    with gzip.open(input_path, "wt") as fh:
-        fh.writelines(json.dumps(r) + "\n" for r in RECORDS)
-    remote = runner.SequenceSource("refget", url, str(tmp_path / "cache"), reads, "shared")
+    input_path = write_input(tmp_path / "vi.jsonl.gz")
 
-    report = runner.prefetch_sequences([input_path], remote, threads=4)
+    report, cache_dir = runner.prefetch_sequences([input_path], url, tmp_path / "cache", threads=4)
     assert (report["identifiers"], report["cached"], report["failed_count"]) == (2, 2, 0)
-    assert len(list((tmp_path / "cache").rglob("*.seq"))) == 2  # of the store's 3
+    assert len(list(cache_dir.rglob("*.seq"))) == 2  # of the store's 3
     fetched = sum(gets.values())
-    prefetched = translate_all(replace(remote, prefetched=True))
-    local = translate_all(runner.SequenceSource("refget", str(store_dir), reads=reads))
+    prefetched = translate_all(runner.SequenceSource("refget", str(cache_dir), reads))
+    local = translate_all(runner.SequenceSource("refget", str(store_dir), reads))
 
     assert all("id" in out for out in prefetched), prefetched
     assert prefetched == local
@@ -241,16 +243,36 @@ def test_workers_translate_from_the_prefetched_cache_as_from_the_store(
 def test_prefetch_raises_when_a_sequence_cannot_be_fetched(digests, server, tmp_path, restore_patches):
     url, faults, _ = server
     faults[f"/{seq_path(digests['NC_000002.12'])}"] = ["503"] * refget_cache.DOWNLOAD_ATTEMPTS
-    input_path = tmp_path / "vi.jsonl.gz"
-    with gzip.open(input_path, "wt") as fh:
-        fh.writelines(json.dumps(r) + "\n" for r in RECORDS)
-    remote = runner.SequenceSource("refget", url, str(tmp_path / "cache"), "whole", "shared")
+    input_path = write_input(tmp_path / "vi.jsonl.gz")
     with pytest.raises(RuntimeError, match="Could not prefetch 1 of 2"):
-        runner.prefetch_sequences([input_path], remote, threads=4)
+        runner.prefetch_sequences([input_path], url, tmp_path / "cache", threads=4)
 
 
-def test_a_shared_cache_needs_prefetching():
-    with pytest.raises(ValueError, match="needs prefetching"):
-        runner._check_sequence_options(None, "whole", "shared", 0)
-    runner._check_sequence_options(None, "whole", "shared", 8)
-    runner._check_sequence_options(None, "whole", "worker", 0)
+def test_workers_do_not_open_a_remote_store(server):
+    url, _, _ = server
+    with pytest.raises(ValueError, match="prefetch the remote store first"):
+        runner._data_proxy(runner.SequenceSource("refget", url))
+
+
+def test_prefetch_threads_must_be_positive():
+    with pytest.raises(ValueError, match="at least 1"):
+        runner._check_sequence_options(None, "whole", 0)
+    runner._check_sequence_options(None, "ranges", 1)
+
+
+@pytest.mark.parametrize("reads", ["whole", "ranges"])
+def test_vrsify_prefetches_a_remote_store(store_dir, server, tmp_path, restore_patches, reads):
+    url, _, _ = server
+    input_path = write_input(tmp_path / "vi.jsonl.gz")
+    output = tmp_path / "out.jsonl.gz"
+
+    runner.vrsify(str(input_path), str(output), url, workers=1, work_dir=str(tmp_path / "work"), refget_reads=reads)
+
+    provenance = json.loads(Path(runner.provenance_uri(str(output))).read_text())
+    assert provenance["refget_store"]["remote"] is True
+    assert (provenance["refget_prefetch"]["cached"], provenance["refget_prefetch"]["failed_count"]) == (2, 0)
+    assert provenance["refget_cache"]["unfinished_fetches"] == 0
+    with gzip.open(output, "rt") as fh:
+        outputs = {row["in"]["source"]: row["out"] for row in map(json.loads, fh)}
+    expected = translate_all(runner.SequenceSource("refget", str(store_dir), reads))
+    assert [outputs[r["source"]] for r in RECORDS] == expected

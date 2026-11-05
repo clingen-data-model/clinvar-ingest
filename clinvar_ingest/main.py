@@ -80,7 +80,6 @@ def run_vrsify(args: Namespace):
         release_date=args.release_date,
         seqrepo=args.seqrepo,
         refget_reads=args.refget_reads,
-        refget_cache=args.refget_cache,
         refget_prefetch_threads=args.refget_prefetch_threads,
     )
 

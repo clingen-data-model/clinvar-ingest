@@ -155,8 +155,8 @@ def is_remote_store(store: str) -> bool:
 
 def prepare_store(store: str, work_dir: Path) -> tuple[str, dict]:
     """
-    Return where translation workers open `store` (a local directory, or the remote store's
-    URL) and a provenance record describing it.
+    Return where `store` is read (a local directory, or a remote store's URL, which vrsify
+    prefetches from into a local cache) and a provenance record describing it.
     """
     local = Path(store)
     if is_remote_store(store):

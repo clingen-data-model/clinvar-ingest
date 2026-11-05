@@ -23,7 +23,7 @@ import time
 from collections import Counter
 from collections.abc import Iterator
 from concurrent.futures import FIRST_COMPLETED, Future, ProcessPoolExecutor, wait
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -36,7 +36,7 @@ from clinvar_ingest.vrsify.measure import (
     cpu_model,
     parent_peak_rss_mib,
 )
-from clinvar_ingest.vrsify.refget_cache import cache_sequence_files
+from clinvar_ingest.vrsify.refget_cache import TEMP_PREFIX, cache_sequence_files
 from clinvar_ingest.vrsify.store import is_remote_store, prepare_seqrepo, prepare_store
 from clinvar_ingest.vrsify.translate import (
     ASSEMBLY_NAMES,
@@ -84,7 +84,7 @@ def _on_alarm(_signum, _frame):
 
 
 REFGET_READS = ("whole", "ranges")
-REFGET_CACHES = ("worker", "shared")
+PREFETCH_THREADS = 64
 
 
 @dataclass(frozen=True)
@@ -92,46 +92,40 @@ class SequenceSource:
     """
     Where translation workers read sequences.
 
-    `kind` is "refget" or "seqrepo"; `location` is a local store directory or, for a
-    RefgetStore, a remote store's URL. A remote store's files are cached under
-    `cache_root`. With `cache` "worker", each worker opens the remote store over a cache
-    directory of its own and fetches each file it reads on first read. With "shared",
-    the parent fetches every file the workers will read into one cache directory before
-    they start (prefetch_sequences, which sets `prefetched`), and the workers open that
-    directory as a local store: gtars does not coordinate processes fetching into one
-    directory, so workers sharing it must not fetch.
+    `kind` is "refget" or "seqrepo"; `location` is the local directory of the store.
+    Workers read only local stores: a remote RefgetStore is first fetched from, every
+    sequence file the input reads, into a local cache of it (prefetch_sequences), which
+    the workers then open as a local store.
 
     `reads` sets how a RefgetStore serves reads: "whole" loads each sequence a worker
     reads into that worker's memory (vrs-python's behavior); "ranges" leaves sequences
     on disk, where gtars reads just the bases each read covers, so workers share the
-    operating system's file cache instead of each holding the sequences. A remote
-    store's range read of an uncached sequence is an HTTP range request.
+    operating system's file cache instead of each holding the sequences.
     """
 
     kind: str
     location: str
-    cache_root: str | None = None
     reads: str = "whole"
-    cache: str = "worker"
-    prefetched: bool = False
 
 
-def _remote_cache_dir(source: SequenceSource) -> Path:
+def _remote_data_proxy(store_url: str, cache_root: Path) -> tuple[Any, Path]:
     """
-    The directory gtars caches `source`'s remote store in, as vrs-python's data proxy
-    places it: under the cache root it reads from GA4GH_VRS_REFGET_CACHE_DIR, which this
-    sets to the shared directory or this process's own.
+    A data proxy over the remote RefgetStore at `store_url`, which caches the store's
+    manifest, indexes and aliases under `cache_root`; and the directory within
+    `cache_root` it caches them in, where vrs-python places the cache of that store.
     """
+    from ga4gh.vrs.dataproxy import create_dataproxy
     from ga4gh.vrs.dataproxy_refget import _resolve_remote_cache_dir
 
-    cache_dir = "shared" if source.cache == "shared" else f"worker-{os.getpid()}"
-    os.environ["GA4GH_VRS_REFGET_CACHE_DIR"] = str(Path(source.cache_root) / cache_dir)
-    return _resolve_remote_cache_dir(source.location)
+    os.environ["GA4GH_VRS_REFGET_CACHE_DIR"] = str(cache_root)
+    return create_dataproxy(f"refget+{store_url}"), _resolve_remote_cache_dir(store_url)
 
 
 def _data_proxy(source: SequenceSource) -> Any:
     from ga4gh.vrs.dataproxy import create_dataproxy
 
+    if is_remote_store(source.location):
+        raise ValueError(f"workers read a local store; prefetch the remote store first: {source.location}")
     if source.kind == "seqrepo":
         return create_dataproxy(f"seqrepo+file://{source.location}")
     if source.reads == "ranges":
@@ -140,13 +134,6 @@ def _data_proxy(source: SequenceSource) -> Any:
         # vrs-python loads each sequence before its first read; skipped, gtars serves
         # get_substring from the local .seq file
         RefgetSequenceDataProxy._ensure_sequence_loaded = lambda _self, _digest: None
-    if is_remote_store(source.location):
-        cache_dir = _remote_cache_dir(source)
-        if source.prefetched:
-            # Every file these workers read is in the cache; read it as a local store, so
-            # no worker fetches or writes anything there
-            return create_dataproxy(f"refget+file://{cache_dir}")
-        return create_dataproxy(f"refget+{source.location}")
     return create_dataproxy(f"refget+file://{source.location}")
 
 
@@ -163,7 +150,7 @@ def _init_worker(source: SequenceSource, record_timeout: int) -> None:
 
     proxy_started = time.perf_counter()
     data_proxy = _data_proxy(source)
-    # A remote store's open waits for any other worker opening the same cache
+    # Opening the store reads its sequence index and aliases
     _WORKER["proxy_seconds"] = time.perf_counter() - proxy_started
     _WORKER["allele_translators"] = {
         version: AlleleTranslator(data_proxy=data_proxy, default_assembly_name=name)
@@ -345,14 +332,13 @@ def _sequence_identifier(record: dict) -> str | None:
     return source.split(":", 1)[0]
 
 
-def prefetch_sequences(input_paths: list[Path], source: SequenceSource, threads: int) -> dict:
+def prefetch_sequences(input_paths: list[Path], store_url: str, cache_root: Path, threads: int) -> tuple[dict, Path]:
     """
-    Fetch every sequence the records at `input_paths` will read from the remote store in
-    `source` into the workers' shared cache, `threads` at a time, before any worker
-    starts, so no worker waits on a download or fetches into the shared directory.
-    Returns what it fetched and how long each step took. Raises if any sequence a record
-    resolves to could not be fetched: the workers read the cache as a local store, so a
-    missing file would fail every record that reads it.
+    Fetch every sequence the records at `input_paths` will read from the remote RefgetStore
+    at `store_url` into a local cache of the store under `cache_root`, `threads` at a time,
+    before any worker starts. Returns what it fetched and how long each step took, and the
+    cache's directory, which the workers open as a local store. Raises if any sequence a
+    record resolves to could not be fetched, which would fail every record that reads it.
     """
     started = time.perf_counter()
     identifiers: set[str] = set()
@@ -364,10 +350,9 @@ def prefetch_sequences(input_paths: list[Path], source: SequenceSource, threads:
                     identifiers.add(identifier)
     scanned = time.perf_counter()
 
-    # Opens the remote store over the shared cache, caching its manifest, indexes and
-    # aliases, which the workers' local store reads; and resolves identifiers exactly as
-    # translation resolves them
-    proxy = _data_proxy(source)
+    # Caches the store's manifest, indexes and aliases, which the workers' local store
+    # reads; and resolves identifiers exactly as translation resolves them
+    proxy, cache_dir = _remote_data_proxy(store_url, cache_root)
     digests, unresolved = set(), 0
     for identifier in identifiers:
         try:
@@ -380,9 +365,7 @@ def prefetch_sequences(input_paths: list[Path], source: SequenceSource, threads:
             unresolved += 1
     resolved = time.perf_counter()
 
-    report = cache_sequence_files(
-        proxy._sequence_proxy.store, source.location, _remote_cache_dir(source), sorted(digests), threads
-    )
+    report = cache_sequence_files(proxy._sequence_proxy.store, store_url, cache_dir, sorted(digests), threads)
     fetched = time.perf_counter()
     if report["failed_count"]:
         raise RuntimeError(
@@ -401,7 +384,7 @@ def prefetch_sequences(input_paths: list[Path], source: SequenceSource, threads:
         "scan_seconds": round(scanned - started, 1),
         "resolve_seconds": round(resolved - scanned, 1),
         "fetch_seconds": round(fetched - resolved, 1),
-    }
+    }, cache_dir
 
 
 def translate_files(
@@ -466,18 +449,6 @@ def translate_files(
         # The parent reads input and compresses output; a saturated parent starves the workers
         "parent_cpu_utilization": round((_usage()["cpu_seconds"] - parent_cpu_start) / seconds, 3),
     }
-    if source.cache_root is not None and Path(source.cache_root).is_dir():
-        # What the workers fetched from the remote store and kept: one directory per
-        # worker, or one shared directory
-        cached = sorted((_directory_bytes(d) for d in Path(source.cache_root).iterdir() if d.is_dir()), reverse=True)
-        # Temp files of fetches that never completed; gtars ignores them
-        unfinished = sum(1 for _ in Path(source.cache_root).rglob(".rgstore.tmp.*"))
-        stats["refget_cache"] = {
-            "cache": source.cache,
-            "directory_bytes": cached,
-            "total_bytes": sum(cached),
-            "unfinished_fetches": unfinished,
-        }
     busy = [w["cpu_utilization_busy"] for w in workers_summary if w["cpu_utilization_busy"] is not None]
     if busy:
         _logger.info(
@@ -576,17 +547,11 @@ def _library_versions() -> dict:
     return versions
 
 
-def _check_sequence_options(
-    seqrepo: str | None, refget_reads: str, refget_cache: str, refget_prefetch_threads: int
-) -> None:
+def _check_sequence_options(seqrepo: str | None, refget_reads: str, refget_prefetch_threads: int) -> None:
     if refget_reads not in REFGET_READS:
         raise ValueError(f"refget_reads must be one of {REFGET_READS}: {refget_reads}")
-    if refget_cache not in REFGET_CACHES:
-        raise ValueError(f"refget_cache must be one of {REFGET_CACHES}: {refget_cache}")
-    if refget_prefetch_threads and (seqrepo or refget_cache != "shared"):
-        raise ValueError("prefetching needs a remote RefgetStore with the shared cache")
-    if refget_cache == "shared" and not refget_prefetch_threads:
-        raise ValueError("the shared cache needs prefetching: workers sharing a cache must not fetch into it")
+    if refget_prefetch_threads < 1:
+        raise ValueError(f"refget_prefetch_threads must be at least 1: {refget_prefetch_threads}")
     if seqrepo and refget_reads != "whole":
         raise ValueError("refget_reads applies to a RefgetStore, not a SeqRepo")
 
@@ -604,20 +569,18 @@ def vrsify(  # noqa: PLR0913
     release_date: str | None = None,
     seqrepo: str | None = None,
     refget_reads: str = "whole",
-    refget_cache: str = "worker",
-    refget_prefetch_threads: int = 0,
+    refget_prefetch_threads: int = PREFETCH_THREADS,
 ) -> dict:
     """
     Translate the records at `input_uri` and write the results and a provenance record.
 
     Sequences come from `refget_store`, or from the SeqRepo `seqrepo` (a directory or a
-    .tar.gz archive) when it is given. `refget_reads` and `refget_cache` are
-    SequenceSource.reads and .cache. With `refget_prefetch_threads`, the sequences the
-    records read from a remote store are fetched into the shared cache, that many at a
-    time, before translation starts. Messages name the release by `release_date`, or by
-    the output when it is not given.
+    .tar.gz archive) when it is given. `refget_reads` is SequenceSource.reads. From a
+    remote `refget_store`, the sequence files the records read are fetched into a local
+    cache, `refget_prefetch_threads` at a time, before translation starts. Messages name
+    the release by `release_date`, or by the output when it is not given.
     """
-    _check_sequence_options(seqrepo, refget_reads, refget_cache, refget_prefetch_threads)
+    _check_sequence_options(seqrepo, refget_reads, refget_prefetch_threads)
     prov_uri = provenance_uri(output_uri)
     started_at = datetime.datetime.now(datetime.UTC)
     subject = f"for release dated {release_date}" if release_date else output_uri
@@ -644,19 +607,24 @@ def vrsify(  # noqa: PLR0913
                 store_provenance["fd_cache_maxsize"] = os.environ["SEQREPO_FD_CACHE_MAXSIZE"]
             else:
                 location, store_provenance = prepare_store(refget_store, work)
-                cache_root = str(work / "refget-cache") if is_remote_store(location) else None
-                source = SequenceSource("refget", location, cache_root, refget_reads, refget_cache)
+                source = SequenceSource("refget", location, refget_reads)
         store_provenance["setup_seconds"] = round(time.perf_counter() - setup_started, 1)
         with phases.phase("input"):
             input_paths, input_records = _fetch_inputs(input_uri, work)
         expected = _count_lines(input_paths)
-        prefetch = None
-        if refget_prefetch_threads:
-            if not is_remote_store(source.location):
-                raise ValueError("prefetching needs a remote RefgetStore with the shared cache")
+        prefetch = refget_cache = None
+        if is_remote_store(source.location):
             with phases.phase("prefetch"):
-                prefetch = prefetch_sequences(input_paths, source, refget_prefetch_threads)
-            source = replace(source, prefetched=True)
+                prefetch, cache_dir = prefetch_sequences(
+                    input_paths, source.location, work / "refget-cache", refget_prefetch_threads
+                )
+            source = SequenceSource("refget", str(cache_dir), refget_reads)
+            refget_cache = {
+                "directory": str(cache_dir),
+                "total_bytes": _directory_bytes(cache_dir),
+                # Temporary files of downloads that never completed
+                "unfinished_fetches": sum(1 for _ in cache_dir.rglob(f"{TEMP_PREFIX}*")),
+            }
 
         output_path = work / OUTPUT_NAME
         with phases.phase("translate"):
@@ -689,6 +657,7 @@ def vrsify(  # noqa: PLR0913
             "seqrepo" if seqrepo else "refget_store": store_provenance,
             "sequence_reads": None if seqrepo else refget_reads,
             "refget_prefetch": prefetch,
+            "refget_cache": refget_cache,
             "libraries": _library_versions(),
             "workers": workers,
             "record_timeout_seconds": record_timeout,
