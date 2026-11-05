@@ -50,13 +50,21 @@ $ clinvar-ingest create-tables \
 
 `vrsify` reads a `variation_identity` export (`gs://clinvar-gkm/YYYY-MM-DD/dev/vi.jsonl.gz`) and writes one line per input record, `{"in": <record>, "out": <VRS object>}`, translating genomic expressions (SPDI, gnomAD, and HGVS `g.`/`m.`) with [vrs-python](https://github.com/ga4gh/vrs-python) against a [RefgetStore](https://static.ferriter.dev/refgetstore/) of genomic sequences. Records that are not translated get `{"errors": ...}` saying why, as failed translations do: transcript and protein expressions, and Allele or copy number records with no source expression. Records of classes vrsify does not translate (`Unknown`, `Not Available`, `Haplotype`) get a null `out`. Translation uses only the RefgetStore: UTA and NCBI sequence fetching are disabled in the translation workers, so a record whose translation would need either, or a sequence missing from the store, gets an `errors` row. A `.provenance.json` file is written beside the output.
 
-It needs the `vrsify` optional dependencies, which build [gtars](https://github.com/databio/gtars) from source and so need a Rust toolchain: `pip install '.[vrsify]'`.
+It needs the `vrsify` optional dependencies: `pip install '.[vrsify]'`. They install [gtars](https://github.com/databio/gtars) 0.11.2 from PyPI and vrs-python from a pinned commit; hgvs's psycopg2 dependency builds against libpq.
 
 ```
 clinvar-ingest vrsify --release-date 2026-10-24
 ```
 
-writes `gs://clinvar-gkm/2026-10-24/dev/vi-vrs-python.jsonl.gz`. By default the RefgetStore is the published genomic store archive, downloaded and checked against its SHA-256; `--refget-store` takes a local store directory instead. Existing outputs are not replaced without `--overwrite`.
+writes `gs://clinvar-gkm/2026-10-24/dev/vi-vrs-python.jsonl.gz`. Existing outputs are not replaced without `--overwrite`.
+
+Sequences come from `--refget-store`, or `CLINVAR_INGEST_REFGET_STORE` when it is not given, else the published genomic store archive. It takes:
+
+- a `.tar.gz` store archive URL (`https://` or `gs://`), downloaded and extracted at startup, and checked against its SHA-256;
+- a local store directory;
+- a remote store's URL (its directory, holding `rgstore.json`). Before translating, vrsify finds every sequence the input reads, fetches just those sequence files into a local cache of the store (`--refget-prefetch-threads` at a time, default 64), and the workers read that cache as a local store. A run fails if any of those sequences cannot be fetched.
+
+`--refget-reads whole` (the default) loads each sequence a worker reads into that worker's memory; `--refget-reads ranges` leaves sequences on disk and reads just the bases each lookup covers, which uses much less memory with several workers at about the same speed. `--seqrepo` reads a [SeqRepo](https://github.com/biocommons/biocommons.seqrepo) instance (a directory or `.tar.gz` archive) instead of a RefgetStore.
 
 `clinvar-ingest vrsify-submit 2026-10-24 --image gcr.io/clingen-dev/clinvar-ingest:vrsify-<release tag>` runs it on Cloud Batch, outside the pipeline and without touching `processing_history` (`--dry-run` prints the job definition). Jobs run on a c4-standard-8 VM with a `hyperdisk-balanced` boot disk, where a full release translates in about 3 minutes.
 

@@ -26,6 +26,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 
+from google.api_core.exceptions import ServerError, TooManyRequests
 from google.cloud import bigquery
 
 from clinvar_ingest.cloud.gcs import parse_blob_uri
@@ -46,6 +47,8 @@ class DispatchSettings:
     export_wait_seconds: int = 3600
     export_poll_seconds: int = 60
     job_poll_seconds: int = 30
+    # Tries at reading a Batch job's state that fails transiently, a poll interval apart
+    job_state_attempts: int = 3
     slack: bool = False
     dry_run: bool = False
 
@@ -165,10 +168,22 @@ class Dispatcher:
 
     def _wait_for_job(self, job: str) -> str | None:
         """Wait until Batch job `job` is no longer queued or running; its final state, or None if it is gone."""
-        while (state := self.cloud.job_state(job)) in batch.ACTIVE_STATES:
+        while (state := self._job_state(job)) in batch.ACTIVE_STATES:
             _logger.info(f"Batch job {job} is {state}")
             self.cloud.sleep(self.settings.job_poll_seconds)
         return state
+
+    def _job_state(self, job: str) -> str | None:
+        """Batch job `job`'s state, asked again after a poll interval if Batch fails transiently."""
+        for attempt in range(1, self.settings.job_state_attempts + 1):
+            try:
+                return self.cloud.job_state(job)
+            except (ServerError, TooManyRequests, ConnectionError) as e:
+                if attempt == self.settings.job_state_attempts:
+                    raise
+                _logger.warning(f"Could not read the state of Batch job {job} (attempt {attempt}): {e}")
+                self.cloud.sleep(self.settings.job_poll_seconds)
+        raise AssertionError("unreachable")
 
     def _check_provenance(self, job: str, input_uri: str, output_uri: str) -> dict:
         prov_uri = provenance_uri(output_uri)

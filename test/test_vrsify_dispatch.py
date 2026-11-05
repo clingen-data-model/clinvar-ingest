@@ -2,6 +2,7 @@ import datetime
 import json
 
 import pytest
+from google.api_core.exceptions import ServiceUnavailable
 
 from clinvar_ingest.config import VrsifyEnv
 from clinvar_ingest.utils import ClinVarIngestFileFormat
@@ -75,6 +76,8 @@ class FakeCloud(dispatch.Cloud):
 
     def _job_state(self, job):
         state = self.job_states.pop(0) if len(self.job_states) > 1 else self.job_states[0]
+        if isinstance(state, Exception):
+            raise state
         if state == "SUCCEEDED" and PROVENANCE not in self.provenance:
             self.write_output(job)
         return state
@@ -163,6 +166,21 @@ def test_takes_a_release_from_claim_to_finished(dispatcher, fake_history, cloud,
     ]
     # The job was polled while it was queued and running
     assert cloud.sleeps == [30, 30]
+
+
+def test_a_transient_batch_error_is_asked_again(dispatcher, fake_history, cloud):
+    cloud.job_states = ["QUEUED", ServiceUnavailable("unavailable"), "RUNNING", "SUCCEEDED"]
+    dispatcher.run()
+    assert len(fake_history.finished) == 1
+    assert cloud.sleeps == [30, 30, 30]
+
+
+def test_a_batch_error_that_persists_is_reported(dispatcher, fake_history, cloud, messages):
+    cloud.job_states = ["RUNNING", *[ServiceUnavailable("unavailable")] * 3, "SUCCEEDED"]
+    with pytest.raises(ServiceUnavailable):
+        dispatcher.run()
+    assert fake_history.finished == []
+    assert "ServiceUnavailable" in messages[-1]
 
 
 def test_a_finished_release_is_not_claimed_again(dispatcher, cloud):
@@ -398,6 +416,13 @@ def test_ready_releases_reads_only_the_table():
         assert statement not in sql.upper()
 
 
+def test_ready_releases_requires_the_latest_sp_row_to_be_finished():
+    sql = history.ready_releases_sql(TABLE)
+    # The latest row is chosen among all sp rows, finished or not, and then must be finished
+    assert "ORDER BY sp.processing_started DESC" in sql
+    assert sql.index("QUALIFY") < sql.index("sp_processing_finished IS NOT NULL")
+
+
 def test_claim_never_replaces_an_existing_row(monkeypatch):
     seen = {}
     monkeypatch.setattr(history.processing_history, "write_started", lambda **kw: seen.update(kw))
@@ -420,3 +445,35 @@ def test_finish_uses_the_rows_own_key(monkeypatch):
     assert seen["release_tag"] == "v2_6_0"
     assert seen["bucket_dir"] == "clinvar_vcv_2026_10_24_v2_6_0"
     assert seen["parsed_files"] == {"batch_job": "j"}
+
+
+def submitted_definition(capsys, argv):
+    from clinvar_ingest.main import run_cli
+
+    run_cli(["vrsify-submit", DAY, "--image", "gcr.io/proj/clinvar-ingest:vrsify", "--dry-run", *argv])
+    _, definition = capsys.readouterr().out.split("\n", 1)
+    return json.loads(definition)["taskGroups"][0]["taskSpec"]
+
+
+def test_manual_submission_with_slack_gets_the_token_and_the_environment(capsys, monkeypatch):
+    for key, value in {
+        "BQ_DEST_PROJECT": "proj",
+        "CLINVAR_INGEST_RELEASE_TAG": "v2_6_1",
+        "CLINVAR_INGEST_SLACK_CHANNEL": "C123",
+        "CLINVAR_GKS_BUCKET": "clinvar-gkm",
+        "file_format": "vrsify",
+    }.items():
+        monkeypatch.setenv(key, value)
+    task = submitted_definition(capsys, ["--", "--slack"])
+    assert task["runnables"][0]["container"]["commands"] == ["vrsify", "--release-date", DAY, "--slack"]
+    environment = task["environment"]
+    assert "CLINVAR_INGEST_SLACK_TOKEN" in environment["secretVariables"]
+    assert environment["variables"]["file_format"] == "vrsify"
+    assert environment["variables"]["CLINVAR_INGEST_RELEASE_TAG"] == "v2_6_1"
+
+
+def test_manual_submission_without_slack_has_no_token(capsys, monkeypatch):
+    monkeypatch.setenv("CLINVAR_GKS_BUCKET", "clinvar-gkm")
+    task = submitted_definition(capsys, [])
+    assert "secretVariables" not in task["environment"]
+    assert task["environment"]["variables"] == {"CLINVAR_GKS_BUCKET": "clinvar-gkm"}

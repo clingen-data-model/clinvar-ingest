@@ -42,20 +42,25 @@ class VrsifyRow:
 
 
 def ready_releases_sql(processing_history_table: str) -> str:
+    # The latest sp row of each release must itself be finished: a release whose stored
+    # procedures are running again is not ready, though an earlier run of them finished
     return f"""
-    SELECT sp.release_date, sp.bucket_dir, sp.processing_finished AS sp_processing_finished
-    FROM `{processing_history_table}` sp
-    WHERE sp.file_type = '{ClinVarIngestFileFormat.SP}'
-    AND sp.processing_finished IS NOT NULL
-    AND sp.release_date >= @min_release_date
+    SELECT release_date, bucket_dir, sp_processing_finished
+    FROM (
+        SELECT sp.release_date, sp.bucket_dir, sp.processing_finished AS sp_processing_finished
+        FROM `{processing_history_table}` sp
+        WHERE sp.file_type = '{ClinVarIngestFileFormat.SP}'
+        AND sp.release_date >= @min_release_date
+        QUALIFY ROW_NUMBER() OVER (PARTITION BY sp.release_date ORDER BY sp.processing_started DESC) = 1
+    ) latest
+    WHERE sp_processing_finished IS NOT NULL
     AND NOT EXISTS (
         SELECT 1
         FROM `{processing_history_table}` v
         WHERE v.file_type = '{VRSIFY}'
-        AND v.release_date = sp.release_date
+        AND v.release_date = latest.release_date
     )
-    QUALIFY ROW_NUMBER() OVER (PARTITION BY sp.release_date ORDER BY sp.processing_finished DESC) = 1
-    ORDER BY sp.release_date
+    ORDER BY release_date
     """  # noqa: S608
 
 

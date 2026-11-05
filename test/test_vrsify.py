@@ -178,3 +178,14 @@ def test_input_pattern_matching_a_vrsify_output_is_refused(tmp_path):
         runner._fetch_inputs(str(tmp_path / "vi-*"), tmp_path)
     paths, _ = runner._fetch_inputs(str(tmp_path / "vi-0*.jsonl.gz"), tmp_path)
     assert [p.name for p in paths] == ["vi-000000000000.jsonl.gz"]
+
+
+def test_a_slack_message_that_cannot_be_sent_does_not_fail_the_run(monkeypatch):
+    from clinvar_ingest import slack
+    from clinvar_ingest.vrsify import runner
+
+    def fail(_message):
+        raise RuntimeError("slack is down")
+
+    monkeypatch.setattr(slack, "send_slack_message", fail)
+    runner.notify("vrsify output written", slack=True)

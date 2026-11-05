@@ -90,12 +90,22 @@ def run_vrsify_submit(args: Namespace):
     from clinvar_ingest.config import env_or_dotenv_or
     from clinvar_ingest.vrsify import batch
 
+    environment = {"CLINVAR_GKS_BUCKET": env_or_dotenv_or("CLINVAR_GKS_BUCKET", default="clinvar-gkm")}
+    slack = "--slack" in args.vrsify_args
+    if slack:
+        # A job that posts to Slack reads the environment the dispatcher gives its jobs,
+        # here taken from this environment, which must define it
+        from clinvar_ingest.config import get_vrsify_env
+        from clinvar_ingest.vrsify.dispatch import TASK_ENVIRONMENT_KEYS, task_environment
+
+        extra = {k: env_or_dotenv_or(k) for k in TASK_ENVIRONMENT_KEYS}
+        environment = task_environment(get_vrsify_env(), extra)
     settings = batch.BatchSettings(
         project=args.project,
         region=args.region,
         service_account=args.service_account,
         image=args.image,
-        environment={"CLINVAR_GKS_BUCKET": env_or_dotenv_or("CLINVAR_GKS_BUCKET", default="clinvar-gkm")},
+        environment=environment,
     )
     if args.machine_type:
         settings.machine_type = args.machine_type
@@ -109,7 +119,9 @@ def run_vrsify_submit(args: Namespace):
         if not sep:
             raise ValueError(f"--label takes KEY=VALUE: {label}")
         labels[key] = value
-    definition = batch.job_definition(settings, ["--release-date", args.release_date, *args.vrsify_args], labels=labels)
+    definition = batch.job_definition(
+        settings, ["--release-date", args.release_date, *args.vrsify_args], slack=slack, labels=labels
+    )
     name = batch.job_id(args.release_date)
     if args.dry_run:
         print(f"# job {name} in {settings.project}/{settings.region}")

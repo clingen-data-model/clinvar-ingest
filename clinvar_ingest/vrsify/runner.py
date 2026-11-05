@@ -66,7 +66,12 @@ def notify(message: str, slack: bool) -> None:
     if slack:
         from clinvar_ingest.slack import send_slack_message
 
-        send_slack_message(message)
+        # A message that cannot be sent must not fail the run, least of all after its
+        # output is written
+        try:
+            send_slack_message(message)
+        except Exception:
+            _logger.exception("Could not send the Slack message")
 
 
 def default_uris(release_date: str) -> tuple[str, str]:
