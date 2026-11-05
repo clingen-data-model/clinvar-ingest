@@ -339,7 +339,7 @@ def test_task_environment_has_no_processing_history_settings(batch_settings):
 
 def test_job_definition_uses_c4_with_hyperdisk(batch_settings):
     policy = batch.job_definition(batch_settings, [])["allocationPolicy"]["instances"][0]["policy"]
-    assert policy["machineType"] == "c4-standard-8"
+    assert policy["machineType"] == "c4-highmem-4"
     assert policy["bootDisk"]["type"] == "hyperdisk-balanced"
 
 

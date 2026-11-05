@@ -146,14 +146,21 @@ def parse_args(argv):
     submit_sp.add_argument(
         "--service-account", type=str, default="clinvar-ingest-pipeline@clingen-dev.iam.gserviceaccount.com"
     )
-    submit_sp.add_argument("--machine-type", type=str, default=None, help="(default: c4-standard-8)")
+    submit_sp.add_argument(
+        "--machine-type", type=str, default=None, help=f"(default: {vrsify_defaults.BATCH_MACHINE_TYPE})"
+    )
     submit_sp.add_argument(
         "--boot-disk-type",
         type=str,
         default=None,
         help="Where the store is extracted (default: hyperdisk-balanced, which c4 requires)",
     )
-    submit_sp.add_argument("--boot-disk-size", type=int, default=None, help="Boot disk size in GB (default: 50)")
+    submit_sp.add_argument(
+        "--boot-disk-size",
+        type=int,
+        default=None,
+        help=f"Boot disk size in GB (default: {vrsify_defaults.BATCH_BOOT_DISK_SIZE_GB})",
+    )
     submit_sp.add_argument(
         "--label",
         action="append",

@@ -8,6 +8,8 @@ import logging
 import re
 from dataclasses import dataclass, field
 
+from clinvar_ingest.vrsify.defaults import BATCH_BOOT_DISK_SIZE_GB, BATCH_MACHINE_TYPE
+
 _logger = logging.getLogger("clinvar_ingest")
 
 # The Secret Manager secret the other clinvar-ingest jobs read the Slack token from
@@ -40,11 +42,13 @@ class BatchSettings:
     region: str
     service_account: str
     image: str
-    # A full release (~4.5M records) translates in ~3 minutes on c4-standard-8, against
-    # ~12.5 on e2-standard-4. c4 requires Hyperdisk; e2 and older families take pd-ssd.
-    machine_type: str = "c4-standard-8"
+    # c4-highmem-4: 4 vCPUs, so 4 workers, and 31 GB. A full release (4.7M records) took a
+    # median of 382 s to translate with whole-sequence reads, about 8 minutes end to end
+    # (2026-11-04); a weekly delta takes seconds. Whole-sequence reads peaked at 8.4 GiB.
+    # c4 requires Hyperdisk; e2 and older families take pd-ssd.
+    machine_type: str = BATCH_MACHINE_TYPE
     boot_disk_type: str = "hyperdisk-balanced"
-    boot_disk_size_gb: int = 50
+    boot_disk_size_gb: int = BATCH_BOOT_DISK_SIZE_GB
     max_run_duration_seconds: int = 14400
     environment: dict[str, str] = field(default_factory=dict)
 
