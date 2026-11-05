@@ -29,10 +29,14 @@
 # An instance_name containing 'vrsify' deploys the vrsify dispatcher
 # (misc/bin/vrsify-workflow.py) with an image that has the vrsify dependencies, tagged
 # vrsify-${CLINVAR_INGEST_RELEASE_TAG}, which its Batch jobs also run. It also needs
-# VRSIFY_MIN_RELEASE_DATE (YYYY-MM-DD), the earliest release it claims, and takes
-# VRSIFY_SLACK (default false). Its Cloud Scheduler job is created paused:
+# VRSIFY_MIN_RELEASE_DATE (YYYY-MM-DD), the earliest release it claims, and
+# CLINVAR_INGEST_REFGET_STORE, the RefgetStore its Batch jobs read (see `clinvar-ingest
+# vrsify --help`), and takes VRSIFY_SLACK (default false). Its Cloud Scheduler job is
+# created paused:
 #
-# CLINVAR_INGEST_RELEASE_TAG=v2_6_1 instance_name=clinvar-ingest-vrsify VRSIFY_MIN_RELEASE_DATE=2026-10-24 bash deploy-job.sh
+# CLINVAR_INGEST_RELEASE_TAG=v2_6_1 instance_name=clinvar-ingest-vrsify VRSIFY_MIN_RELEASE_DATE=2026-10-24 \
+#   CLINVAR_INGEST_REFGET_STORE=https://storage.googleapis.com/clingen-public/refgetstore/genomic-2026-10-29 \
+#   bash deploy-job.sh
 #
 ####
 
@@ -80,6 +84,10 @@ if [[ "$instance_name" == *vrsify* ]]; then
     vrsify=true
     if [[ ! "${VRSIFY_MIN_RELEASE_DATE:-}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
         echo "A vrsify instance needs VRSIFY_MIN_RELEASE_DATE=YYYY-MM-DD, the earliest release it claims"
+        exit 1
+    fi
+    if [[ -z "${CLINVAR_INGEST_REFGET_STORE:-}" ]]; then
+        echo "A vrsify instance needs CLINVAR_INGEST_REFGET_STORE, the RefgetStore its Batch jobs read"
         exit 1
     fi
     # Set rather than defaulted: the release GitHub Action carries both over from the
@@ -180,6 +188,8 @@ if $vrsify; then
     env_vars="$env_vars,VRSIFY_IMAGE=${image}"
     env_vars="$env_vars,VRSIFY_MIN_RELEASE_DATE=${VRSIFY_MIN_RELEASE_DATE}"
     env_vars="$env_vars,VRSIFY_SLACK=${VRSIFY_SLACK:-false}"
+    # The dispatcher passes it on to its Batch jobs
+    env_vars="$env_vars,CLINVAR_INGEST_REFGET_STORE=${CLINVAR_INGEST_REFGET_STORE}"
 fi
 
 ####

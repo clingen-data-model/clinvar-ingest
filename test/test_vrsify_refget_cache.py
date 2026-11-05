@@ -256,8 +256,14 @@ def test_workers_do_not_open_a_remote_store(server):
 
 def test_prefetch_threads_must_be_positive():
     with pytest.raises(ValueError, match="at least 1"):
-        runner._check_sequence_options(None, "whole", 0)
-    runner._check_sequence_options(None, "ranges", 1)
+        runner._check_sequence_options("store", None, "whole", 0)
+    runner._check_sequence_options("store", None, "ranges", 1)
+
+
+@pytest.mark.parametrize(("refget_store", "seqrepo"), [(None, None), ("store", "seqrepo")])
+def test_exactly_one_sequence_source(refget_store, seqrepo):
+    with pytest.raises(ValueError, match="either a RefgetStore or a SeqRepo"):
+        runner._check_sequence_options(refget_store, seqrepo, "whole", 1)
 
 
 @pytest.mark.parametrize("reads", ["whole", "ranges"])

@@ -53,20 +53,21 @@ $ clinvar-ingest create-tables \
 It needs the `vrsify` optional dependencies: `pip install '.[vrsify]'`. They install [gtars](https://github.com/databio/gtars) 0.11.2 from PyPI and vrs-python from a pinned commit; hgvs's psycopg2 dependency builds against libpq.
 
 ```
-clinvar-ingest vrsify --release-date 2026-10-24
+clinvar-ingest vrsify --release-date 2026-10-24 \
+    --refget-store https://storage.googleapis.com/clingen-public/refgetstore/genomic-2026-10-29
 ```
 
 writes `gs://clinvar-gkm/2026-10-24/dev/vi-vrs-python.jsonl.gz`. Existing outputs are not replaced without `--overwrite`.
 
-Sequences come from `--refget-store`, or `CLINVAR_INGEST_REFGET_STORE` when it is not given, else the published genomic store archive. It takes:
+Sequences come from `--refget-store`, or `CLINVAR_INGEST_REFGET_STORE` when it is not given; there is no default store, so one of them (or `--seqrepo`) is required. It takes:
 
 - a `.tar.gz` store archive URL (`https://` or `gs://`), downloaded and extracted at startup, and checked against its SHA-256;
 - a local store directory;
-- a remote store's URL (its directory, holding `rgstore.json`). Before translating, vrsify finds every sequence the input reads, fetches just those sequence files into a local cache of the store (`--refget-prefetch-threads` at a time, default 64), and the workers read that cache as a local store. A run fails if any of those sequences cannot be fetched.
+- a remote store's `https://` or `http://` URL (its directory, holding `rgstore.json`; for a public GCS bucket, `https://storage.googleapis.com/<bucket>/<path>`). Before translating, vrsify finds every sequence the input reads, fetches just those sequence files into a local cache of the store (`--refget-prefetch-threads` at a time, default 64), and the workers read that cache as a local store. A run fails if any of those sequences cannot be fetched.
 
 `--refget-reads whole` (the default) loads each sequence a worker reads into that worker's memory; `--refget-reads ranges` leaves sequences on disk and reads just the bases each lookup covers, which uses much less memory with several workers at about the same speed. `--seqrepo` reads a [SeqRepo](https://github.com/biocommons/biocommons.seqrepo) instance (a directory or `.tar.gz` archive) instead of a RefgetStore.
 
-`clinvar-ingest vrsify-submit 2026-10-24 --image gcr.io/clingen-dev/clinvar-ingest:vrsify-<release tag>` runs it on Cloud Batch, outside the pipeline and without touching `processing_history` (`--dry-run` prints the job definition). Jobs run on a c4-standard-8 VM with a `hyperdisk-balanced` boot disk, where a full release translates in about 3 minutes.
+`clinvar-ingest vrsify-submit 2026-10-24 --image gcr.io/clingen-dev/clinvar-ingest:vrsify-<release tag>` runs it on Cloud Batch, outside the pipeline and without touching `processing_history` (`--dry-run` prints the job definition). The job reads the store named by `CLINVAR_INGEST_REFGET_STORE` in the submitting environment, or by `-- --refget-store ...`; submission fails if neither is given. Jobs run on a c4-standard-8 VM with a `hyperdisk-balanced` boot disk, where a full release translates in about 3 minutes.
 
 ## In the pipeline
 
@@ -79,6 +80,6 @@ The `vrsify` step follows the stored procedures step. Its Cloud Run job, the dis
 
 A failure after the claim is reported once, with the statement that deletes the started row, and the row stays started: later executions only claim ready releases, so the release waits for a person, as a failed stored procedures release does. Once the row is deleted, the next execution claims the release again. A failure before any claim fails that execution without a Slack message: no row is left started, and the next execution retries. The dispatcher only writes `processing_history` rows whose `file_type` is `vrsify`, and reads the table directly rather than through `processing_history_view`.
 
-`deploy-job.sh` deploys it like the other jobs, with an `instance_name` containing `vrsify` (see the script). It builds the image with the `vrsify` dependencies as `vrsify-<release tag>`, next to the other jobs' `workflow-py-<release tag>`, and the Batch jobs run that same image. `VRSIFY_MIN_RELEASE_DATE` is a fixed cutoff chosen at deployment: releases before it were translated outside this pipeline. Its Cloud Scheduler job is created paused.
+`deploy-job.sh` deploys it like the other jobs, with an `instance_name` containing `vrsify` (see the script). It builds the image with the `vrsify` dependencies as `vrsify-<release tag>`, next to the other jobs' `workflow-py-<release tag>`, and the Batch jobs run that same image. `VRSIFY_MIN_RELEASE_DATE` is a fixed cutoff chosen at deployment: releases before it were translated outside this pipeline. `CLINVAR_INGEST_REFGET_STORE` names the store the Batch jobs read; the deploy workflow sets it, and the dispatcher passes it on to each job. Its Cloud Scheduler job is created paused.
 
 With `VRSIFY_SLACK=true`, posts go to the `CLINVAR_INGEST_SLACK_CHANNEL` channel: the dispatcher reports a release scheduled, completed, or not retried, and the Batch job reports starting, writing its output, and its own errors. The Batch job reads the token from the `clinvar-ingest-slack-token` secret at run time, so its value is not part of the job definition.

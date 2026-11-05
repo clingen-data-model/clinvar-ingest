@@ -37,6 +37,7 @@ from clinvar_ingest.vrsify.runner import default_uris, provenance_uri
 _logger = logging.getLogger("clinvar_ingest")
 
 # Environment variables the Batch job's vrsify run reads, passed through from the dispatcher
+# or from vrsify-submit's environment
 TASK_ENVIRONMENT_KEYS = ("CLINVAR_INGEST_REFGET_STORE",)
 
 

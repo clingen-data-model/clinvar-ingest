@@ -55,7 +55,6 @@ from clinvar_ingest.vrsify.translate import (
 
 _logger = logging.getLogger("clinvar_ingest")
 
-DEFAULT_REFGET_STORE = "https://static.ferriter.dev/refgetstore/genomic-2026-10-27.tar.gz"
 OUTPUT_NAME = "vi-vrs-python.jsonl.gz"
 SLOWEST_RECORDS_KEPT = 20
 PROGRESS_LOG_SECONDS = 30
@@ -554,7 +553,11 @@ def _library_versions() -> dict:
     return versions
 
 
-def _check_sequence_options(seqrepo: str | None, refget_reads: str, refget_prefetch_threads: int) -> None:
+def _check_sequence_options(
+    refget_store: str | None, seqrepo: str | None, refget_reads: str, refget_prefetch_threads: int
+) -> None:
+    if bool(refget_store) == bool(seqrepo):
+        raise ValueError("Give either a RefgetStore or a SeqRepo to read sequences from")
     if refget_reads not in REFGET_READS:
         raise ValueError(f"refget_reads must be one of {REFGET_READS}: {refget_reads}")
     if refget_prefetch_threads < 1:
@@ -566,7 +569,7 @@ def _check_sequence_options(seqrepo: str | None, refget_reads: str, refget_prefe
 def vrsify(  # noqa: PLR0913
     input_uri: str,
     output_uri: str,
-    refget_store: str,
+    refget_store: str | None,
     workers: int,
     batch_size: int = BATCH_SIZE,
     record_timeout: int = RECORD_TIMEOUT_SECONDS,
@@ -581,13 +584,13 @@ def vrsify(  # noqa: PLR0913
     """
     Translate the records at `input_uri` and write the results and a provenance record.
 
-    Sequences come from `refget_store`, or from the SeqRepo `seqrepo` (a directory or a
-    .tar.gz archive) when it is given. `refget_reads` is SequenceSource.reads. From a
+    Sequences come from `refget_store` or from the SeqRepo `seqrepo` (a directory or a
+    .tar.gz archive); exactly one must be given. `refget_reads` is SequenceSource.reads. From a
     remote `refget_store`, the sequence files the records read are fetched into a local
     cache, `refget_prefetch_threads` at a time, before translation starts. Messages name
     the release by `release_date`, or by the output when it is not given.
     """
-    _check_sequence_options(seqrepo, refget_reads, refget_prefetch_threads)
+    _check_sequence_options(refget_store, seqrepo, refget_reads, refget_prefetch_threads)
     prov_uri = provenance_uri(output_uri)
     started_at = datetime.datetime.now(datetime.UTC)
     subject = f"for release dated {release_date}" if release_date else output_uri

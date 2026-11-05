@@ -90,7 +90,7 @@ def parse_args(argv):
         help=(
             "RefgetStore directory, .tar.gz archive URL, or remote store URL, from which the sequences the input "
             "reads are fetched into a local cache before translating "
-            "(default: CLINVAR_INGEST_REFGET_STORE, else the published genomic store archive)"
+            "(default: CLINVAR_INGEST_REFGET_STORE; one of the two, or --seqrepo, is required)"
         ),
     )
     vrsify_sp.add_argument(

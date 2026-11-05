@@ -7,6 +7,7 @@
 # Besides the base clinvar-ingest environment (file_format=vrsify), it reads:
 #   VRSIFY_IMAGE             image for the Batch job (required)
 #   VRSIFY_MIN_RELEASE_DATE  earliest release to claim, YYYY-MM-DD (required)
+#   CLINVAR_INGEST_REFGET_STORE  the RefgetStore the Batch jobs read (required)
 #   VRSIFY_MAX_RELEASES      releases claimed per run (default: 1)
 #   VRSIFY_SLACK             "true" to post to Slack, here and in the Batch job (default: false)
 #   VRSIFY_DRY_RUN           "true" to log what would be done without writing or submitting anything
@@ -39,6 +40,8 @@ def _flag(name: str) -> bool:
 env = get_vrsify_env()
 if env.file_format_mode != ClinVarIngestFileFormat.VRSIFY.value:
     raise ValueError(f"vrsify workflow got unexpected file_format_mode: {env.file_format_mode}")
+# Checked before any claim: a Batch job without a store would only fail after it
+env_or_dotenv_or("CLINVAR_INGEST_REFGET_STORE", throw=True)
 
 settings = dispatch.DispatchSettings(
     min_release_date=datetime.date.fromisoformat(env_or_dotenv_or("VRSIFY_MIN_RELEASE_DATE", throw=True)),

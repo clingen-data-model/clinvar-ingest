@@ -462,6 +462,7 @@ def test_manual_submission_with_slack_gets_the_token_and_the_environment(capsys,
         "CLINVAR_INGEST_SLACK_CHANNEL": "C123",
         "CLINVAR_GKS_BUCKET": "clinvar-gkm",
         "file_format": "vrsify",
+        "CLINVAR_INGEST_REFGET_STORE": "gs://bucket/store",
     }.items():
         monkeypatch.setenv(key, value)
     task = submitted_definition(capsys, ["--", "--slack"])
@@ -470,10 +471,28 @@ def test_manual_submission_with_slack_gets_the_token_and_the_environment(capsys,
     assert "CLINVAR_INGEST_SLACK_TOKEN" in environment["secretVariables"]
     assert environment["variables"]["file_format"] == "vrsify"
     assert environment["variables"]["CLINVAR_INGEST_RELEASE_TAG"] == "v2_6_1"
+    assert environment["variables"]["CLINVAR_INGEST_REFGET_STORE"] == "gs://bucket/store"
 
 
 def test_manual_submission_without_slack_has_no_token(capsys, monkeypatch):
     monkeypatch.setenv("CLINVAR_GKS_BUCKET", "clinvar-gkm")
+    monkeypatch.setenv("CLINVAR_INGEST_REFGET_STORE", "gs://bucket/store")
     task = submitted_definition(capsys, [])
     assert "secretVariables" not in task["environment"]
-    assert task["environment"]["variables"] == {"CLINVAR_GKS_BUCKET": "clinvar-gkm"}
+    assert task["environment"]["variables"] == {
+        "CLINVAR_GKS_BUCKET": "clinvar-gkm",
+        "CLINVAR_INGEST_REFGET_STORE": "gs://bucket/store",
+    }
+
+
+@pytest.mark.parametrize("argv", [["--", "--refget-store", "gs://bucket/store"], ["--", "--seqrepo=/seqrepo"]])
+def test_manual_submission_can_name_the_store_in_its_arguments(capsys, monkeypatch, argv):
+    monkeypatch.delenv("CLINVAR_INGEST_REFGET_STORE", raising=False)
+    task = submitted_definition(capsys, argv)
+    assert "CLINVAR_INGEST_REFGET_STORE" not in task["environment"]["variables"]
+
+
+def test_manual_submission_without_a_store_is_refused(capsys, monkeypatch):
+    monkeypatch.delenv("CLINVAR_INGEST_REFGET_STORE", raising=False)
+    with pytest.raises(ValueError, match="Give the job a store"):
+        submitted_definition(capsys, [])
