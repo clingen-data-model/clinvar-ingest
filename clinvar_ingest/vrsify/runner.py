@@ -351,6 +351,9 @@ def prefetch_sequences(input_paths: list[Path], store_url: str, cache_root: Path
     for path in input_paths:
         with gzip.open(path, "rt") as fh:
             for line in fh:
+                # Skipped, as translation skips them
+                if not line.strip():
+                    continue
                 identifier = _sequence_identifier(json.loads(line))
                 if identifier:
                     identifiers.add(identifier)

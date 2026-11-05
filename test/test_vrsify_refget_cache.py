@@ -214,9 +214,12 @@ def translate_all(source):
     ]
 
 
-def write_input(path):
+def write_input(path, blank_lines=False):
+    """A gzipped JSONL input of RECORDS; with `blank_lines`, an empty line before each record and at the end."""
+    separator = "\n" if blank_lines else ""
     with gzip.open(path, "wt") as fh:
-        fh.writelines(json.dumps(r) + "\n" for r in RECORDS)
+        fh.writelines(separator + json.dumps(r) + "\n" for r in RECORDS)
+        fh.write(separator)
     return path
 
 
@@ -269,12 +272,14 @@ def test_exactly_one_sequence_source(refget_store, seqrepo):
 @pytest.mark.parametrize("reads", ["whole", "ranges"])
 def test_vrsify_prefetches_a_remote_store(store_dir, server, tmp_path, restore_patches, reads):
     url, _, _ = server
-    input_path = write_input(tmp_path / "vi.jsonl.gz")
+    # Blank lines are skipped by the prefetch as by translation
+    input_path = write_input(tmp_path / "vi.jsonl.gz", blank_lines=True)
     output = tmp_path / "out.jsonl.gz"
 
     runner.vrsify(str(input_path), str(output), url, workers=1, work_dir=str(tmp_path / "work"), refget_reads=reads)
 
     provenance = json.loads(Path(runner.provenance_uri(str(output))).read_text())
+    assert provenance["records"] == len(RECORDS)
     assert provenance["refget_store"]["remote"] is True
     assert (provenance["refget_prefetch"]["cached"], provenance["refget_prefetch"]["failed_count"]) == (2, 0)
     assert provenance["refget_cache"]["unfinished_fetches"] == 0
