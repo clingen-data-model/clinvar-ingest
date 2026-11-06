@@ -1,0 +1,12 @@
+# Builds the workflow image with the vrsify dependencies. deploy-job.sh sets COMMIT_SHA to
+# vrsify-<release tag>, next to the workflow-py-<release tag> image the other jobs run.
+steps:
+- name: 'gcr.io/kaniko-project/executor:v1.3.0'
+  args:
+  - --destination=gcr.io/clingen-dev/clinvar-ingest:${COMMIT_SHA}
+  - --dockerfile=Dockerfile-workflow-py
+  - --build-arg=PIP_EXTRAS=[vrsify]
+  - --cache=true
+  - --cache-ttl=168h
+
+timeout: 3600s

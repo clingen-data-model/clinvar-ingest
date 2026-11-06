@@ -5,24 +5,42 @@
 # Build Image
 FROM python:3.11-slim-bookworm as build
 
+# Optional dependency groups to install, e.g. "[vrsify]". Empty by default, so images
+# built without it are unchanged. vrsify installs vrs-python from git, and hgvs depends
+# on psycopg2, which has no Linux wheel and builds against libpq.
+ARG PIP_EXTRAS=""
+RUN if [ -n "$PIP_EXTRAS" ]; then \
+        apt-get update && apt-get install -y --no-install-recommends git build-essential ca-certificates libpq-dev \
+        && rm -rf /var/lib/apt/lists/*; \
+    fi
+
 ENV VIRTUAL_ENV=/opt/venv
 RUN python3 -m venv $VIRTUAL_ENV
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 WORKDIR /app
+# Dependencies first, in a layer that only pyproject.toml and PIP_EXTRAS invalidate, so
+# a source change does not rebuild them (psycopg2 compiles from source)
+COPY pyproject.toml misc/bin/pyproject-requirements.py ./
+RUN python pyproject-requirements.py "${PIP_EXTRAS}" > requirements.txt \
+    && python -m pip install -r requirements.txt
 COPY ./clinvar_ingest ./clinvar_ingest
-COPY pyproject.toml .
-RUN python -m pip install .
+RUN python -m pip install --no-deps .
 
 # Runtime Image
 FROM python:3.11-slim-bookworm as runtime
-RUN apt update && apt install -y curl
+# Declared again: build arguments are visible only in stages that declare them.
+# psycopg2, built in the build stage when PIP_EXTRAS is set, loads libpq at run time.
+ARG PIP_EXTRAS=""
+RUN apt update && apt install -y curl \
+    && if [ -n "$PIP_EXTRAS" ]; then apt install -y --no-install-recommends libpq5; fi
 COPY --from=build /opt/venv /opt/venv
 COPY log_conf.json /app/log_conf.json
 COPY misc/bin/workflow.py /app/workflow.py
 COPY misc/bin/workflow-copy-only.py /app/workflow-copy-only.py
 COPY misc/bin/bq_ingester.py /app/bq_ingester.py
 COPY misc/bin/stored-procedures-workflow.py /app/stored-procedures-workflow.py
+COPY misc/bin/vrsify-workflow.py /app/vrsify-workflow.py
 ENV VIRTUAL_ENV=/opt/venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 ENV GCLOUD_PROJECT="clingen-dev"

@@ -1,0 +1,164 @@
+"""
+Cloud Batch job definitions for running `clinvar-ingest vrsify` on one release.
+"""
+
+import datetime
+import json
+import logging
+import re
+from dataclasses import dataclass, field
+
+from clinvar_ingest.vrsify.defaults import BATCH_BOOT_DISK_SIZE_GB, BATCH_MACHINE_TYPE
+
+_logger = logging.getLogger("clinvar_ingest")
+
+# The Secret Manager secret the other clinvar-ingest jobs read the Slack token from
+SLACK_TOKEN_SECRET = "clinvar-ingest-slack-token"  # noqa: S105
+
+# Labels on every vrsify job and on the VMs and disks Batch creates for it, so billing can
+# group all vrsify runs (app=clinvar-ingest-vrsify) whatever submitted them
+DEFAULT_LABELS = {"service": "clinvar-ingest", "component": "vrsify", "app": "clinvar-ingest-vrsify"}
+
+# GCP label keys start with a lowercase letter; keys and values are at most 63 lowercase
+# letters, digits, hyphens and underscores
+_LABEL_KEY = re.compile(r"^[a-z][a-z0-9_-]{0,62}$")
+_LABEL_VALUE = re.compile(r"^[a-z0-9_-]{0,63}$")
+
+
+def job_labels(extra: dict[str, str] | None = None) -> dict[str, str]:
+    """DEFAULT_LABELS plus `extra`, which may not replace a default."""
+    extra = extra or {}
+    if replaced := sorted(DEFAULT_LABELS.keys() & extra.keys()):
+        raise ValueError(f"labels may not replace the default labels: {replaced}")
+    for key, value in extra.items():
+        if not _LABEL_KEY.match(key) or not _LABEL_VALUE.match(value):
+            raise ValueError(f"invalid GCP label {key}={value}")
+    return {**DEFAULT_LABELS, **extra}
+
+
+@dataclass
+class BatchSettings:
+    project: str
+    region: str
+    service_account: str
+    image: str
+    # c4-highmem-4: 4 vCPUs, so 4 workers, and 31 GB. A full release (4.7M records) took a
+    # median of 382 s to translate with whole-sequence reads, about 8 minutes end to end
+    # (2026-11-04); a weekly delta takes seconds. Whole-sequence reads peaked at 8.4 GiB.
+    # c4 requires Hyperdisk; e2 and older families take pd-ssd.
+    machine_type: str = BATCH_MACHINE_TYPE
+    boot_disk_type: str = "hyperdisk-balanced"
+    boot_disk_size_gb: int = BATCH_BOOT_DISK_SIZE_GB
+    max_run_duration_seconds: int = 14400
+    environment: dict[str, str] = field(default_factory=dict)
+
+
+# Memory per vCPU of each predefined machine type class, the least across the e2, n2 and
+# c4 families. The task requests 90% of the VM's memory, leaving room for the Batch agent.
+_MIB_PER_VCPU = {"standard": 3840, "highmem": 7680, "highcpu": 1024}
+_MEMORY_REQUEST_FRACTION = 0.9
+
+
+def compute_resource(machine_type: str) -> dict | None:
+    """
+    The task's resource request for a predefined machine type, e.g. c4-standard-8: all of
+    its vCPUs and most of its memory, so the task has the VM and the job shows what it
+    uses. Without a request, Batch assumes 2 vCPUs and 2000 MiB per task. None for machine
+    types not named <family>-<class>-<vCPUs>.
+    """
+    parts = machine_type.split("-")
+    if len(parts) != 3 or parts[1] not in _MIB_PER_VCPU or not parts[2].isdigit():  # noqa: PLR2004
+        return None
+    vcpus = int(parts[2])
+    return {
+        "cpuMilli": vcpus * 1000,
+        "memoryMib": int(vcpus * _MIB_PER_VCPU[parts[1]] * _MEMORY_REQUEST_FRACTION),
+    }
+
+
+def job_id(release_date: str, now: datetime.datetime | None = None) -> str:
+    now = now or datetime.datetime.now(datetime.UTC)
+    return f"vrsify-{release_date}-{now:%Y%m%d%H%M%S}"
+
+
+def job_definition(
+    settings: BatchSettings, vrsify_args: list[str], slack: bool = False, labels: dict[str, str] | None = None
+) -> dict:
+    """
+    The Batch job for `clinvar-ingest vrsify VRSIFY_ARGS...`. With `slack`, the job reads
+    the Slack token from Secret Manager at run time, so its value never appears in the
+    job definition. The job, and the VMs and disks it creates, carry DEFAULT_LABELS and
+    `labels`.
+    """
+    all_labels = job_labels(labels)
+    environment: dict = {"variables": dict(settings.environment)}
+    if slack:
+        environment["secretVariables"] = {
+            "CLINVAR_INGEST_SLACK_TOKEN": f"projects/{settings.project}/secrets/{SLACK_TOKEN_SECRET}/versions/latest"
+        }
+    task_spec = {
+        "runnables": [
+            {
+                "container": {
+                    "imageUri": settings.image,
+                    "entrypoint": "clinvar-ingest",
+                    "commands": ["vrsify", *vrsify_args],
+                }
+            }
+        ],
+        "environment": environment,
+        "maxRetryCount": 0,
+        "maxRunDuration": f"{settings.max_run_duration_seconds}s",
+    }
+    if resource := compute_resource(settings.machine_type):
+        task_spec["computeResource"] = resource
+    return {
+        "taskGroups": [{"taskCount": 1, "taskSpec": task_spec}],
+        "allocationPolicy": {
+            "location": {"allowedLocations": [f"regions/{settings.region}"]},
+            "instances": [
+                {
+                    "policy": {
+                        "machineType": settings.machine_type,
+                        "provisioningModel": "STANDARD",
+                        "bootDisk": {"type": settings.boot_disk_type, "sizeGb": settings.boot_disk_size_gb},
+                    }
+                }
+            ],
+            "serviceAccount": {"email": settings.service_account},
+            # Job labels stay on the job; these reach the VMs and disks billing charges for
+            "labels": all_labels,
+        },
+        "labels": all_labels,
+        "logsPolicy": {"destination": "CLOUD_LOGGING"},
+    }
+
+
+def submit(settings: BatchSettings, name: str, definition: dict) -> str:
+    """Submit `definition` as Batch job `name`, returning the job's full resource name."""
+    from google.cloud import batch_v1
+
+    client = batch_v1.BatchServiceClient()
+    job = client.create_job(
+        parent=f"projects/{settings.project}/locations/{settings.region}",
+        job_id=name,
+        job=batch_v1.Job.from_json(json.dumps(definition)),
+    )
+    _logger.info(f"Submitted Batch job {job.name}")
+    return job.name
+
+
+# Batch job states in which the job may still run to completion
+ACTIVE_STATES = ("STATE_UNSPECIFIED", "QUEUED", "SCHEDULED", "RUNNING")
+
+
+def job_state(name: str) -> str | None:
+    """The state of Batch job `name` (its full resource name), e.g. RUNNING, or None if it does not exist."""
+    from google.api_core.exceptions import NotFound
+    from google.cloud import batch_v1
+
+    try:
+        job = batch_v1.BatchServiceClient().get_job(name=name)
+    except NotFound:
+        return None
+    return job.status.state.name
