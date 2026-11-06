@@ -7,6 +7,7 @@ import gzip
 import json
 import multiprocessing
 import random
+import tempfile
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -287,3 +288,64 @@ def test_vrsify_prefetches_a_remote_store(store_dir, server, tmp_path, restore_p
         outputs = {row["in"]["source"]: row["out"] for row in map(json.loads, fh)}
     expected = translate_all(runner.SequenceSource("refget", str(store_dir), reads))
     assert [outputs[r["source"]] for r in RECORDS] == expected
+
+
+@pytest.mark.parametrize("reads", ["whole", "ranges"])
+def test_a_relative_store_path_is_read_from_the_working_directory(store_dir, monkeypatch, restore_patches, reads):
+    expected = translate_all(runner.SequenceSource("refget", str(store_dir), reads))
+    monkeypatch.chdir(store_dir.parent)
+    assert translate_all(runner.SequenceSource("refget", store_dir.name, reads)) == expected
+
+
+def test_vrsify_reads_relative_paths_and_keeps_a_given_work_dir(store_dir, tmp_path, monkeypatch, restore_patches):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "store").symlink_to(store_dir)
+    write_input(tmp_path / "vi.jsonl.gz")
+
+    runner.vrsify("vi.jsonl.gz", "out.jsonl.gz", "store", workers=1, work_dir="work")
+
+    with gzip.open(tmp_path / "out.jsonl.gz", "rt") as fh:
+        outputs = [json.loads(line)["out"] for line in fh]
+    assert len(outputs) == len(RECORDS)
+    assert all("id" in out for out in outputs), outputs
+    assert (tmp_path / "work" / runner.OUTPUT_NAME).exists()
+
+
+@pytest.fixture
+def temp_root(tmp_path, monkeypatch):
+    """The directory tempfile creates directories in during the test."""
+    root = tmp_path / "tmp"
+    root.mkdir()
+    monkeypatch.setattr(tempfile, "tempdir", str(root))
+    return root
+
+
+def test_vrsify_removes_the_temporary_work_dir_it_creates(store_dir, tmp_path, temp_root, monkeypatch, restore_patches):
+    work_dirs = []
+    prepare_store = runner.prepare_store
+    monkeypatch.setattr(
+        runner, "prepare_store", lambda store, work: (work_dirs.append(work), prepare_store(store, work))[1]
+    )
+    output = tmp_path / "out.jsonl.gz"
+
+    runner.vrsify(str(write_input(tmp_path / "vi.jsonl.gz")), str(output), str(store_dir), workers=1)
+
+    assert output.exists()
+    assert Path(runner.provenance_uri(str(output))).exists()
+    assert [w.parent for w in work_dirs] == [temp_root]
+    assert not work_dirs[0].exists()
+
+
+def test_a_failed_vrsify_also_removes_its_temporary_work_dir(tmp_path, temp_root, monkeypatch):
+    work_dirs = []
+
+    def no_store(_store, work):
+        work_dirs.append(work)
+        raise RuntimeError("no store")
+
+    monkeypatch.setattr(runner, "prepare_store", no_store)
+    with pytest.raises(RuntimeError, match="no store"):
+        runner.vrsify(str(write_input(tmp_path / "vi.jsonl.gz")), str(tmp_path / "out.jsonl.gz"), "store", workers=1)
+
+    assert [w.parent for w in work_dirs] == [temp_root]
+    assert not work_dirs[0].exists()

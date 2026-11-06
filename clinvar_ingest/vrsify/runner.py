@@ -15,6 +15,7 @@ import json
 import logging
 import os
 import resource
+import shutil
 import signal
 import socket
 import tempfile
@@ -133,15 +134,17 @@ def _data_proxy(source: SequenceSource) -> Any:
 
     if is_remote_store(source.location):
         raise ValueError(f"workers read a local store; prefetch the remote store first: {source.location}")
+    # Absolute: in file://data/store, "data" would be read as the host and /store as the path
+    location = Path(source.location).resolve()
     if source.kind == "seqrepo":
-        return create_dataproxy(f"seqrepo+file://{source.location}")
+        return create_dataproxy(f"seqrepo+file://{location}")
     if source.reads == "ranges":
         from ga4gh.vrs.dataproxy_refget import RefgetSequenceDataProxy
 
         # vrs-python loads each sequence before its first read; skipped, gtars serves
         # get_substring from the local .seq file
         RefgetSequenceDataProxy._ensure_sequence_loaded = lambda _self, _digest: None
-    return create_dataproxy(f"refget+file://{source.location}")
+    return create_dataproxy(f"refget+file://{location}")
 
 
 def _init_worker(source: SequenceSource, record_timeout: int) -> None:
@@ -592,19 +595,26 @@ def vrsify(  # noqa: PLR0913
     remote `refget_store`, the sequence files the records read are fetched into a local
     cache, `refget_prefetch_threads` at a time, before translation starts. Messages name
     the release by `release_date`, or by the output when it is not given.
+
+    Inputs, a downloaded store and the output are staged in `work_dir`, which is kept; without
+    one, in a temporary directory that is removed when the run ends, successful or not.
     """
     _check_sequence_options(refget_store, seqrepo, refget_reads, refget_prefetch_threads)
     prov_uri = provenance_uri(output_uri)
     started_at = datetime.datetime.now(datetime.UTC)
     subject = f"for release dated {release_date}" if release_date else output_uri
     notify(f"vrsify starting {subject}: {input_uri}", slack)
+    temporary_work = None
     try:
         if not overwrite:
             for uri in (output_uri, prov_uri):
                 if _exists(uri):
                     raise FileExistsError(f"{uri} exists; pass --overwrite to replace it")
-        work = Path(work_dir) if work_dir else Path(tempfile.mkdtemp(prefix="vrsify-"))
-        work.mkdir(parents=True, exist_ok=True)
+        if work_dir:
+            work = Path(work_dir).resolve()
+            work.mkdir(parents=True, exist_ok=True)
+        else:
+            work = temporary_work = Path(tempfile.mkdtemp(prefix="vrsify-"))
         sampler = MemorySampler()
         sampler.start()
         phases = Phases(sampler)
@@ -688,5 +698,8 @@ def vrsify(  # noqa: PLR0913
     except Exception as e:
         notify(f"vrsify failed {subject}: {type(e).__name__}: {e}", slack)
         raise
+    finally:
+        if temporary_work is not None:
+            shutil.rmtree(temporary_work, ignore_errors=True)
     notify(f"vrsify output written {subject}: {stats['records']} records in {stats['seconds']} s", slack)
     return provenance

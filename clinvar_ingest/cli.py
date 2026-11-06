@@ -132,7 +132,12 @@ def parse_args(argv):
         help="Seconds before a record becomes an error (default: %(default)s)",
     )
     vrsify_sp.add_argument("--overwrite", action="store_true", help="Replace existing output objects")
-    vrsify_sp.add_argument("--work-dir", type=str, default=None, help="Local working directory (default: a temp dir)")
+    vrsify_sp.add_argument(
+        "--work-dir",
+        type=str,
+        default=None,
+        help="Local working directory, kept after the run (default: a temporary directory, removed when the run ends)",
+    )
     vrsify_sp.add_argument(
         "--slack", action="store_true", help="Post start, finish and failure messages to Slack (off by default)"
     )
