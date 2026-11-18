@@ -278,6 +278,115 @@ def test_trait_from_xml_406155():
     } in [dictify(x) for x in trait.xrefs]
 
 
+# Trait 18726 from VCV005007883.2 in the 2026-11-15 VCV release, which has two
+# Symbol elements with Type=Preferred.
+TRAIT_18726_XML = """
+<Trait ID="18726" Type="Disease">
+  <Name>
+    <ElementValue Type="Preferred">Female infertility due to zona pellucida defect</ElementValue>
+    <XRef ID="MONDO:0014342" DB="MONDO"/>
+  </Name>
+  <Name>
+    <ElementValue Type="Alternate">OOCYTE/ZYGOTE/EMBRYO MATURATION ARREST 1</ElementValue>
+    <XRef Type="MIM" ID="615774" DB="OMIM"/>
+    <XRef Type="Allelic variant" ID="195000.0001" DB="OMIM"/>
+    <XRef Type="Allelic variant" ID="195000.0004" DB="OMIM"/>
+    <XRef Type="Allelic variant" ID="195000.0002" DB="OMIM"/>
+    <XRef Type="Allelic variant" ID="195000.0003" DB="OMIM"/>
+  </Name>
+  <Name>
+    <ElementValue Type="Alternate">Oocyte maturation defect 1</ElementValue>
+  </Name>
+  <Symbol>
+    <ElementValue Type="Alternate">OOMD1</ElementValue>
+  </Symbol>
+  <Symbol>
+    <ElementValue Type="Preferred">OZEMA1</ElementValue>
+    <XRef Type="MIM" ID="615774" DB="OMIM"/>
+  </Symbol>
+  <Symbol>
+    <ElementValue Type="Preferred">OOMD</ElementValue>
+    <XRef Type="MIM" ID="615774" DB="OMIM"/>
+  </Symbol>
+  <AttributeSet>
+    <Attribute Type="GARD id" integerValue="17675"/>
+    <XRef ID="17675" DB="Office of Rare Diseases"/>
+  </AttributeSet>
+  <XRef ID="404466" DB="Orphanet"/>
+  <XRef ID="C4014291" DB="MedGen"/>
+  <XRef ID="MONDO:0014342" DB="MONDO"/>
+  <XRef Type="MIM" ID="615774" DB="OMIM"/>
+</Trait>
+"""
+
+
+def test_trait_from_xml_multiple_preferred_symbols(caplog):
+    raw_trait = _parse_xml_document(TRAIT_18726_XML)["Trait"]
+    trait = Trait.from_xml(raw_trait, "RCV007075798")
+
+    assert trait.id == "18726"
+    assert trait.name == "Female infertility due to zona pellucida defect"
+    assert trait.symbol == "OOMD"
+    assert trait.alternate_symbols == ["OOMD1"]
+
+    # The preferred symbol not used is left in content as it appeared in the XML
+    assert trait.content["Symbol"] == [
+        {
+            "ElementValue": {"@Type": "Preferred", "$": "OZEMA1"},
+            "XRef": {"@Type": "MIM", "@ID": "615774", "@DB": "OMIM"},
+        }
+    ]
+    assert "Name" not in trait.content
+
+    trait_xrefs = [dictify(x) for x in trait.xrefs]
+    assert {
+        "db": "OMIM",
+        "id": "615774",
+        "type": "MIM",
+        "ref_field": "symbol",
+        "ref_field_element": "OOMD",
+    } in trait_xrefs
+    assert not [x for x in trait_xrefs if x["ref_field_element"] == "OZEMA1"]
+
+    assert "Trait 18726 has 2 preferred Symbol elements" in caplog.text
+
+
+def test_trait_from_xml_multiple_preferred_symbols_order():
+    """
+    The result does not depend on the order of the preferred Symbol elements.
+    """
+    raw_trait = _parse_xml_document(TRAIT_18726_XML)["Trait"]
+    trait = Trait.from_xml(raw_trait, "RCV007075798")
+
+    raw_trait_reversed = _parse_xml_document(TRAIT_18726_XML)["Trait"]
+    raw_trait_reversed["Symbol"].reverse()
+    trait_reversed = Trait.from_xml(raw_trait_reversed, "RCV007075798")
+
+    assert dictify(trait_reversed) == dictify(trait)
+
+
+def test_trait_from_xml_multiple_preferred_names():
+    trait_xml = TRAIT_18726_XML.replace(
+        '<ElementValue Type="Alternate">Oocyte maturation defect 1',
+        '<ElementValue Type="Preferred">Oocyte maturation defect 1',
+    )
+    raw_trait = _parse_xml_document(trait_xml)["Trait"]
+    trait = Trait.from_xml(raw_trait, "RCV007075798")
+
+    assert trait.name == "Female infertility due to zona pellucida defect"
+    assert trait.alternate_names == ["OOCYTE/ZYGOTE/EMBRYO MATURATION ARREST 1"]
+    assert trait.content["Name"] == [
+        {"ElementValue": {"@Type": "Preferred", "$": "Oocyte maturation defect 1"}}
+    ]
+    assert {
+        "db": "MONDO",
+        "id": "MONDO:0014342",
+        "type": None,
+        "ref_field": "name",
+        "ref_field_element": "Female infertility due to zona pellucida defect",
+    } in [dictify(x) for x in trait.xrefs]
+
+
 def test_trait_set_from_xml_10():
     with open("test/data/VCV000000010.xml") as f:
         content = f.read()
