@@ -29,6 +29,34 @@ def extract_element_xrefs(
     ]
 
 
+def split_preferred(
+    elements: list[dict], trait_id: str | None, tag: str
+) -> tuple[dict | None, list[dict]]:
+    """
+    From a trait's Name or Symbol elements (`tag`), return the Type=Preferred element
+    to use and the other Type=Preferred elements.
+
+    When there is more than one, the one with the lexicographically first value is
+    used, so the result does not depend on the order of the elements in the XML.
+    """
+    preferred = sorted(
+        (e for e in elements if get(e, "ElementValue", "@Type") == "Preferred"),
+        key=lambda e: get(e, "ElementValue", "$") or "",
+    )
+    if len(preferred) > 1:
+        _logger.warning(
+            "Trait %s has %d preferred %s elements %s. Using %r and leaving the others in content.",
+            trait_id,
+            len(preferred),
+            tag,
+            json.dumps([get(e, "ElementValue", "$") for e in preferred]),
+            get(preferred[0], "ElementValue", "$"),
+        )
+    if not preferred:
+        return None, []
+    return preferred[0], preferred[1:]
+
+
 @dataclasses.dataclass
 class TraitMetadata(Model):
     """
@@ -56,21 +84,18 @@ class TraitMetadata(Model):
         trait_type = extract(inp, "@Type")
         # Preferred Name (Name type=Preferred)
         names = ensure_list(extract(inp, "Name") or [])
-        preferred_names = [
-            n for n in names if get(n, "ElementValue", "@Type") == "Preferred"
-        ]
-        if len(preferred_names) > 1:
-            raise RuntimeError(f"Trait {trait_id} has multiple preferred names")
-        preferred_name = None
-        if len(preferred_names) == 1:
-            preferred_name = preferred_names[0]["ElementValue"]["$"]
-
-        preferred_name_xrefs = flatten1(
-            [
-                extract_element_xrefs(n, "name", n["ElementValue"]["$"])
-                for n in preferred_names
-            ]
+        preferred_name_element, other_preferred_names = split_preferred(
+            names, trait_id, "Name"
         )
+        if other_preferred_names:
+            inp["Name"] = other_preferred_names
+        preferred_name = None
+        preferred_name_xrefs = []
+        if preferred_name_element is not None:
+            preferred_name = preferred_name_element["ElementValue"]["$"]
+            preferred_name_xrefs = extract_element_xrefs(
+                preferred_name_element, "name", preferred_name
+            )
         _logger.debug("preferred_name: %s", preferred_name)
 
         # Alternate Names (Name type=Alternate)
@@ -174,24 +199,20 @@ class Trait(Model):
 
         trait_metadata = TraitMetadata.from_xml(inp)
 
-        # TODO the logic here is the same as Preferred and Alternate Name
         # Preferred Symbol (Symbol type=Preferred)
         symbols = ensure_list(extract(inp, "Symbol") or [])
-        preferred_symbols = [
-            s for s in symbols if get(s, "ElementValue", "@Type") == "Preferred"
-        ]
-        if len(preferred_symbols) > 1:
-            raise RuntimeError(
-                f"Trait {trait_metadata.id} has multiple preferred symbols"
-            )
+        preferred_symbol_element, other_preferred_symbols = split_preferred(
+            symbols, trait_metadata.id, "Symbol"
+        )
+        if other_preferred_symbols:
+            inp["Symbol"] = other_preferred_symbols
         preferred_symbol = None
-        if len(preferred_symbols) == 1:
-            preferred_symbol = preferred_symbols[0]["ElementValue"]["$"]
-
-        preferred_symbol_xrefs = [
-            extract_element_xrefs(s, "symbol", s["ElementValue"]["$"])
-            for s in preferred_symbols
-        ]
+        preferred_symbol_xrefs = []
+        if preferred_symbol_element is not None:
+            preferred_symbol = preferred_symbol_element["ElementValue"]["$"]
+            preferred_symbol_xrefs = extract_element_xrefs(
+                preferred_symbol_element, "symbol", preferred_symbol
+            )
         _logger.debug(
             "preferred_symbol: %s, preferred_symbol_xrefs: %s",
             preferred_symbol,
