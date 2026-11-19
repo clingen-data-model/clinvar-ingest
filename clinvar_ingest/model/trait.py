@@ -199,7 +199,6 @@ class Trait(Model):
 
         trait_metadata = TraitMetadata.from_xml(inp)
 
-        # TODO the logic here is the same as Preferred and Alternate Name
         # Preferred Symbol (Symbol type=Preferred)
         symbols = ensure_list(extract(inp, "Symbol") or [])
         preferred_symbol_element, other_preferred_symbols = split_preferred(
