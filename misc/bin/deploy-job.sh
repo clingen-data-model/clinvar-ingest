@@ -104,8 +104,8 @@ clinvar_ingest_bucket="clinvar-ingest-dev"
 
 region="us-east1"
 project="${PROJECT:-clingen-dev}"
-image_tag=workflow-py-${CLINVAR_INGEST_RELEASE_TAG}
-cloudbuild=.cloudbuild/workflow-py.docker.cloudbuild.yaml
+image_tag=workflow-${CLINVAR_INGEST_RELEASE_TAG}
+cloudbuild=.cloudbuild/workflow.docker.cloudbuild.yaml
 if $vrsify; then
     image_tag=vrsify-${CLINVAR_INGEST_RELEASE_TAG}
     cloudbuild=.cloudbuild/vrsify.docker.cloudbuild.yaml
@@ -122,7 +122,7 @@ tar --no-xattrs -c \
     test \
     misc \
     Dockerfile \
-    Dockerfile-workflow-py \
+    Dockerfile-workflow \
     pyproject.toml \
     log_conf.json \
     .cloudbuild \
